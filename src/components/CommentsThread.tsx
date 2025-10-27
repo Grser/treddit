@@ -122,7 +122,7 @@ function CommentItem({
   const [replyOpen, setReplyOpen] = useState(false);
   const [replyText, setReplyText] = useState("");
 
-  const avatar = node.avatar_url?.trim() ? node.avatar_url! : "/demo-reddit.png";
+  const avatar = node.avatar_url?.trim() || "/demo-reddit.png";
 
   async function reply() {
     if (!canInteract || !replyText.trim()) {
