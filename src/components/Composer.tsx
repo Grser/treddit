@@ -1,15 +1,18 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 
 type Tab = "post" | "media" | "poll";
 
 export default function Composer({ enabled }: { enabled: boolean }) {
+  const router = useRouter();
   const [tab, setTab] = useState<Tab>("post");
   const [text, setText] = useState("");
   const [mediaUrl, setMediaUrl] = useState("");
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // encuesta
   const [question, setQuestion] = useState("");
@@ -20,18 +23,22 @@ export default function Composer({ enabled }: { enabled: boolean }) {
     if (!enabled) return;
     const file = e.target.files?.[0];
     if (!file) return;
+    setError(null);
     setUploading(true);
     try {
       const fd = new FormData();
       fd.append("file", file);
       const res = await fetch("/api/upload", { method: "POST", body: fd });
-      const j = await res.json();
+      const j = await res.json().catch(() => ({}));
       if (res.ok && j.url) {
         setMediaUrl(j.url); // e.g. /uploads/1699999999-foto.png
         setTab("media");
+        setError(null);
       } else {
-        alert(j.error || "No se pudo subir el archivo");
+        setError(j.error || "No se pudo subir el archivo");
       }
+    } catch {
+      setError("No se pudo subir el archivo");
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
@@ -58,7 +65,7 @@ export default function Composer({ enabled }: { enabled: boolean }) {
     if (tab === "media") {
       payload.mediaUrl = mediaUrl || null;
       if (!payload.mediaUrl && !payload.description) {
-        alert("Agrega texto o una imagen/video.");
+        setError("Agrega texto o una imagen/video.");
         return;
       }
     }
@@ -66,7 +73,7 @@ export default function Composer({ enabled }: { enabled: boolean }) {
     if (tab === "poll") {
       const opts = options.map(o => o.trim()).filter(Boolean);
       if (!question.trim() || opts.length < 2) {
-        alert("La encuesta necesita una pregunta y al menos 2 opciones.");
+        setError("La encuesta necesita una pregunta y al menos 2 opciones.");
         return;
       }
       payload.poll = { question: question.trim(), options: opts, days: Math.max(1, Math.min(7, days)) };
@@ -74,23 +81,35 @@ export default function Composer({ enabled }: { enabled: boolean }) {
 
     // si es solo texto, también vale
     if (tab === "post" && !payload.description) {
-      alert("Escribe algo para publicar.");
+      setError("Escribe algo para publicar.");
       return;
     }
 
-    const res = await fetch("/api/posts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    setError(null);
 
-    if (res.ok) {
-      // limpia y recarga
-      setText(""); setMediaUrl(""); setQuestion(""); setOptions(["", ""]); setDays(1); setTab("post");
-      location.assign("/"); // vuelve al feed
-    } else {
-      const j = await res.json().catch(() => ({}));
-      alert(j.error || "No se pudo crear la publicación");
+    try {
+      const res = await fetch("/api/posts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        // limpia estados locales
+        setText("");
+        setMediaUrl("");
+        setQuestion("");
+        setOptions(["", ""]);
+        setDays(1);
+        setTab("post");
+        setError(null);
+        router.refresh();
+      } else {
+        const j = await res.json().catch(() => ({}));
+        setError(j.error || "No se pudo crear la publicación");
+      }
+    } catch {
+      setError("No se pudo crear la publicación");
     }
   }
 
@@ -189,6 +208,12 @@ export default function Composer({ enabled }: { enabled: boolean }) {
             </label>
           </div>
         </div>
+      )}
+
+      {error && (
+        <p className="mt-3 text-sm text-red-500" role="status">
+          {error}
+        </p>
       )}
 
       <div className="mt-3 flex justify-end">
