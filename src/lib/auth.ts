@@ -9,6 +9,7 @@ export type SessionUser = {
   id: number;
   username: string;
   email: string;
+  avatar_url?: string | null;
 };
 
 export function signSession(payload: SessionUser) {

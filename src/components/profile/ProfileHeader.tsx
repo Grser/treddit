@@ -6,14 +6,15 @@ export default function ProfileHeader({
     stats: { posts: number; followers: number; following: number };
   }) {
     const isOwner = viewerId === user.id;
-  
+    const avatar = user?.avatar_url?.trim() || "/demo-reddit.png";
+
     return (
       <section>
         {/* Banner */}
         <div className="h-44 w-full bg-muted relative">
           {user.banner_url && <img src={user.banner_url} className="h-full w-full object-cover" alt="" />}
           <div className="absolute -bottom-12 left-4">
-            <img src={user.avatar_url || "/demo-reddit.png"} className="size-24 rounded-full ring-2 ring-surface object-cover" alt="" />
+            <img src={avatar} className="size-24 rounded-full ring-2 ring-surface object-cover" alt="" />
           </div>
         </div>
   

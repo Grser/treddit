@@ -3,6 +3,7 @@ import Link from "next/link";
 
 export default async function Navbar() {
   const session = await getSessionUser();
+  const avatar = session?.avatar_url?.trim() || "/demo-reddit.png";
 
   return (
     <header className="sticky top-0 z-50 bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80 border-b border-border">
@@ -65,7 +66,7 @@ export default async function Navbar() {
                 <span className="hidden sm:block text-sm opacity-80">@{session.username}</span>
                 <img
                   alt="Usuario"
-                  src="/demo-reddit.png"
+                  src={avatar}
                   className="size-9 rounded-full ring-1 ring-border object-cover"
                 />
                 {/* Logout simple via POST */}

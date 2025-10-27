@@ -35,7 +35,7 @@ export default function PostCard({
   post: Post;
   canInteract: boolean;
 }) {
-  const avatar = post.avatar_url?.trim() ? post.avatar_url! : "/demo-reddit.png";
+  const avatar = post.avatar_url?.trim() || "/demo-reddit.png";
 
   return (
     <article className="bg-surface text-foreground rounded-xl border border-border p-4">

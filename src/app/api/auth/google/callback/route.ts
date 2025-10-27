@@ -77,14 +77,14 @@ export async function GET(req: Request) {
 
   // Upsert en Users
   const [bySub] = await db.execute(
-    "SELECT id, username, email FROM Users WHERE google_sub=? LIMIT 1",
+    "SELECT id, username, email, avatar_url FROM Users WHERE google_sub=? LIMIT 1",
     [info.sub]
   );
   let user = (bySub as any[])[0];
 
   if (!user && info.email) {
     const [byEmail] = await db.execute(
-      "SELECT id, username, email FROM Users WHERE email=? LIMIT 1",
+      "SELECT id, username, email, avatar_url FROM Users WHERE email=? LIMIT 1",
       [info.email]
     );
     user = (byEmail as any[])[0];
@@ -93,6 +93,7 @@ export async function GET(req: Request) {
         "UPDATE Users SET google_sub=?, avatar_url=? WHERE id=?",
         [info.sub, info.picture ?? null, user.id]
       );
+      user.avatar_url = info.picture ?? user.avatar_url ?? null;
     }
   }
 
@@ -114,11 +115,21 @@ export async function GET(req: Request) {
       ]
     );
     const newId = (ins as any).insertId as number;
-    user = { id: newId, username, email: info.email || `${username}@example.com` };
+    user = {
+      id: newId,
+      username,
+      email: info.email || `${username}@example.com`,
+      avatar_url: info.picture ?? null,
+    };
   }
 
   // Crear sesión
-  const token = signSession({ id: user.id, username: user.username, email: user.email });
+  const token = signSession({
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    avatar_url: user.avatar_url ?? null,
+  });
 
   const isProd = process.env.NODE_ENV === "production";
   const res = NextResponse.redirect(new URL("/", req.url));
