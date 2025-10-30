@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+
+import { useLocale } from "@/contexts/LocaleContext";
+
 import PostCard, { Post as PostCardType } from "./PostCard";
 
 type FeedProps = {
   canInteract: boolean;
-  /** "user:123", "likes:123" o undefined para Home */
   source?: string;
-  /** Alternativas explícitas al source */
   userId?: number;
   likesOf?: number;
   limit?: number;
@@ -25,11 +26,12 @@ export default function Feed({
   limit = 20,
   initialItems,
 }: FeedProps) {
+  const { strings } = useLocale();
   const [posts, setPosts] = useState<PostCardType[]>(initialItems || []);
   const [loading, setLoading] = useState(initialItems?.length ? false : true);
+  const [hasError, setHasError] = useState(false);
   const [errMsg, setErrMsg] = useState<string | null>(null);
 
-  // Normaliza el source a query params para /api/posts
   const query = useMemo(() => {
     const params = new URLSearchParams();
     params.set("limit", String(limit));
@@ -50,7 +52,7 @@ export default function Feed({
     let alive = true;
     async function load() {
       setLoading(true);
-      setErrMsg(null);
+      setHasError(false);
       try {
         const url = query ? `/api/posts?${query}` : "/api/posts";
         const res = await fetch(url, { cache: "no-store" });
@@ -64,6 +66,7 @@ export default function Feed({
       } catch (error: unknown) {
         if (!alive) return;
         console.error("Feed load error:", error);
+        setHasError(true);
         setErrMsg("No se pudieron cargar las publicaciones.");
       } finally {
         if (alive) setLoading(false);
@@ -75,10 +78,21 @@ export default function Feed({
     };
   }, [query]);
 
-  if (loading && posts.length === 0) return <p className="p-4">Cargando…</p>;
-  if (errMsg) return <p className="p-4 text-red-500">{errMsg}</p>;
-  if (!loading && posts.length === 0)
-    return <p className="p-4">Aún no hay publicaciones.</p>;
+  if (loading && posts.length === 0) {
+    return <p className="p-4">{strings.feed.loading}</p>;
+  }
+
+  if (hasError) {
+    return <p className="p-4 text-red-500">{strings.feed.error}</p>;
+  }
+
+  if (errMsg) {
+    return <p className="p-4 text-red-500">{errMsg}</p>;
+  }
+
+  if (!loading && posts.length === 0) {
+    return <p className="p-4">{strings.feed.empty}</p>;
+  }
 
   return (
     <div className="space-y-4">
