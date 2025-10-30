@@ -1,9 +1,16 @@
 import { getSessionUser } from "@/lib/auth";
+import { db } from "@/lib/db";
 import Link from "next/link";
+import type { RowDataPacket } from "mysql2";
+
+type HeaderCounts = { notifications: number; messages: number };
 
 export default async function Navbar() {
   const session = await getSessionUser();
   const avatar = session?.avatar_url?.trim() || "/demo-reddit.png";
+  const counts: HeaderCounts = session
+    ? await getHeaderCounts(session.id)
+    : { notifications: 0, messages: 0 };
 
   return (
     <header className="sticky top-0 z-50 bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80 border-b border-border">
@@ -33,9 +40,19 @@ export default async function Navbar() {
 
           {/* Acciones derecha */}
           <nav className="ml-auto flex items-center gap-1 sm:gap-2">
-            <IconBtn title="Idioma"><LangIcon /></IconBtn>
-            <IconBtn title="Anuncios"><AdIcon /></IconBtn>
-            <IconBtn title="Mensajes"><ChatIcon /></IconBtn>
+            <IconBtn title="Idioma" href="/idioma">
+              <LangIcon />
+            </IconBtn>
+            <IconBtn title="Anuncios" href="/anuncios">
+              <AdIcon />
+            </IconBtn>
+            <IconBtn
+              title="Mensajes"
+              href="/mensajes"
+              badge={counts.messages > 0 ? counts.messages : undefined}
+            >
+              <ChatIcon />
+            </IconBtn>
             <div className="hidden sm:block h-6 w-px bg-border mx-1" />
 
             {/* Botón Crear: solo habilitado con sesión */}
@@ -58,7 +75,13 @@ export default async function Navbar() {
               </button>
             )}
 
-            <IconBtn title="Notificaciones"><BellIcon /></IconBtn>
+            <IconBtn
+              title="Notificaciones"
+              href="/notificaciones"
+              badge={counts.notifications > 0 ? counts.notifications : undefined}
+            >
+              <BellIcon />
+            </IconBtn>
 
             {/* Autenticación */}
             {session ? (
@@ -88,14 +111,33 @@ export default async function Navbar() {
 }
 
 /* --- Botón de icono genérico --- */
-function IconBtn({ title, children }: React.PropsWithChildren<{ title: string }>) {
-  return (
-    <button
-      type="button"
-      title={title}
-      className="inline-grid place-items-center size-9 rounded-full hover:bg-muted/60 ring-1 ring-transparent hover:ring-border transition"
-    >
+type IconBtnProps = React.PropsWithChildren<{ title: string; href?: string; badge?: number }>;
+
+function IconBtn({ title, href, badge, children }: IconBtnProps) {
+  const className =
+    "relative inline-grid place-items-center size-9 rounded-full hover:bg-muted/60 ring-1 ring-transparent hover:ring-border transition";
+  const content = (
+    <>
       {children}
+      {typeof badge === "number" && badge > 0 && (
+        <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-brand text-white text-[10px] leading-4 font-semibold text-center">
+          {badge > 99 ? "99+" : badge}
+        </span>
+      )}
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link href={href} title={title} className={className}>
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <button type="button" title={title} className={className}>
+      {content}
     </button>
   );
 }
@@ -106,3 +148,46 @@ function BellIcon() { return (<svg className="size-5" viewBox="0 0 24 24" fill="
 function ChatIcon() { return (<svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" /></svg>); }
 function AdIcon() { return (<svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M7 8h10M7 12h6M7 16h4" /></svg>); }
 function LangIcon() { return (<svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" /></svg>); }
+
+type CountRow = RowDataPacket & { total: number | null };
+
+async function getHeaderCounts(userId: number): Promise<HeaderCounts> {
+  const [[followers], [posts], [replies]] = await Promise.all([
+    db.query<CountRow[]>(
+      `
+      SELECT COUNT(*) AS total
+      FROM Follows
+      WHERE followed=? AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+      `,
+      [userId]
+    ),
+    db.query<CountRow[]>(
+      `
+      SELECT COUNT(*) AS total
+      FROM Posts
+      WHERE user IN (
+        SELECT followed FROM Follows WHERE follower=?
+      ) AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+      `,
+      [userId]
+    ),
+    db.query<CountRow[]>(
+      `
+      SELECT COUNT(*) AS total
+      FROM Comments c
+      JOIN Posts p ON p.id = c.post
+      WHERE p.user=? AND c.user<>? AND c.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+      `,
+      [userId, userId]
+    ),
+  ]);
+
+  const followerEvents = Number((followers?.[0]?.total ?? 0) || 0);
+  const newPosts = Number((posts?.[0]?.total ?? 0) || 0);
+  const newReplies = Number((replies?.[0]?.total ?? 0) || 0);
+
+  return {
+    notifications: followerEvents + newPosts,
+    messages: newReplies,
+  };
+}
