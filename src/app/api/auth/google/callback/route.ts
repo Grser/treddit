@@ -1,9 +1,16 @@
 export const runtime = "nodejs";
 
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import { db } from "@/lib/db";
 import { signSession } from "@/lib/auth";
+import {
+  OAUTH_STATE_COOKIE,
+  consumeRememberedOrigin,
+  clearOauthCookies,
+  getBaseUrl,
+  getRedirectUri,
+} from "../utils";
 
 type GoogleTokenResponse = {
   access_token: string;
@@ -24,26 +31,31 @@ type GoogleUserInfo = {
   family_name?: string;
 };
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   const url = new URL(req.url);
-  const origin = url.origin; // p.ej. http://localhost:3000
+  let origin = getBaseUrl(req); // p.ej. https://mi-dominio.com
 
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   const cookieStore = await cookies();
-  const stateCookie = cookieStore.get("oauth_state")?.value;
+  const stateCookie = cookieStore.get(OAUTH_STATE_COOKIE)?.value;
+  const rememberedOrigin = consumeRememberedOrigin(cookieStore);
+  if (rememberedOrigin) {
+    origin = rememberedOrigin;
+  }
+  const redirectUri = getRedirectUri(origin);
 
   if (!code || !state || !stateCookie || state !== stateCookie) {
     // redirección absoluta
-    return NextResponse.redirect(new URL("/", req.url), {
+    const res = NextResponse.redirect(new URL("/", origin), {
       headers: { "x-error": "invalid_state" },
     });
+    clearOauthCookies(res);
+    return res;
   }
 
   const clientId = process.env.GOOGLE_CLIENT_ID!;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET!;
-  const redirectUri = `${origin}/api/auth/google/callback`;
-
   // Intercambio de code por tokens
   const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -58,9 +70,11 @@ export async function GET(req: Request) {
   });
 
   if (!tokenRes.ok) {
-    return NextResponse.redirect(new URL("/", req.url), {
+    const res = NextResponse.redirect(new URL("/", origin), {
       headers: { "x-error": "token_exchange_failed" },
     });
+    clearOauthCookies(res);
+    return res;
   }
   const tokens = (await tokenRes.json()) as GoogleTokenResponse;
 
@@ -69,9 +83,11 @@ export async function GET(req: Request) {
     headers: { Authorization: `Bearer ${tokens.access_token}` },
   });
   if (!userRes.ok) {
-    return NextResponse.redirect(new URL("/", req.url), {
+    const res = NextResponse.redirect(new URL("/", origin), {
       headers: { "x-error": "userinfo_failed" },
     });
+    clearOauthCookies(res);
+    return res;
   }
   const info = (await userRes.json()) as GoogleUserInfo;
 
@@ -132,7 +148,7 @@ export async function GET(req: Request) {
   });
 
   const isProd = process.env.NODE_ENV === "production";
-  const res = NextResponse.redirect(new URL("/", req.url));
+  const res = NextResponse.redirect(new URL("/", origin));
   res.cookies.set("treddit_token", token, {
     httpOnly: true,
     sameSite: "lax",
@@ -141,24 +157,17 @@ export async function GET(req: Request) {
     maxAge: 60 * 60 * 24 * 7,
   });
   // limpiar state
-  res.cookies.set("oauth_state", "", {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: isProd,
-    path: "/",
-    maxAge: 0,
-  });
+  clearOauthCookies(res);
 
   return res;
 }
 
 // genera un username libre añadiendo sufijos si está tomado
-import { db as _db } from "@/lib/db";
 async function findFreeUsername(base: string) {
   let candidate = base.toLowerCase().slice(0, 32) || "usuario";
   let i = 0;
   for (;;) {
-    const [rows] = await _db.execute(
+    const [rows] = await db.execute(
       "SELECT 1 FROM Users WHERE username=? LIMIT 1",
       [candidate]
     );

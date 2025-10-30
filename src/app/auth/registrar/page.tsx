@@ -78,6 +78,13 @@ export default function RegisterPage() {
           </button>
         </form>
 
+        <a
+          href="/api/auth/google/start"
+          className="mt-3 w-full h-10 inline-flex items-center justify-center rounded-full border border-border text-sm"
+        >
+          Crear con Google
+        </a>
+
         <p className="text-sm opacity-80 mt-4">
           ¿Ya tienes cuenta? <a href="/auth/login" className="underline">Inicia sesión</a>
         </p>
