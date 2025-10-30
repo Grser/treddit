@@ -20,5 +20,5 @@ export async function POST(req: Request) {
     [nickname, description, avatar_url || null, banner_url || null, location || null, website || null, show_likes, show_bookmarks, me.id]
   );
 
-  return NextResponse.redirect(new URL(`/u/${me.username}`, process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"));
+  return NextResponse.redirect(new URL(`/u/${me.username}`, process.env.NEXT_PUBLIC_BASE_URL || "http://200.74.22.135:3000"));
 }

@@ -32,7 +32,7 @@ async function getDiscovery(base: string): Promise<DiscoveryResponse> {
 }
 
 export default async function Page() {
-  const base = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+  const base = process.env.NEXT_PUBLIC_BASE_URL || "http://200.74.22.135:3000";
   const session = await getSessionUser();
   const [{ items }, discovery] = await Promise.all([
     getFeed(base),
