@@ -25,10 +25,24 @@ type GoogleUserInfo = {
   family_name?: string;
 };
 
+function getOrigin(req: Request) {
+  const forwardedProto = req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  const forwardedHost =
+    req.headers.get("x-forwarded-host")?.split(",")[0]?.trim() ||
+    req.headers.get("host")?.trim();
+
+  if (forwardedProto && forwardedHost) {
+    return `${forwardedProto}://${forwardedHost}`;
+  }
+
+  return new URL(req.url).origin;
+}
+
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const origin = getBaseUrl(req); // p.ej. https://mi-dominio.com
   const redirectUri = getRedirectUri(origin);
+  const origin = getOrigin(req); // p.ej. https://mi-dominio.com
 
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
