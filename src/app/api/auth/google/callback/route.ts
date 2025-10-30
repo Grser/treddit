@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { db } from "@/lib/db";
 import { signSession } from "@/lib/auth";
+import { getBaseUrl, getRedirectUri } from "../utils";
 
 type GoogleTokenResponse = {
   access_token: string;
@@ -26,7 +27,8 @@ type GoogleUserInfo = {
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const origin = url.origin; // p.ej. http://localhost:3000
+  const origin = getBaseUrl(req); // p.ej. https://mi-dominio.com
+  const redirectUri = getRedirectUri(origin);
 
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
@@ -35,15 +37,13 @@ export async function GET(req: Request) {
 
   if (!code || !state || !stateCookie || state !== stateCookie) {
     // redirección absoluta
-    return NextResponse.redirect(new URL("/", req.url), {
+    return NextResponse.redirect(new URL("/", origin), {
       headers: { "x-error": "invalid_state" },
     });
   }
 
   const clientId = process.env.GOOGLE_CLIENT_ID!;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET!;
-  const redirectUri = `${origin}/api/auth/google/callback`;
-
   // Intercambio de code por tokens
   const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -58,7 +58,7 @@ export async function GET(req: Request) {
   });
 
   if (!tokenRes.ok) {
-    return NextResponse.redirect(new URL("/", req.url), {
+    return NextResponse.redirect(new URL("/", origin), {
       headers: { "x-error": "token_exchange_failed" },
     });
   }
@@ -69,7 +69,7 @@ export async function GET(req: Request) {
     headers: { Authorization: `Bearer ${tokens.access_token}` },
   });
   if (!userRes.ok) {
-    return NextResponse.redirect(new URL("/", req.url), {
+    return NextResponse.redirect(new URL("/", origin), {
       headers: { "x-error": "userinfo_failed" },
     });
   }
@@ -132,7 +132,7 @@ export async function GET(req: Request) {
   });
 
   const isProd = process.env.NODE_ENV === "production";
-  const res = NextResponse.redirect(new URL("/", req.url));
+  const res = NextResponse.redirect(new URL("/", origin));
   res.cookies.set("treddit_token", token, {
     httpOnly: true,
     sameSite: "lax",
