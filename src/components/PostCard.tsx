@@ -36,11 +36,12 @@ export default function PostCard({
   canInteract: boolean;
 }) {
   const avatar = post.avatar_url?.trim() || "/demo-reddit.png";
+  const repostedByMe = Boolean(post.repostedByMe);
 
   return (
     <article className="bg-surface text-foreground rounded-xl border border-border p-4">
       {/* Banda superior: Reposteaste */}
-      {post.repostedByMe && (
+      {repostedByMe && (
         <div className="text-emerald-400 text-sm font-semibold -mt-2 mb-1 flex items-center gap-2">
           <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M17 1l4 4-4 4M7 23l-4-4 4-4" />
@@ -123,7 +124,7 @@ export default function PostCard({
           liked: post.likedByMe,
           comments: post.comments,
           reposts: post.reposts ?? 0,
-          reposted: post.repostedByMe,
+          reposted: repostedByMe,
           views: post.views ?? 0,
         }}
       />
