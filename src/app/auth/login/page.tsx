@@ -61,14 +61,22 @@ export default function LoginPage() {
             Entrar
           </button>
         </form>
-        <a href="/api/auth/google/start" className="mt-3 w-full h-10 inline-flex items-center justify-center rounded-full border border-border text-sm">
+        <div className="mt-3 space-y-3">
+          <a
+            href="/api/auth/google/start"
+            className="w-full h-10 inline-flex items-center justify-center rounded-full border border-border text-sm"
+          >
             Continuar con Google
-        </a>
-
-      
-        <p className="text-sm opacity-80 mt-4">
-          ¿No tienes cuenta? <a href="/auth/registrar" className="underline">Registrarse</a>
-        </p>
+          </a>
+          <div className="flex items-center justify-between text-sm opacity-80">
+            <a href="/auth/recuperar" className="underline">
+              ¿Olvidaste tu contraseña?
+            </a>
+            <a href="/auth/registrar" className="underline">
+              Crear cuenta
+            </a>
+          </div>
+        </div>
       </div>
     </div>
   );

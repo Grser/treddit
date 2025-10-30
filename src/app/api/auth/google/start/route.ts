@@ -1,16 +1,16 @@
+import { NextResponse, type NextRequest } from "next/server";
+import { randomBytes } from "node:crypto";
+import { OAUTH_STATE_COOKIE, getBaseUrl, getRedirectUri, rememberOrigin } from "../utils";
+
 export const runtime = "nodejs";
 
-import { NextResponse } from "next/server";
-import crypto from "crypto";
-
-export async function GET(req: Request) {
-  const url = new URL(req.url);
-  const origin = url.origin; // p.ej. http://localhost:3000
+export async function GET(req: NextRequest) {
+  const origin = getBaseUrl(req); // p.ej. https://mi-dominio.com
   const clientId = process.env.GOOGLE_CLIENT_ID!;
-  const redirectUri = `${origin}/api/auth/google/callback`;
+  const redirectUri = getRedirectUri(origin);
 
   // state anti-CSRF
-  const state = crypto.randomBytes(16).toString("hex");
+  const state = randomBytes(16).toString("hex");
 
   const params = new URLSearchParams({
     client_id: clientId,
@@ -27,13 +27,15 @@ export async function GET(req: Request) {
   );
 
   const isProd = process.env.NODE_ENV === "production";
-  res.cookies.set("oauth_state", state, {
+  const cookieOptions = {
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: "lax" as const,
     secure: isProd, // en localhost debe ser false
     path: "/",
     maxAge: 300,
-  });
+  };
+  res.cookies.set(OAUTH_STATE_COOKIE, state, cookieOptions);
+  rememberOrigin(res, origin);
 
   return res;
 }
