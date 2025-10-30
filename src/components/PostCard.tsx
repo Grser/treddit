@@ -3,6 +3,7 @@ import CommentsThread from "./CommentsThread";
 import PostActions from "./PostActions";
 import PostPoll from "./PostPoll";
 import PostMenu from "./PostMenu";
+import UserBadges from "./UserBadges";
 
 import { useLocale } from "@/contexts/LocaleContext";
 
@@ -26,6 +27,8 @@ export type Post = {
   replyTo?: { username: string; postId: number } | null;
   isOwner?: boolean;
   isAdminViewer?: boolean;
+  is_admin?: boolean;
+  is_verified?: boolean;
 };
 
 export default function PostCard({
@@ -38,6 +41,7 @@ export default function PostCard({
   const { strings } = useLocale();
   const avatar = post.avatar_url?.trim() || "/demo-reddit.png";
   const repostedByMe = Boolean(post.repostedByMe);
+  const displayName = post.nickname?.trim() || post.username;
 
   return (
     <article className="bg-surface text-foreground rounded-xl border border-border p-4">
@@ -66,10 +70,16 @@ export default function PostCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-start gap-2">
             <div className="leading-tight flex-1 min-w-0">
-              <p className="text-sm font-semibold truncate">
-                <a href={`/u/${post.username}`} className="hover:underline">
-                  {post.nickname}
-                </a>{" "}
+              <p className="text-sm font-semibold truncate flex items-center gap-2">
+                <a href={`/u/${post.username}`} className="hover:underline truncate">
+                  {displayName}
+                </a>
+                <UserBadges
+                  size="sm"
+                  isAdmin={post.is_admin}
+                  isVerified={post.is_verified}
+                  labels={strings.badges}
+                />
                 <span className="opacity-60">@{post.username}</span>
               </p>
               <p className="text-xs opacity-60">

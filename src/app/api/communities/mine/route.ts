@@ -6,7 +6,7 @@ export async function GET() {
   const me = await getSessionUser();
   if (!me) return NextResponse.json({ items: [] });
   const [rows] = await db.query(
-    `SELECT c.id, c.slug, c.name
+    `SELECT c.id, c.slug, c.name, cm.role
      FROM Community_Members cm
      JOIN Communities c ON c.id = cm.community_id
      WHERE cm.user_id = ? AND c.visible = 1

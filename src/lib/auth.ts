@@ -10,10 +10,20 @@ export type SessionUser = {
   username: string;
   email: string;
   avatar_url?: string | null;
+  is_admin?: boolean;
+  is_verified?: boolean;
 };
 
 export function signSession(payload: SessionUser) {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES });
+  const normalized: SessionUser = {
+    id: payload.id,
+    username: payload.username,
+    email: payload.email,
+    avatar_url: payload.avatar_url ?? null,
+    is_admin: Boolean(payload.is_admin),
+    is_verified: Boolean(payload.is_verified),
+  };
+  return jwt.sign(normalized, JWT_SECRET, { expiresIn: JWT_EXPIRES });
 }
 
 export async function getSessionUser(): Promise<SessionUser | null> {
@@ -22,7 +32,14 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   if (!token) return null;
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as SessionUser;
-    return decoded;
+    return {
+      id: decoded.id,
+      username: decoded.username,
+      email: decoded.email,
+      avatar_url: decoded.avatar_url ?? null,
+      is_admin: Boolean(decoded.is_admin),
+      is_verified: Boolean(decoded.is_verified),
+    };
   } catch {
     return null;
   }

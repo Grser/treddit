@@ -1,6 +1,7 @@
 "use client";
 
 import { useLocale } from "@/contexts/LocaleContext";
+import UserBadges from "./UserBadges";
 
 type Trend = { tag: string; count: number };
 type UserRec = {
@@ -8,6 +9,8 @@ type UserRec = {
   username: string;
   nickname: string;
   avatar_url?: string | null;
+  is_admin?: boolean;
+  is_verified?: boolean;
 };
 
 export default function SidebarRight({
@@ -21,6 +24,7 @@ export default function SidebarRight({
 }) {
   const { strings } = useLocale();
   const t = strings.sidebarRight;
+  const badges = strings.badges;
 
   return (
     <aside className="w-80 hidden lg:flex flex-col gap-4 p-4 border-l border-border">
@@ -63,7 +67,15 @@ export default function SidebarRight({
                   className="size-10 rounded-full object-cover bg-muted/40 ring-1 ring-border"
                 />
                 <div className="min-w-0">
-                  <p className="font-semibold leading-tight truncate">{user.username}</p>
+                  <p className="font-semibold leading-tight truncate flex items-center gap-1">
+                    {user.username}
+                    <UserBadges
+                      size="sm"
+                      isAdmin={user.is_admin}
+                      isVerified={user.is_verified}
+                      labels={badges}
+                    />
+                  </p>
                   <p className="text-sm opacity-70 leading-tight truncate">
                     {user.nickname || `@${user.username}`}
                   </p>

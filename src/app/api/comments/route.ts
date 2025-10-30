@@ -23,6 +23,8 @@ export async function GET(req: Request) {
       u.username,
       u.nickname,
       u.avatar_url,
+      u.is_admin,
+      u.is_verified,
       c.text,
       c.created_at,
       c.comment          AS parentId
@@ -89,7 +91,8 @@ export async function POST(req: Request) {
   // Devuelve el comment recién creado (plano)
   const [row] = await db.query(
     `
-    SELECT c.id, c.user AS userId, u.username, u.nickname, u.avatar_url, c.text, c.created_at, c.comment AS parentId
+    SELECT c.id, c.user AS userId, u.username, u.nickname, u.avatar_url, u.is_admin, u.is_verified,
+           c.text, c.created_at, c.comment AS parentId
     FROM Comments c JOIN Users u ON u.id=c.user WHERE c.id=? LIMIT 1
     `,
     [id]

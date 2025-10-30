@@ -19,6 +19,8 @@ export type LocaleStrings = {
     register: string;
     logout: string;
     userGreeting: (username: string) => string;
+    profile: string;
+    admin: string;
   };
   authBanner: {
     title: string;
@@ -58,6 +60,7 @@ export type LocaleStrings = {
     explore: string;
     communities: string;
     empty: string;
+    createCommunity: string;
   };
   sidebarRight: {
     happening: string;
@@ -123,6 +126,46 @@ export type LocaleStrings = {
     people: { title: string; description: string };
     popular: { title: string; description: string };
   };
+  badges: {
+    verified: string;
+    admin: string;
+  };
+  createCommunity: {
+    title: string;
+    subtitle: string;
+    nameLabel: string;
+    slugLabel: string;
+    slugHelp: string;
+    descriptionLabel: string;
+    descriptionHelp: string;
+    submit: string;
+    success: string;
+    error: string;
+    existingTitle: string;
+    existingSubtitle: string;
+    empty: string;
+    manage: string;
+    roleOwner: string;
+    roleModerator: string;
+  };
+  adminPage: {
+    title: string;
+    subtitle: string;
+    statsTitle: string;
+    quickLinks: string;
+    stats: {
+      users: string;
+      posts: string;
+      communities: string;
+      moderators: string;
+    };
+    links: {
+      users: { title: string; description: string };
+      posts: { title: string; description: string };
+      communities: { title: string; description: string };
+      verification: { title: string; description: string };
+    };
+  };
 };
 
 const translations: Record<Locale, LocaleStrings> = {
@@ -141,6 +184,8 @@ const translations: Record<Locale, LocaleStrings> = {
       register: "Registrar",
       logout: "Salir",
       userGreeting: (username) => `@${username}`,
+      profile: "Mi perfil",
+      admin: "Admin",
     },
     authBanner: {
       title: "Crea una cuenta o inicia sesión",
@@ -181,6 +226,7 @@ const translations: Record<Locale, LocaleStrings> = {
       explore: "Explorar",
       communities: "Comunidades",
       empty: "Sin datos",
+      createCommunity: "Crear comunidad",
     },
     sidebarRight: {
       happening: "Qué está pasando",
@@ -267,6 +313,59 @@ const translations: Record<Locale, LocaleStrings> = {
         description: "Lo más relevante del día según la comunidad de Treddit.",
       },
     },
+    badges: {
+      verified: "Cuenta verificada",
+      admin: "Administrador",
+    },
+    createCommunity: {
+      title: "Crea tu comunidad",
+      subtitle:
+        "Agrupa a personas con tus mismos intereses. Escoge un nombre único y cuéntales de qué se trata.",
+      nameLabel: "Nombre público",
+      slugLabel: "Identificador",
+      slugHelp: "Solo letras minúsculas, números y guiones. Será parte de la URL.",
+      descriptionLabel: "Descripción",
+      descriptionHelp: "Explica de qué trata y cuáles son las reglas básicas (máx. 280 caracteres).",
+      submit: "Crear comunidad",
+      success: "¡Comunidad creada!",
+      error: "No se pudo crear la comunidad. Inténtalo de nuevo.",
+      existingTitle: "Tus comunidades",
+      existingSubtitle: "Administra las comunidades que moderas o has creado.",
+      empty: "Todavía no administras ninguna comunidad.",
+      manage: "Administrar",
+      roleOwner: "Propietario",
+      roleModerator: "Moderador",
+    },
+    adminPage: {
+      title: "Panel de administración",
+      subtitle: "Controla la actividad de la plataforma y responde a los reportes de la comunidad.",
+      statsTitle: "Resumen rápido",
+      quickLinks: "Accesos directos",
+      stats: {
+        users: "Usuarios activos",
+        posts: "Publicaciones",
+        communities: "Comunidades",
+        moderators: "Moderadores",
+      },
+      links: {
+        users: {
+          title: "Gestionar usuarios",
+          description: "Asigna o quita privilegios, revisa cuentas ocultas y gestiona verificaciones.",
+        },
+        posts: {
+          title: "Revisar publicaciones",
+          description: "Elimina contenido que infrinja las normas y supervisa reportes recientes.",
+        },
+        communities: {
+          title: "Administrar comunidades",
+          description: "Activa o desactiva comunidades y consulta sus estadísticas principales.",
+        },
+        verification: {
+          title: "Verificación de perfiles",
+          description: "Concede o retira la insignia verificada a los usuarios que lo soliciten.",
+        },
+      },
+    },
   },
   en: {
     localeName: "English",
@@ -283,6 +382,8 @@ const translations: Record<Locale, LocaleStrings> = {
       register: "Sign up",
       logout: "Log out",
       userGreeting: (username) => `@${username}`,
+      profile: "My profile",
+      admin: "Admin",
     },
     authBanner: {
       title: "Create an account or sign in",
@@ -323,6 +424,7 @@ const translations: Record<Locale, LocaleStrings> = {
       explore: "Explore",
       communities: "Communities",
       empty: "No data",
+      createCommunity: "Create community",
     },
     sidebarRight: {
       happening: "What's happening",
@@ -409,6 +511,58 @@ const translations: Record<Locale, LocaleStrings> = {
         description: "The most relevant content today according to the Treddit community.",
       },
     },
+    badges: {
+      verified: "Verified account",
+      admin: "Administrator",
+    },
+    createCommunity: {
+      title: "Create your community",
+      subtitle: "Bring people together around your interests. Pick a unique name and explain what it's about.",
+      nameLabel: "Display name",
+      slugLabel: "Identifier",
+      slugHelp: "Lowercase letters, numbers and dashes only. It becomes part of the URL.",
+      descriptionLabel: "Description",
+      descriptionHelp: "Tell people what to expect and outline the basic rules (max. 280 characters).",
+      submit: "Create community",
+      success: "Community created!",
+      error: "The community could not be created. Try again.",
+      existingTitle: "Your communities",
+      existingSubtitle: "Manage the communities you moderate or created.",
+      empty: "You don't manage any communities yet.",
+      manage: "Manage",
+      roleOwner: "Owner",
+      roleModerator: "Moderator",
+    },
+    adminPage: {
+      title: "Admin dashboard",
+      subtitle: "Monitor platform activity and respond to community reports.",
+      statsTitle: "At a glance",
+      quickLinks: "Quick actions",
+      stats: {
+        users: "Active users",
+        posts: "Posts",
+        communities: "Communities",
+        moderators: "Moderators",
+      },
+      links: {
+        users: {
+          title: "Manage users",
+          description: "Assign privileges, review hidden accounts and handle verification.",
+        },
+        posts: {
+          title: "Review posts",
+          description: "Remove rule-breaking content and follow up on recent reports.",
+        },
+        communities: {
+          title: "Moderate communities",
+          description: "Enable or disable communities and inspect key stats.",
+        },
+        verification: {
+          title: "Profile verification",
+          description: "Grant or revoke the verified badge for trusted accounts.",
+        },
+      },
+    },
   },
   ru: {
     localeName: "Русский",
@@ -425,6 +579,8 @@ const translations: Record<Locale, LocaleStrings> = {
       register: "Регистрация",
       logout: "Выйти",
       userGreeting: (username) => `@${username}`,
+      profile: "Мой профиль",
+      admin: "Админ",
     },
     authBanner: {
       title: "Создайте аккаунт или войдите",
@@ -465,6 +621,7 @@ const translations: Record<Locale, LocaleStrings> = {
       explore: "Обзор",
       communities: "Сообщества",
       empty: "Нет данных",
+      createCommunity: "Создать сообщество",
     },
     sidebarRight: {
       happening: "Что происходит",
@@ -549,6 +706,58 @@ const translations: Record<Locale, LocaleStrings> = {
       popular: {
         title: "Популярное",
         description: "Самые обсуждаемые материалы дня по версии сообщества Treddit.",
+      },
+    },
+    badges: {
+      verified: "Подтвержденный аккаунт",
+      admin: "Администратор",
+    },
+    createCommunity: {
+      title: "Создайте сообщество",
+      subtitle: "Объедините людей с похожими интересами. Выберите уникальное имя и расскажите, о чем оно.",
+      nameLabel: "Публичное название",
+      slugLabel: "Идентификатор",
+      slugHelp: "Только строчные буквы, цифры и дефисы. Значение используется в URL.",
+      descriptionLabel: "Описание",
+      descriptionHelp: "Опишите тематику и основные правила (до 280 символов).",
+      submit: "Создать сообщество",
+      success: "Сообщество создано!",
+      error: "Не удалось создать сообщество. Попробуйте ещё раз.",
+      existingTitle: "Ваши сообщества",
+      existingSubtitle: "Управляйте сообществами, которые вы модерируете или создали.",
+      empty: "У вас пока нет сообществ в управлении.",
+      manage: "Управлять",
+      roleOwner: "Владелец",
+      roleModerator: "Модератор",
+    },
+    adminPage: {
+      title: "Панель администратора",
+      subtitle: "Следите за активностью платформы и реагируйте на жалобы сообщества.",
+      statsTitle: "Краткая сводка",
+      quickLinks: "Быстрые действия",
+      stats: {
+        users: "Активные пользователи",
+        posts: "Публикации",
+        communities: "Сообщества",
+        moderators: "Модераторы",
+      },
+      links: {
+        users: {
+          title: "Управление пользователями",
+          description: "Назначайте права, просматривайте скрытые аккаунты и ведите верификацию.",
+        },
+        posts: {
+          title: "Проверка публикаций",
+          description: "Удаляйте материалы, нарушающие правила, и отслеживайте жалобы.",
+        },
+        communities: {
+          title: "Администрирование сообществ",
+          description: "Включайте или скрывайте сообщества и просматривайте ключевые показатели.",
+        },
+        verification: {
+          title: "Верификация профилей",
+          description: "Выдавайте или снимайте значок подтверждения с доверенных аккаунтов.",
+        },
       },
     },
   },

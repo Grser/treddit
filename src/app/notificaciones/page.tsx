@@ -1,5 +1,5 @@
 import Navbar from "@/components/Navbar";
-import PageHero from "@/components/PageHero";
+import UserBadges from "@/components/UserBadges";
 
 import Link from "next/link";
 import { getSessionUser } from "@/lib/auth";
@@ -13,6 +13,8 @@ type FollowEvent = {
   username: string;
   nickname: string | null;
   avatar_url: string | null;
+  is_admin?: boolean;
+  is_verified?: boolean;
 };
 
 type PostEvent = {
@@ -21,6 +23,8 @@ type PostEvent = {
   description: string | null;
   username: string;
   nickname: string | null;
+  is_admin?: boolean;
+  is_verified?: boolean;
 };
 
 export default async function NotificationsPage() {
@@ -77,9 +81,12 @@ export default async function NotificationsPage() {
                     />
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold">
-                        <Link href={`/u/${item.username}`} className="hover:underline">
-                          {item.nickname || item.username}
-                        </Link>
+                        <span className="inline-flex items-center gap-2">
+                          <Link href={`/u/${item.username}`} className="hover:underline">
+                            {item.nickname || item.username}
+                          </Link>
+                          <UserBadges size="sm" isAdmin={item.is_admin} isVerified={item.is_verified} />
+                        </span>
                       </p>
                       <p className="text-xs opacity-70">@{item.username}</p>
                     </div>
@@ -102,9 +109,12 @@ export default async function NotificationsPage() {
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold">
-                        <Link href={`/u/${item.username}`} className="hover:underline">
-                          {item.nickname || item.username}
-                        </Link>
+                        <span className="inline-flex items-center gap-2">
+                          <Link href={`/u/${item.username}`} className="hover:underline">
+                            {item.nickname || item.username}
+                          </Link>
+                          <UserBadges size="sm" isAdmin={item.is_admin} isVerified={item.is_verified} />
+                        </span>
                       </p>
                       <p className="text-xs opacity-70">@{item.username}</p>
                     </div>
@@ -134,7 +144,7 @@ export default async function NotificationsPage() {
 async function loadFollowers(userId: number): Promise<FollowEvent[]> {
   const [rows] = await db.query(
     `
-    SELECT f.id, f.created_at, u.username, u.nickname, u.avatar_url
+    SELECT f.id, f.created_at, u.username, u.nickname, u.avatar_url, u.is_admin, u.is_verified
     FROM Follows f
     JOIN Users u ON u.id = f.follower
     WHERE f.followed = ?
@@ -150,7 +160,7 @@ async function loadFollowers(userId: number): Promise<FollowEvent[]> {
 async function loadFollowedPosts(userId: number): Promise<PostEvent[]> {
   const [rows] = await db.query(
     `
-    SELECT p.id, p.created_at, p.description, u.username, u.nickname
+    SELECT p.id, p.created_at, p.description, u.username, u.nickname, u.is_admin, u.is_verified
     FROM Posts p
     JOIN Users u ON u.id = p.user
     WHERE p.user IN (SELECT followed FROM Follows WHERE follower = ?)

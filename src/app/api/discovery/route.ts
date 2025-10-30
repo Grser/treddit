@@ -16,7 +16,7 @@ export async function GET() {
   // recomendados: visibles, distintos a mí y que no sigo
   const [users] = await db.query(
     `
-    SELECT u.id, u.username, u.nickname, u.avatar_url
+    SELECT u.id, u.username, u.nickname, u.avatar_url, u.is_admin, u.is_verified
     FROM Users u
     WHERE u.visible = 1
       ${me ? "AND u.id <> ?" : ""}

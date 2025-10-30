@@ -20,7 +20,7 @@ export async function GET(req: Request) {
     SELECT
       p.id,
       p.user                                       AS user,
-      u.username, u.nickname, u.avatar_url,
+      u.username, u.nickname, u.avatar_url, u.is_admin, u.is_verified,
       p.description, p.created_at,
       (SELECT f.route FROM Files f WHERE f.postid=p.id ORDER BY f.id ASC LIMIT 1) AS mediaUrl,
       (SELECT COUNT(*) FROM Like_Posts lp WHERE lp.post=p.id) AS likes,

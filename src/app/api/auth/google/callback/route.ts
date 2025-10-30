@@ -93,14 +93,14 @@ export async function GET(req: NextRequest) {
 
   // Upsert en Users
   const [bySub] = await db.execute(
-    "SELECT id, username, email, avatar_url FROM Users WHERE google_sub=? LIMIT 1",
+    "SELECT id, username, email, avatar_url, is_admin, is_verified FROM Users WHERE google_sub=? LIMIT 1",
     [info.sub]
   );
   let user = (bySub as any[])[0];
 
   if (!user && info.email) {
     const [byEmail] = await db.execute(
-      "SELECT id, username, email, avatar_url FROM Users WHERE email=? LIMIT 1",
+      "SELECT id, username, email, avatar_url, is_admin, is_verified FROM Users WHERE email=? LIMIT 1",
       [info.email]
     );
     user = (byEmail as any[])[0];
@@ -136,6 +136,8 @@ export async function GET(req: NextRequest) {
       username,
       email: info.email || `${username}@example.com`,
       avatar_url: info.picture ?? null,
+      is_admin: 0,
+      is_verified: 0,
     };
   }
 
@@ -145,6 +147,8 @@ export async function GET(req: NextRequest) {
     username: user.username,
     email: user.email,
     avatar_url: user.avatar_url ?? null,
+    is_admin: Boolean(user.is_admin),
+    is_verified: Boolean(user.is_verified),
   });
 
   const isProd = process.env.NODE_ENV === "production";
