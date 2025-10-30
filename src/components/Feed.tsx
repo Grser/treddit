@@ -1,16 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+
+import { useLocale } from "@/contexts/LocaleContext";
+
 import PostCard, { Post as PostCardType } from "./PostCard";
 
 type FeedProps = {
   canInteract: boolean;
-  /** "user:123", "likes:123" o undefined para Home */
   source?: string;
-  /** Alternativas explícitas al source */
   userId?: number;
   likesOf?: number;
   limit?: number;
+  initialItems?: PostCardType[];
 };
 
 type ApiResponse = { items: PostCardType[]; nextCursor: string | null };
@@ -21,12 +23,13 @@ export default function Feed({
   userId,
   likesOf,
   limit = 20,
+  initialItems,
 }: FeedProps) {
-  const [posts, setPosts] = useState<PostCardType[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [errMsg, setErrMsg] = useState<string | null>(null);
+  const { strings } = useLocale();
+  const [posts, setPosts] = useState<PostCardType[]>(initialItems || []);
+  const [loading, setLoading] = useState(initialItems?.length ? false : true);
+  const [hasError, setHasError] = useState(false);
 
-  // Normaliza el source a query params para /api/posts
   const query = useMemo(() => {
     const params = new URLSearchParams();
     params.set("limit", String(limit));
@@ -47,7 +50,7 @@ export default function Feed({
     let alive = true;
     async function load() {
       setLoading(true);
-      setErrMsg(null);
+      setHasError(false);
       try {
         const url = query ? `/api/posts?${query}` : "/api/posts";
         const res = await fetch(url, { cache: "no-store" });
@@ -58,11 +61,10 @@ export default function Feed({
         const data = (await res.json()) as ApiResponse;
         if (!alive) return;
         setPosts(Array.isArray(data.items) ? data.items : []);
-      } catch (e: any) {
+      } catch (error: unknown) {
         if (!alive) return;
-        console.error("Feed load error:", e);
-        setErrMsg("No se pudieron cargar las publicaciones.");
-        setPosts([]);
+        console.error("Feed load error:", error);
+        setHasError(true);
       } finally {
         if (alive) setLoading(false);
       }
@@ -73,9 +75,9 @@ export default function Feed({
     };
   }, [query]);
 
-  if (loading) return <p className="p-4">Cargando…</p>;
-  if (errMsg) return <p className="p-4 text-red-500">{errMsg}</p>;
-  if (posts.length === 0) return <p className="p-4">Aún no hay publicaciones.</p>;
+  if (loading && posts.length === 0) return <p className="p-4">{strings.feed.loading}</p>;
+  if (hasError) return <p className="p-4 text-red-500">{strings.feed.error}</p>;
+  if (!loading && posts.length === 0) return <p className="p-4">{strings.feed.empty}</p>;
 
   return (
     <div className="space-y-4">

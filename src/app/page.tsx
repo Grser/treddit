@@ -1,23 +1,34 @@
 import Navbar from "@/components/Navbar";
 import SidebarLeft from "@/components/SidebarLeft";
 import SidebarRight from "@/components/SidebarRight";
-import PostCard from "@/components/PostCard";
 import Composer from "@/components/Composer";
 import AuthBanner from "@/components/AuthBanner";
 import { getSessionUser } from "@/lib/auth";
 import Feed from "@/components/Feed";
+import type { Post as PostCardType } from "@/components/PostCard";
 
+type FeedResponse = { items: PostCardType[] };
 
+type DiscoveryResponse = {
+  recommendedUsers: {
+    id: number;
+    username: string;
+    nickname: string | null;
+    avatar_url: string | null;
+  }[];
+  trendingTags: { tag: string; count: number }[];
+};
 
-async function getFeed(base: string) {
+async function getFeed(base: string): Promise<FeedResponse> {
   const res = await fetch(`${base}/api/posts`, { cache: "no-store" });
-  if (!res.ok) return { items: [] as any[] };
-  return res.json();
+  if (!res.ok) return { items: [] };
+  return (await res.json()) as FeedResponse;
 }
-async function getDiscovery(base: string) {
+async function getDiscovery(base: string): Promise<DiscoveryResponse> {
   const res = await fetch(`${base}/api/discovery`, { cache: "no-store" });
-  if (!res.ok) return { recommendedUsers: [], trendingTags: [] };
-  return res.json();
+  if (!res.ok)
+    return { recommendedUsers: [], trendingTags: [] } satisfies DiscoveryResponse;
+  return (await res.json()) as DiscoveryResponse;
 }
 
 export default async function Page() {
@@ -34,26 +45,19 @@ export default async function Page() {
     <div className="min-h-dvh">
       <Navbar />
       <div className="mx-auto max-w-7xl px-3 sm:px-4 grid grid-cols-1 md:grid-cols-[16rem_1fr] lg:grid-cols-[16rem_1fr_20rem] gap-4 py-4">
-        <SidebarLeft
-          communities={discovery.trendingTags.map((t: any) => t.tag)}
-        />
+        <SidebarLeft communities={discovery.trendingTags.map((t) => t.tag)} />
 
         <main className="space-y-4">
           {!canInteract && <AuthBanner />}
           <Composer enabled={canInteract} />
 
-          {items.length === 0 && (
-            <div className="border border-border bg-surface rounded-xl p-6 text-sm opacity-80">
-              Aún no hay publicaciones en tu feed. Sigue a algunos usuarios o crea una publicación.
-            </div>
-          )}
-
-        <Feed canInteract={!!canInteract} />
+          <Feed canInteract={!!canInteract} initialItems={items} />
         </main>
 
         <SidebarRight
           trending={discovery.trendingTags}
           recommended={discovery.recommendedUsers}
+          canInteract={canInteract}
         />
       </div>
     </div>
