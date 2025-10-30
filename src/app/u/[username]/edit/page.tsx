@@ -1,4 +1,4 @@
-import { getSessionUser, requireUser } from "@/lib/auth";
+import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import Navbar from "@/components/Navbar";
 

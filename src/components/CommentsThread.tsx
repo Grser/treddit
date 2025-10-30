@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { useLocale } from "@/contexts/LocaleContext";
+import UserBadges from "./UserBadges";
 
 type CommentNode = {
   id: number;
@@ -10,6 +11,8 @@ type CommentNode = {
   username: string;
   nickname: string;
   avatar_url?: string | null;
+  is_admin?: boolean;
+  is_verified?: boolean;
   text: string;
   created_at: string;
   parentId?: number | null;
@@ -123,6 +126,7 @@ function CommentItem({
 }) {
   const { strings } = useLocale();
   const t = strings.comments;
+  const badges = strings.badges;
   const [replyOpen, setReplyOpen] = useState(false);
   const [replyText, setReplyText] = useState("");
 
@@ -156,11 +160,19 @@ function CommentItem({
       />
       <div className="flex-1 min-w-0">
         <p className="text-sm">
-          <a href={`/u/${node.username}`} className="font-medium hover:underline">
-            {node.nickname || node.username}
-          </a>{" "}
-          <span className="opacity-60">@{node.username}</span>{" "}
-          <span className="opacity-60 text-xs">{new Date(node.created_at).toLocaleString()}</span>
+          <span className="inline-flex flex-wrap items-center gap-2">
+            <a href={`/u/${node.username}`} className="font-medium hover:underline">
+              {node.nickname || node.username}
+            </a>
+            <UserBadges
+              size="sm"
+              isAdmin={node.is_admin}
+              isVerified={node.is_verified}
+              labels={badges}
+            />
+            <span className="opacity-60">@{node.username}</span>
+            <span className="opacity-60 text-xs">{new Date(node.created_at).toLocaleString()}</span>
+          </span>
         </p>
         <p className="text-sm whitespace-pre-wrap break-words">{node.text}</p>
 

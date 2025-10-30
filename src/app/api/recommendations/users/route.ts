@@ -7,7 +7,7 @@ export async function GET() {
   const meId = me?.id ?? 0;
 
   const [rows] = await db.query(
-    `SELECT u.id, u.username, u.nickname, COALESCE(cnt.c,0) as followers
+    `SELECT u.id, u.username, u.nickname, u.avatar_url, u.is_admin, u.is_verified, COALESCE(cnt.c,0) as followers
      FROM Users u
      LEFT JOIN (
        SELECT followed as uid, COUNT(*) as c FROM Follows GROUP BY followed

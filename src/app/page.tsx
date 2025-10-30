@@ -15,6 +15,8 @@ type DiscoveryResponse = {
     username: string;
     nickname: string | null;
     avatar_url: string | null;
+    is_admin?: boolean;
+    is_verified?: boolean;
   }[];
   trendingTags: { tag: string; count: number }[];
 };

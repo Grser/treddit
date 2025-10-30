@@ -20,6 +20,9 @@ export default function SidebarLeft({ communities = [] as string[] }) {
         <Link href="/explorar" className="hover:bg-muted/60 rounded-lg px-3 py-2">
           {t.explore}
         </Link>
+        <Link href="/crear" className="hover:bg-muted/60 rounded-lg px-3 py-2">
+          {t.createCommunity}
+        </Link>
       </nav>
       <hr className="my-3 border-border" />
       <p className="text-xs opacity-70 px-3">{t.communities}</p>

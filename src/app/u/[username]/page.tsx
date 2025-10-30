@@ -11,7 +11,7 @@ export default async function UserPage({ params }: { params: { username: string 
 
   const [rows] = await db.query(
     `SELECT id, username, nickname, avatar_url, banner_url, description, location, website,
-            show_likes, show_bookmarks, created_at
+            show_likes, show_bookmarks, created_at, is_admin, is_verified
      FROM Users WHERE username=? AND visible=1 LIMIT 1`, [params.username]);
   const user = (rows as any[])[0];
   if (!user) return <div className="p-6">Usuario no encontrado</div>;

@@ -1,6 +1,5 @@
 import Navbar from "@/components/Navbar";
-import PageHero from "@/components/PageHero";
-
+import UserBadges from "@/components/UserBadges";
 
 import Link from "next/link";
 
@@ -17,6 +16,8 @@ type InboxEntry = {
   nickname: string | null;
   avatar_url: string | null;
   postId: number;
+  is_admin?: boolean;
+  is_verified?: boolean;
 };
 
 export default async function MessagesPage() {
@@ -74,6 +75,11 @@ export default async function MessagesPage() {
                         <Link href={`/u/${item.username}`} className="font-semibold hover:underline">
                           {item.nickname || item.username}
                         </Link>
+                        <UserBadges
+                          size="sm"
+                          isAdmin={item.is_admin}
+                          isVerified={item.is_verified}
+                        />
                         <span className="opacity-60">@{item.username}</span>
                         <span className="text-xs opacity-60">
                           {new Date(item.created_at).toLocaleString()}
@@ -101,7 +107,7 @@ export default async function MessagesPage() {
 async function loadInbox(userId: number): Promise<InboxEntry[]> {
   const [rows] = await db.query(
     `
-    SELECT c.id, c.text, c.created_at, u.username, u.nickname, u.avatar_url, c.post AS postId
+    SELECT c.id, c.text, c.created_at, u.username, u.nickname, u.avatar_url, u.is_admin, u.is_verified, c.post AS postId
     FROM Comments c
     JOIN Posts p ON p.id = c.post
     JOIN Users u ON u.id = c.user

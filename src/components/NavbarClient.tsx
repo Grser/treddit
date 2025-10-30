@@ -5,6 +5,7 @@ import Link from "next/link";
 
 import type { SessionUser } from "@/lib/auth";
 import { supportedLocales, useLocale } from "@/contexts/LocaleContext";
+import UserBadges from "./UserBadges";
 
 export default function NavbarClient({ session }: { session: SessionUser | null }) {
   const { strings } = useLocale();
@@ -75,15 +76,54 @@ export default function NavbarClient({ session }: { session: SessionUser | null 
             </IconLink>
 
             {session ? (
-              <div className="flex items-center gap-2">
-                <span className="hidden sm:block text-sm opacity-80">
-                  {strings.navbar.userGreeting(session.username)}
-                </span>
-                <img
-                  alt="Usuario"
-                  src={avatar}
-                  className="size-9 rounded-full ring-1 ring-border object-cover"
-                />
+              <div className="flex items-center gap-3">
+                {session.is_admin && (
+                  <Link
+                    href="/admin"
+                    className="hidden lg:inline-flex h-9 items-center rounded-full border border-border px-3 text-sm hover:bg-muted/60"
+                  >
+                    {strings.navbar.admin}
+                  </Link>
+                )}
+
+                <Link
+                  href={`/u/${session.username}`}
+                  className="hidden sm:inline-flex h-9 items-center rounded-full border border-border px-3 text-sm hover:bg-muted/60"
+                >
+                  {strings.navbar.profile}
+                </Link>
+
+                <div className="hidden sm:flex flex-col items-end leading-tight">
+                  <span className="text-sm opacity-80">
+                    {strings.navbar.userGreeting(session.username)}
+                  </span>
+                  <UserBadges
+                    size="sm"
+                    isAdmin={session.is_admin}
+                    isVerified={session.is_verified}
+                    labels={strings.badges}
+                  />
+                </div>
+
+                <Link href={`/u/${session.username}`} className="relative inline-flex">
+                  <img
+                    alt="Usuario"
+                    src={avatar}
+                    className="size-9 rounded-full ring-1 ring-border object-cover"
+                  />
+                  {!session.is_admin && !session.is_verified ? null : (
+                    <div className="absolute -bottom-1 -right-1">
+                      <UserBadges
+                        size="sm"
+                        isAdmin={session.is_admin}
+                        isVerified={session.is_verified}
+                        className="gap-0"
+                        labels={strings.badges}
+                      />
+                    </div>
+                  )}
+                </Link>
+
                 <form method="POST" action="/api/auth/logout">
                   <button className="h-9 px-3 rounded-full border border-border text-sm">
                     {strings.navbar.logout}

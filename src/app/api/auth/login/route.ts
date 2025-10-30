@@ -10,7 +10,7 @@ export async function POST(req: Request) {
   if (!email || !password) return NextResponse.json({ error: "Faltan campos" }, { status: 400 });
 
   const [rows] = await db.execute(
-    "SELECT id, username, email, avatar_url, password FROM Users WHERE email=? AND visible=1",
+    "SELECT id, username, email, avatar_url, password, is_admin, is_verified FROM Users WHERE email=? AND visible=1",
     [email]
   );
   const user = (rows as any[])[0];
@@ -24,10 +24,17 @@ export async function POST(req: Request) {
     username: user.username,
     email: user.email,
     avatar_url: user.avatar_url ?? null,
+    is_admin: Boolean(user.is_admin),
+    is_verified: Boolean(user.is_verified),
   });
   const res = NextResponse.json({ ok: true });
+  const isProd = process.env.NODE_ENV === "production";
   res.cookies.set("treddit_token", token, {
-    httpOnly: true, sameSite: "lax", secure: true, path: "/", maxAge: 60 * 60 * 24 * 7,
+    httpOnly: true,
+    sameSite: "lax",
+    secure: isProd,
+    path: "/",
+    maxAge: 60 * 60 * 24 * 7,
   });
   return res;
 }
