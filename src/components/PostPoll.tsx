@@ -1,17 +1,21 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 
+import { useLocale } from "@/contexts/LocaleContext";
+
 type PollOption = { id: number; text: string; votes: number };
 type PollData = {
   id: number;
   question: string;
-  ends_at: string; // ISO
+  ends_at: string;
   options: PollOption[];
   totalVotes: number;
   userVotedOptionId?: number | null;
 };
 
 export default function PostPoll({ postId, canInteract }: { postId: number; canInteract: boolean }) {
+  const { strings } = useLocale();
+  const t = strings.poll;
   const [poll, setPoll] = useState<PollData | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -23,8 +27,11 @@ export default function PostPoll({ postId, canInteract }: { postId: number; canI
         if (!res.ok) throw new Error();
         const p = await res.json();
         setPoll(p ?? null);
-      } catch { setPoll(null); }
-      finally { setLoading(false); }
+      } catch {
+        setPoll(null);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [postId]);
 
@@ -39,10 +46,16 @@ export default function PostPoll({ postId, canInteract }: { postId: number; canI
     if (poll.userVotedOptionId) return;
 
     setBusy(true);
-    // actualiza optimista
-    setPoll(p => {
+    setPoll((p) => {
       if (!p) return p;
-      const next = { ...p, options: p.options.map(o => o.id === optionId ? { ...o, votes: o.votes + 1 } : o), totalVotes: p.totalVotes + 1, userVotedOptionId: optionId };
+      const next = {
+        ...p,
+        options: p.options.map((o) =>
+          o.id === optionId ? { ...o, votes: o.votes + 1 } : o
+        ),
+        totalVotes: p.totalVotes + 1,
+        userVotedOptionId: optionId,
+      };
       return next;
     });
 
@@ -54,9 +67,8 @@ export default function PostPoll({ postId, canInteract }: { postId: number; canI
       });
       if (!res.ok) throw new Error();
     } catch {
-      // revertir si falla
-      setPoll(null); // volverá a cargar al expandir de nuevo
-      alert("No se pudo registrar tu voto");
+      setPoll(null);
+      alert(t.voteFailed);
     } finally {
       setBusy(false);
     }
@@ -73,12 +85,13 @@ export default function PostPoll({ postId, canInteract }: { postId: number; canI
           const selected = poll.userVotedOptionId === o.id;
           return (
             <li key={o.id} className="relative">
-              {/* barra vertical estilo X (usamos una barra fina a la izquierda) */}
               <div className="absolute left-0 top-0 bottom-0 w-1 rounded bg-muted" />
               <button
                 disabled={!!poll.userVotedOptionId || !canInteract || busy || endsInHours <= 0}
                 onClick={() => vote(o.id)}
-                className={`w-full text-left pl-3 pr-2 py-2 rounded-md hover:bg-muted/60 disabled:opacity-60 ${selected ? "ring-1 ring-blue-400/50" : ""}`}
+                className={`w-full text-left pl-3 pr-2 py-2 rounded-md hover:bg-muted/60 disabled:opacity-60 ${
+                  selected ? "ring-1 ring-blue-400/50" : ""
+                }`}
               >
                 <div className="flex items-center justify-between">
                   <span className="text-sm">{o.text}</span>
@@ -90,7 +103,7 @@ export default function PostPoll({ postId, canInteract }: { postId: number; canI
         })}
       </ul>
       <p className="text-xs opacity-70 mt-1">
-        {poll.totalVotes} {poll.totalVotes === 1 ? "voto" : "votos"} · {endsInHours} {endsInHours === 1 ? "hora" : "horas"} restantes
+        {t.votesLabel(poll.totalVotes)} · {t.hoursLabel(endsInHours)} {t.remaining}
       </p>
     </div>
   );
