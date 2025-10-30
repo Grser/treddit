@@ -4,6 +4,9 @@ import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { getBaseUrl, getRedirectUri } from "../utils";
 
+export async function GET(req: Request) {
+  const origin = getBaseUrl(req); // p.ej. https://mi-dominio.com
+
 function getOrigin(req: Request) {
   const forwardedProto = req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
   const forwardedHost =

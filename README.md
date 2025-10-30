@@ -34,3 +34,18 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Configuración de correo para recuperación de contraseña
+
+Para que la función de recuperación por código funcione necesitas configurar un servidor SMTP mediante variables de entorno:
+
+```
+SMTP_HOST=mail.tu-dominio.com
+SMTP_PORT=587
+SMTP_SECURE=false # o true si usas 465
+SMTP_USER=usuario
+SMTP_PASS=contraseña
+MAIL_FROM="Treddit <no-reply@tu-dominio.com>"
+```
+
+Opcionalmente puedes definir `APP_NAME` y `NEXT_PUBLIC_BASE_URL` para personalizar los mensajes enviados al usuario.
