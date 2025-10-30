@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { db } from "@/lib/db";
 import { signSession } from "@/lib/auth";
+import { getBaseUrl, getRedirectUri } from "../utils";
 
 type GoogleTokenResponse = {
   access_token: string;
@@ -39,6 +40,8 @@ function getOrigin(req: Request) {
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
+  const origin = getBaseUrl(req); // p.ej. https://mi-dominio.com
+  const redirectUri = getRedirectUri(origin);
   const origin = getOrigin(req); // p.ej. https://mi-dominio.com
 
   const code = url.searchParams.get("code");
@@ -55,8 +58,6 @@ export async function GET(req: Request) {
 
   const clientId = process.env.GOOGLE_CLIENT_ID!;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET!;
-  const redirectUri = `${origin}/api/auth/google/callback`;
-
   // Intercambio de code por tokens
   const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
