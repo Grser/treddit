@@ -41,16 +41,17 @@ export default function PostCard({
 
   return (
     <article className="bg-surface text-foreground rounded-xl border border-border p-4">
-      {post.repostedByMe && (
-      {/* Banda superior: Reposteaste */}
       {repostedByMe && (
-        <div className="text-emerald-400 text-sm font-semibold -mt-2 mb-1 flex items-center gap-2">
-          <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M17 1l4 4-4 4M7 23l-4-4 4-4" />
-            <path d="M21 5H10a4 4 0 0 0-4 4v2M3 19h11a4 4 0 0 0 4-4v-2" />
-          </svg>
-          {strings.postCard.reposted}
-        </div>
+        <>
+          {/* Banda superior: Reposteaste */}
+          <div className="text-emerald-400 text-sm font-semibold -mt-2 mb-1 flex items-center gap-2">
+            <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M17 1l4 4-4 4M7 23l-4-4 4-4" />
+              <path d="M21 5H10a4 4 0 0 0-4 4v2M3 19h11a4 4 0 0 0 4-4v-2" />
+            </svg>
+            {strings.postCard.reposted}
+          </div>
+        </>
       )}
 
       <div className="flex items-start gap-3 mb-2">
