@@ -30,8 +30,6 @@ export default function Feed({
   const [posts, setPosts] = useState<PostCardType[]>(initialItems || []);
   const [loading, setLoading] = useState(initialItems?.length ? false : true);
   const [hasError, setHasError] = useState(false);
-  const [posts, setPosts] = useState<PostCardType[]>(initialItems || []);
-  const [loading, setLoading] = useState(initialItems?.length ? false : true);
   const [errMsg, setErrMsg] = useState<string | null>(null);
 
   const query = useMemo(() => {
@@ -80,13 +78,21 @@ export default function Feed({
     };
   }, [query]);
 
-  if (loading && posts.length === 0) return <p className="p-4">{strings.feed.loading}</p>;
-  if (hasError) return <p className="p-4 text-red-500">{strings.feed.error}</p>;
-  if (!loading && posts.length === 0) return <p className="p-4">{strings.feed.empty}</p>;
-  if (loading && posts.length === 0) return <p className="p-4">Cargando…</p>;
-  if (errMsg) return <p className="p-4 text-red-500">{errMsg}</p>;
-  if (!loading && posts.length === 0)
-    return <p className="p-4">Aún no hay publicaciones.</p>;
+  if (loading && posts.length === 0) {
+    return <p className="p-4">{strings.feed.loading}</p>;
+  }
+
+  if (hasError) {
+    return <p className="p-4 text-red-500">{strings.feed.error}</p>;
+  }
+
+  if (errMsg) {
+    return <p className="p-4 text-red-500">{errMsg}</p>;
+  }
+
+  if (!loading && posts.length === 0) {
+    return <p className="p-4">{strings.feed.empty}</p>;
+  }
 
   return (
     <div className="space-y-4">
