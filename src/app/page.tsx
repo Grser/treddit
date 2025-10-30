@@ -57,6 +57,7 @@ export default async function Page() {
         <SidebarRight
           trending={discovery.trendingTags}
           recommended={discovery.recommendedUsers}
+          canInteract={canInteract}
         />
       </div>
     </div>

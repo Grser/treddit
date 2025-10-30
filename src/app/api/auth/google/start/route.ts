@@ -6,6 +6,23 @@ import { getBaseUrl, getRedirectUri } from "../utils";
 
 export async function GET(req: Request) {
   const origin = getBaseUrl(req); // p.ej. https://mi-dominio.com
+
+function getOrigin(req: Request) {
+  const forwardedProto = req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  const forwardedHost =
+    req.headers.get("x-forwarded-host")?.split(",")[0]?.trim() ||
+    req.headers.get("host")?.trim();
+
+  if (forwardedProto && forwardedHost) {
+    return `${forwardedProto}://${forwardedHost}`;
+  }
+
+  return new URL(req.url).origin;
+}
+
+export async function GET(req: Request) {
+  const origin = getBaseUrl(req); // p.ej. https://mi-dominio.com
+  const origin = getOrigin(req); // p.ej. https://mi-dominio.com
   const clientId = process.env.GOOGLE_CLIENT_ID!;
   const redirectUri = getRedirectUri(origin);
 

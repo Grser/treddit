@@ -55,6 +55,13 @@ export function getBaseUrl(req: Request) {
     } catch (err) {
       console.error("Invalid host header", err);
     }
+  const forwardedProto = req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  const forwardedHost =
+    req.headers.get("x-forwarded-host")?.split(",")[0]?.trim() ||
+    req.headers.get("host")?.trim();
+
+  if (forwardedProto && forwardedHost) {
+    return `${forwardedProto}://${forwardedHost}`;
   }
 
   return new URL(req.url).origin;
