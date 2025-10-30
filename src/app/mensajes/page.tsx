@@ -1,17 +1,9 @@
 import Navbar from "@/components/Navbar";
 import PageHero from "@/components/PageHero";
 
-export default function MessagesPage() {
-  return (
-    <div className="min-h-dvh">
-      <Navbar />
-      <PageHero page="messages" />
-    </div>
-  );
-}
+
 import Link from "next/link";
 
-import Navbar from "@/components/Navbar";
 import { getSessionUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 

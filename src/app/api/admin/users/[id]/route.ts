@@ -15,5 +15,5 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     case "hide":         await db.execute("UPDATE Users SET visible=0 WHERE id=?", [id]); break;
     case "show":         await db.execute("UPDATE Users SET visible=1 WHERE id=?", [id]); break;
   }
-  return NextResponse.redirect(new URL("/admin/users", process.env.NEXT_PUBLIC_BASE_URL || "http://200.74.22.135:3000/"));
+  return NextResponse.redirect(new URL("/admin/users", process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000/"));
 }
