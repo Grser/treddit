@@ -1,5 +1,3 @@
-export const runtime = "nodejs";
-
 import { NextResponse } from "next/server";
 import { hash } from "bcryptjs";
 import type { RowDataPacket } from "mysql2/promise";
@@ -10,6 +8,8 @@ import {
   hashResetCode,
   markResetCodeUsed,
 } from "@/lib/password-reset";
+
+export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   const { email, code, password } = (await req.json().catch(() => ({}))) as {

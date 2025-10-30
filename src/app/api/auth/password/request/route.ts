@@ -1,10 +1,10 @@
-export const runtime = "nodejs";
-
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import type { RowDataPacket } from "mysql2/promise";
 import { invalidateResetCodes, storeResetCode } from "@/lib/password-reset";
 import { sendPasswordResetEmail } from "@/lib/mail";
+
+export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   const { email } = (await req.json().catch(() => ({}))) as { email?: string };

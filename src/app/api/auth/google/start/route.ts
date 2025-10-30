@@ -1,8 +1,8 @@
-export const runtime = "nodejs";
-
 import { NextResponse, type NextRequest } from "next/server";
 import { randomBytes } from "node:crypto";
 import { OAUTH_STATE_COOKIE, getBaseUrl, getRedirectUri, rememberOrigin } from "../utils";
+
+export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
   const origin = getBaseUrl(req); // p.ej. https://mi-dominio.com

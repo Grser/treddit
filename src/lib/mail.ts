@@ -1,10 +1,13 @@
-import nodemailer from "nodemailer";
+import "server-only";
 
-let transporterPromise: Promise<nodemailer.Transporter> | null = null;
+import type { Transporter } from "nodemailer";
+
+let transporterPromise: Promise<Transporter> | null = null;
 
 function getTransporter() {
   if (!transporterPromise) {
     transporterPromise = (async () => {
+      const { default: nodemailer } = await import("nodemailer");
       const host = process.env.SMTP_HOST;
       const port = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : undefined;
       if (!host || !port) {

@@ -1,5 +1,3 @@
-export const runtime = "nodejs";
-
 import { NextResponse, type NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import { db } from "@/lib/db";
@@ -11,6 +9,8 @@ import {
   getBaseUrl,
   getRedirectUri,
 } from "../utils";
+
+export const runtime = "nodejs";
 
 type GoogleTokenResponse = {
   access_token: string;
