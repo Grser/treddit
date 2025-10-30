@@ -7,7 +7,15 @@ let transporterPromise: Promise<Transporter> | null = null;
 function getTransporter() {
   if (!transporterPromise) {
     transporterPromise = (async () => {
-      const { default: nodemailer } = await import("nodemailer");
+      let nodemailer: typeof import("nodemailer").default;
+      try {
+        ({ default: nodemailer } = await import("nodemailer"));
+      } catch (error) {
+        console.error("Nodemailer no está instalado o no pudo cargarse", error);
+        throw new Error(
+          "No se pudo cargar Nodemailer. Asegúrate de tener la dependencia instalada en el entorno de ejecución.",
+        );
+      }
       const host = process.env.SMTP_HOST;
       const port = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : undefined;
       if (!host || !port) {

@@ -9,6 +9,13 @@ const nextConfig: NextConfig = {
      * it, which resulted in a "Module not found" error during builds.
      */
     serverComponentsExternalPackages: ["nodemailer"],
+    /**
+     * Route handlers are bundled separately from React Server Components. We
+     * also need to mark Nodemailer as external there so the Next.js compiler
+     * does not attempt to bundle it when generating the API route, which is
+     * what triggered the "Module not found" error in production.
+     */
+    serverExternalPackages: ["nodemailer"],
   },
 };
 
