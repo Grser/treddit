@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+
+import { useLocale } from "@/contexts/LocaleContext";
 
 type CommentNode = {
   id: number;
@@ -21,11 +23,13 @@ export default function CommentsThread({
   postId: number;
   canInteract: boolean;
 }) {
+  const { strings } = useLocale();
+  const t = strings.comments;
   const [tree, setTree] = useState<CommentNode[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [text, setText] = useState("");
 
-  async function load() {
+  const load = useCallback(async () => {
     try {
       const res = await fetch(`/api/comments?postId=${postId}`, { cache: "no-store" });
       const data = await res.json();
@@ -33,9 +37,11 @@ export default function CommentsThread({
     } catch {
       setTree([]);
     }
-  }
+  }, [postId]);
 
-  useEffect(() => { load(); }, [postId]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   async function addRoot() {
     if (!canInteract || !text.trim() || busy) return;
@@ -48,19 +54,20 @@ export default function CommentsThread({
       });
       setText("");
       await load();
-    } finally { setBusy(false); }
+    } finally {
+      setBusy(false);
+    }
   }
 
-  if (tree === null) return <p className="text-sm opacity-70">Cargando comentarios…</p>;
+  if (tree === null) return <p className="text-sm opacity-70">{t.loading}</p>;
 
   return (
     <div className="mt-3">
-      {/* nuevo comentario raíz */}
       {canInteract && (
         <div className="flex items-start gap-2 mb-3">
           <textarea
             className="flex-1 resize-none rounded-md bg-input text-sm p-2 outline-none ring-1 ring-border focus:ring-2"
-            placeholder="Escribe un comentario"
+            placeholder={t.placeholder}
             value={text}
             onChange={(e) => setText(e.target.value)}
             rows={2}
@@ -71,7 +78,7 @@ export default function CommentsThread({
             disabled={busy || !text.trim()}
             className="h-9 px-3 rounded-full bg-brand text-white text-sm disabled:opacity-50"
           >
-            Comentar
+            {t.add}
           </button>
         </div>
       )}
@@ -92,17 +99,12 @@ function CommentList({
   canInteract: boolean;
   onReplied: () => void;
 }) {
-  if (!nodes?.length) return <p className="text-sm opacity-70">No hay comentarios aún.</p>;
+  const { strings } = useLocale();
+  if (!nodes?.length) return <p className="text-sm opacity-70">{strings.comments.none}</p>;
   return (
     <ul className="space-y-3">
       {nodes.map((n) => (
-        <CommentItem
-          key={n.id}
-          node={n}
-          postId={postId}
-          canInteract={canInteract}
-          onReplied={onReplied}
-        />
+        <CommentItem key={n.id} node={n} postId={postId} canInteract={canInteract} onReplied={onReplied} />
       ))}
     </ul>
   );
@@ -119,6 +121,8 @@ function CommentItem({
   canInteract: boolean;
   onReplied: () => void;
 }) {
+  const { strings } = useLocale();
+  const t = strings.comments;
   const [replyOpen, setReplyOpen] = useState(false);
   const [replyText, setReplyText] = useState("");
 
@@ -156,9 +160,7 @@ function CommentItem({
             {node.nickname || node.username}
           </a>{" "}
           <span className="opacity-60">@{node.username}</span>{" "}
-          <span className="opacity-60 text-xs">
-            {new Date(node.created_at).toLocaleString()}
-          </span>
+          <span className="opacity-60 text-xs">{new Date(node.created_at).toLocaleString()}</span>
         </p>
         <p className="text-sm whitespace-pre-wrap break-words">{node.text}</p>
 
@@ -169,7 +171,7 @@ function CommentItem({
               canInteract ? setReplyOpen((v) => !v) : (location.href = "/auth/login")
             }
           >
-            Responder
+            {t.reply}
           </button>
         </div>
 
@@ -177,7 +179,7 @@ function CommentItem({
           <div className="mt-2 flex items-start gap-2">
             <textarea
               className="flex-1 resize-none rounded-md bg-input text-sm p-2 outline-none ring-1 ring-border focus:ring-2"
-              placeholder="Tu respuesta"
+              placeholder={t.replyPlaceholder}
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
               rows={2}
@@ -187,19 +189,14 @@ function CommentItem({
               onClick={reply}
               disabled={!replyText.trim()}
             >
-              Enviar
+              {t.send}
             </button>
           </div>
         )}
 
         {node.replies?.length > 0 && (
           <div className="mt-2 pl-4 border-l border-border/60">
-            <CommentList
-              nodes={node.replies}
-              postId={postId}
-              canInteract={canInteract}
-              onReplied={onReplied}
-            />
+            <CommentList nodes={node.replies} postId={postId} canInteract={canInteract} onReplied={onReplied} />
           </div>
         )}
       </div>

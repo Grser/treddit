@@ -9,6 +9,7 @@ import {
   IconStats,
 } from "./icons";
 import { formatCount } from "@/lib/format";
+import { useLocale } from "@/contexts/LocaleContext";
 
 export default function PostActions({
   postId,
@@ -26,6 +27,8 @@ export default function PostActions({
     views?: number;
   };
 }) {
+  const { strings } = useLocale();
+  const t = strings.postActions;
   const [busy, setBusy] = useState(false);
 
   const [likedState, setLiked] = useState(!!liked);
@@ -38,7 +41,6 @@ export default function PostActions({
     if (!canInteract || busy) return;
     setBusy(true);
 
-    // Optimista
     setLiked((v) => !v);
     setLikes((n) => (likedState ? n - 1 : n + 1));
 
@@ -53,11 +55,9 @@ export default function PostActions({
       });
       if (!res.ok) throw new Error();
       const j = await res.json();
-      // Alinea con backend
       if (typeof j.liked === "boolean") setLiked(j.liked);
       if (typeof j.likes === "number") setLikes(j.likes);
     } catch {
-      // revertir
       setLiked((v) => !v);
       setLikes((n) => (likedState ? n + 1 : n - 1));
     } finally {
@@ -71,7 +71,6 @@ export default function PostActions({
 
     const willUnrepost = repostedState;
 
-    // Optimista
     setReposted((v) => !v);
     setReposts((n) => (willUnrepost ? Math.max(0, n - 1) : n + 1));
 
@@ -89,7 +88,6 @@ export default function PostActions({
       if (typeof j.reposted === "boolean") setReposted(j.reposted);
       if (typeof j.reposts === "number") setReposts(j.reposts);
     } catch {
-      // revertir
       setReposted((v) => !v);
       setReposts((n) => (willUnrepost ? n + 1 : Math.max(0, n - 1)));
     } finally {
@@ -108,9 +106,9 @@ export default function PostActions({
     } else {
       try {
         await navigator.clipboard.writeText(url);
-        alert("Enlace copiado");
+        alert(t.linkCopied);
       } catch {
-        window.prompt("Copia el enlace", url);
+        window.prompt(t.copyPrompt, url);
       }
     }
   }
@@ -122,10 +120,9 @@ export default function PostActions({
 
   return (
     <div className="flex items-center justify-between pr-1 mt-2 select-none">
-      {/* Comentarios (solo navegación/scroll) */}
       <button
         className={`${btnBase} hover:text-blue-400`}
-        title="Comentarios"
+        title={t.comments}
         onClick={() =>
           document
             .getElementById(`comments-${postId}`)
@@ -136,57 +133,38 @@ export default function PostActions({
         <span className={`${textBase}`}>{formatCount(comments)}</span>
       </button>
 
-      {/* Repost (verde) */}
       <button
-        className={`${btnBase} ${
-          repostedState ? "text-emerald-400" : "hover:text-emerald-400"
-        }`}
+        className={`${btnBase} ${repostedState ? "text-emerald-400" : "hover:text-emerald-400"}`}
         disabled={!canInteract || busy}
         onClick={toggleRepost}
         title={
-          canInteract
-            ? repostedState
-              ? "Quitar repost"
-              : "Repostear"
-            : "Inicia sesión"
+          canInteract ? (repostedState ? t.undoRepost : t.repost) : t.login
         }
       >
         <IconRepost className={`${iconBase}`} />
         <span className={`${textBase}`}>{formatCount(repostsState)}</span>
       </button>
 
-      {/* Like (rosa) */}
       <button
-        className={`${btnBase} ${
-          likedState ? "text-pink-500" : "hover:text-pink-500"
-        }`}
+        className={`${btnBase} ${likedState ? "text-pink-500" : "hover:text-pink-500"}`}
         disabled={!canInteract || busy}
         onClick={toggleLike}
-        title={
-          canInteract
-            ? likedState
-              ? "Quitar me gusta"
-              : "Me gusta"
-            : "Inicia sesión"
-        }
+        title={canInteract ? (likedState ? t.unlike : t.like) : t.login}
       >
         <IconHeart className={`${iconBase}`} />
         <span className={`${textBase}`}>{formatCount(likesState)}</span>
       </button>
 
-      {/* Vistas (placeholder) */}
-      <div className={`${btnBase}`}>
+      <div className={`${btnBase}`} title={t.views}>
         <IconStats className={`${iconBase}`} />
         <span className={`${textBase}`}>{formatCount(views)}</span>
       </div>
 
-      {/* Guardar (a implementar) */}
-      <button className={`${btnBase}`} title="Guardar (próximamente)" disabled>
+      <button className={`${btnBase}`} title={t.saveComingSoon} disabled>
         <IconBookmark className={`${iconBase}`} />
       </button>
 
-      {/* Compartir */}
-      <button className={`${btnBase}`} title="Compartir" onClick={share}>
+      <button className={`${btnBase}`} title={t.share} onClick={share}>
         <IconShare className={`${iconBase}`} />
       </button>
     </div>
