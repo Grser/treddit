@@ -11,6 +11,8 @@ type FeedProps = {
   userId?: number;
   likesOf?: number;
   limit?: number;
+  /** Elementos precargados desde el servidor (SSR) */
+  initialItems?: PostCardType[];
 };
 
 type ApiResponse = { items: PostCardType[]; nextCursor: string | null };
@@ -21,9 +23,10 @@ export default function Feed({
   userId,
   likesOf,
   limit = 20,
+  initialItems,
 }: FeedProps) {
-  const [posts, setPosts] = useState<PostCardType[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [posts, setPosts] = useState<PostCardType[]>(initialItems || []);
+  const [loading, setLoading] = useState(initialItems?.length ? false : true);
   const [errMsg, setErrMsg] = useState<string | null>(null);
 
   // Normaliza el source a query params para /api/posts
@@ -58,11 +61,10 @@ export default function Feed({
         const data = (await res.json()) as ApiResponse;
         if (!alive) return;
         setPosts(Array.isArray(data.items) ? data.items : []);
-      } catch (e: any) {
+      } catch (error: unknown) {
         if (!alive) return;
-        console.error("Feed load error:", e);
+        console.error("Feed load error:", error);
         setErrMsg("No se pudieron cargar las publicaciones.");
-        setPosts([]);
       } finally {
         if (alive) setLoading(false);
       }
@@ -73,9 +75,10 @@ export default function Feed({
     };
   }, [query]);
 
-  if (loading) return <p className="p-4">Cargando…</p>;
+  if (loading && posts.length === 0) return <p className="p-4">Cargando…</p>;
   if (errMsg) return <p className="p-4 text-red-500">{errMsg}</p>;
-  if (posts.length === 0) return <p className="p-4">Aún no hay publicaciones.</p>;
+  if (!loading && posts.length === 0)
+    return <p className="p-4">Aún no hay publicaciones.</p>;
 
   return (
     <div className="space-y-4">
