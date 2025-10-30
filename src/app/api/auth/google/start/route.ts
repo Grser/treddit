@@ -2,12 +2,12 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import crypto from "crypto";
+import { getBaseUrl, getRedirectUri } from "../utils";
 
 export async function GET(req: Request) {
-  const url = new URL(req.url);
-  const origin = url.origin; // p.ej. http://localhost:3000
+  const origin = getBaseUrl(req); // p.ej. https://mi-dominio.com
   const clientId = process.env.GOOGLE_CLIENT_ID!;
-  const redirectUri = `${origin}/api/auth/google/callback`;
+  const redirectUri = getRedirectUri(origin);
 
   // state anti-CSRF
   const state = crypto.randomBytes(16).toString("hex");
