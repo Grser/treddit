@@ -24,9 +24,22 @@ type GoogleUserInfo = {
   family_name?: string;
 };
 
+function getOrigin(req: Request) {
+  const forwardedProto = req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  const forwardedHost =
+    req.headers.get("x-forwarded-host")?.split(",")[0]?.trim() ||
+    req.headers.get("host")?.trim();
+
+  if (forwardedProto && forwardedHost) {
+    return `${forwardedProto}://${forwardedHost}`;
+  }
+
+  return new URL(req.url).origin;
+}
+
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const origin = url.origin; // p.ej. http://localhost:3000
+  const origin = getOrigin(req); // p.ej. https://mi-dominio.com
 
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
@@ -35,7 +48,7 @@ export async function GET(req: Request) {
 
   if (!code || !state || !stateCookie || state !== stateCookie) {
     // redirección absoluta
-    return NextResponse.redirect(new URL("/", req.url), {
+    return NextResponse.redirect(new URL("/", origin), {
       headers: { "x-error": "invalid_state" },
     });
   }
@@ -58,7 +71,7 @@ export async function GET(req: Request) {
   });
 
   if (!tokenRes.ok) {
-    return NextResponse.redirect(new URL("/", req.url), {
+    return NextResponse.redirect(new URL("/", origin), {
       headers: { "x-error": "token_exchange_failed" },
     });
   }
@@ -69,7 +82,7 @@ export async function GET(req: Request) {
     headers: { Authorization: `Bearer ${tokens.access_token}` },
   });
   if (!userRes.ok) {
-    return NextResponse.redirect(new URL("/", req.url), {
+    return NextResponse.redirect(new URL("/", origin), {
       headers: { "x-error": "userinfo_failed" },
     });
   }
@@ -132,7 +145,7 @@ export async function GET(req: Request) {
   });
 
   const isProd = process.env.NODE_ENV === "production";
-  const res = NextResponse.redirect(new URL("/", req.url));
+  const res = NextResponse.redirect(new URL("/", origin));
   res.cookies.set("treddit_token", token, {
     httpOnly: true,
     sameSite: "lax",
