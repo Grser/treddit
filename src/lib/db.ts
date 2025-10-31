@@ -1,5 +1,8 @@
 import mysql from "mysql2/promise";
 
+type QueryArgs = Parameters<mysql.Pool["query"]>;
+type ExecuteArgs = Parameters<mysql.Pool["execute"]>;
+
 const {
   DATABASE_HOST,
   DATABASE_USER,
@@ -16,16 +19,44 @@ const missingVariables = Object.entries({
   .filter(([, value]) => value === undefined)
   .map(([key]) => key);
 
-if (missingVariables.length > 0) {
-  throw new Error(
-    `Missing required database environment variables: ${missingVariables.join(", ")}`,
+const isConfigured = missingVariables.length === 0;
+
+let pool: mysql.Pool | null = null;
+
+if (isConfigured) {
+  pool = mysql.createPool({
+    host: DATABASE_HOST!,
+    user: DATABASE_USER!,
+    password: DATABASE_PASS!,
+    database: DATABASE_NAME!,
+    connectionLimit: 10,
+  });
+} else {
+  console.warn(
+    `Database connection is not configured. Missing variables: ${missingVariables.join(", ")}`,
   );
 }
 
-export const db = mysql.createPool({
-  host: DATABASE_HOST!,
-  user: DATABASE_USER!,
-  password: DATABASE_PASS!,
-  database: DATABASE_NAME!,
-  connectionLimit: 10,
-});
+function ensurePool(): mysql.Pool {
+  if (!pool) {
+    throw new Error("DATABASE_NOT_CONFIGURED");
+  }
+  return pool;
+}
+
+export const db = {
+  query<T extends mysql.RowDataPacket[][] | mysql.RowDataPacket[] | mysql.OkPacket | mysql.OkPacket[]>(
+    ...args: QueryArgs
+  ) {
+    return ensurePool().query<T>(...args);
+  },
+  execute<T extends mysql.RowDataPacket[][] | mysql.RowDataPacket[] | mysql.OkPacket | mysql.OkPacket[]>(
+    ...args: ExecuteArgs
+  ) {
+    return ensurePool().execute<T>(...args);
+  },
+};
+
+export function isDatabaseConfigured() {
+  return isConfigured;
+}
