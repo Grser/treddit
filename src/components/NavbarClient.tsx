@@ -86,13 +86,6 @@ export default function NavbarClient({ session }: { session: SessionUser | null 
                   </Link>
                 )}
 
-                <Link
-                  href={`/u/${session.username}`}
-                  className="hidden sm:inline-flex h-9 items-center rounded-full border border-border px-3 text-sm hover:bg-muted/60"
-                >
-                  {strings.navbar.profile}
-                </Link>
-
                 <div className="hidden sm:flex flex-col items-end leading-tight">
                   <span className="text-sm opacity-80">
                     {strings.navbar.userGreeting(session.username)}
