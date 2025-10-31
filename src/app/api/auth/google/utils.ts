@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import type { NextRequest, NextResponse } from "next/server";
 import type { RequestCookies } from "next/dist/compiled/@edge-runtime/cookies";
 
@@ -125,6 +126,24 @@ export function getRedirectUri(baseUrl: string) {
     const normalized = normalizeOrigin(explicitRedirect);
     if (normalized) return explicitRedirect;
     console.error("Invalid GOOGLE_REDIRECT_URI", explicitRedirect);
+  }
+
+  try {
+    const headersList = headers();
+    const host = headersList.get("host")?.trim();
+    if (host) {
+      const forwardedProto = headersList
+        .get("x-forwarded-proto")
+        ?.split(",")[0]
+        ?.trim();
+      const protocol =
+        forwardedProto || (baseUrl.startsWith("https") ? "https" : "http");
+      const candidate = `${protocol}://${host}/api/auth/google/callback`;
+      const normalized = normalizeOrigin(candidate);
+      if (normalized) return candidate;
+    }
+  } catch (err) {
+    console.error("Unable to read request headers for redirect URI", err);
   }
 
   return new URL("/api/auth/google/callback", baseUrl).toString();
