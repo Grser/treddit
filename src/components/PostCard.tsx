@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import CommentsThread from "./CommentsThread";
 import PostActions from "./PostActions";
 import PostPoll from "./PostPoll";
@@ -73,10 +74,13 @@ export default function PostCard({
 
       <div className="flex items-start gap-3 mb-2">
         <a href={`/u/${post.username}`} title={`@${post.username}`} className="shrink-0">
-          <img
+          <Image
             src={avatar}
             alt={post.nickname || post.username}
+            width={36}
+            height={36}
             className="size-9 rounded-full object-cover ring-1 ring-border"
+            unoptimized
           />
         </a>
 
@@ -139,8 +143,16 @@ export default function PostCard({
       )}
 
       {post.mediaUrl && (
-        <div className="overflow-hidden rounded-lg mb-2 ring-1 ring-border">
-          <img src={post.mediaUrl} alt="" className="w-full" />
+        <div className="mb-2 overflow-hidden rounded-lg ring-1 ring-border">
+          <Image
+            src={post.mediaUrl}
+            alt=""
+            width={1200}
+            height={675}
+            sizes="(min-width: 768px) 600px, 100vw"
+            className="h-auto w-full object-cover"
+            unoptimized
+          />
         </div>
       )}
 

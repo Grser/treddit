@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
@@ -99,10 +100,13 @@ export default function NavbarClient({ session }: { session: SessionUser | null 
                 </div>
 
                 <Link href={`/u/${session.username}`} className="relative inline-flex">
-                  <img
+                  <Image
                     alt="Usuario"
                     src={avatar}
+                    width={36}
+                    height={36}
                     className="size-9 rounded-full ring-1 ring-border object-cover"
+                    unoptimized
                   />
                   {!session.is_admin && !session.is_verified ? null : (
                     <div className="absolute -bottom-1 -right-1">

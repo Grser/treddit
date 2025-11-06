@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 
 import { useLocale } from "@/contexts/LocaleContext";
@@ -82,10 +83,13 @@ export default function SidebarRight({
                 className="flex items-center gap-3 min-w-0"
                 title={t.viewProfile(user.username)}
               >
-                <img
+                <Image
                   src={user.avatar_url || "/demo-reddit.png"}
                   alt={user.nickname || user.username}
+                  width={40}
+                  height={40}
                   className="size-10 rounded-full object-cover bg-muted/40 ring-1 ring-border"
+                  unoptimized
                 />
                 <div className="min-w-0">
                   <p className="font-semibold leading-tight truncate flex items-center gap-1">

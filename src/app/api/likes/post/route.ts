@@ -20,7 +20,7 @@ export async function POST(req: Request) {
       [me.id, postId]
     );
     return NextResponse.json({ ok: true, liked: true });
-  } catch (e) {
+  } catch {
     return NextResponse.json({ error: "no se pudo actualizar el like" }, { status: 500 });
   }
 }

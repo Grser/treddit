@@ -1,5 +1,6 @@
 import type { RowDataPacket } from "mysql2";
 
+import Image from "next/image";
 import { redirect } from "next/navigation";
 
 import Navbar from "@/components/Navbar";
@@ -85,10 +86,13 @@ export default async function ConversationPage({ params }: ConversationParams) {
         <Navbar />
         <main className="mx-auto max-w-3xl px-4 py-8 space-y-4">
           <header className="flex items-center gap-3">
-            <img
+            <Image
               src={target.avatar_url?.trim() || "/demo-reddit.png"}
               alt={target.nickname || target.username}
+              width={64}
+              height={64}
               className="size-16 rounded-full object-cover ring-1 ring-border"
+              unoptimized
             />
             <div>
               <p className="text-lg font-semibold flex items-center gap-2">
@@ -131,7 +135,14 @@ export default async function ConversationPage({ params }: ConversationParams) {
       <Navbar />
       <main className="mx-auto max-w-3xl space-y-6 px-4 py-6">
         <header className="flex items-center gap-3 rounded-xl border border-border bg-surface p-4">
-          <img src={avatar} alt={displayName} className="size-16 rounded-full object-cover ring-1 ring-border" />
+          <Image
+            src={avatar}
+            alt={displayName}
+            width={64}
+            height={64}
+            className="size-16 rounded-full object-cover ring-1 ring-border"
+            unoptimized
+          />
           <div className="min-w-0">
             <p className="text-lg font-semibold flex items-center gap-2">
               <span className="truncate">{displayName}</span>

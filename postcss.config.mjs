@@ -1,9 +1,7 @@
 const config = {
-  plugins: ["@tailwindcss/postcss"],
-};
-
-export default {
   plugins: {
-    '@tailwindcss/postcss': {}, // activa Tailwind 4 dentro de PostCSS
+    "@tailwindcss/postcss": {}, // activa Tailwind 4 dentro de PostCSS
   },
 };
+
+export default config;

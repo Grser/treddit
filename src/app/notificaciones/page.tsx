@@ -1,6 +1,7 @@
 import Navbar from "@/components/Navbar";
 import UserBadges from "@/components/UserBadges";
 
+import Image from "next/image";
 import Link from "next/link";
 import { getSessionUser } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -74,10 +75,13 @@ export default async function NotificationsPage() {
                 const avatar = item.avatar_url?.trim() || "/demo-reddit.png";
                 return (
                   <li key={item.id} className="flex items-center gap-3 rounded-xl border border-border bg-surface p-3">
-                    <img
+                    <Image
                       src={avatar}
                       alt={item.nickname || item.username}
+                      width={48}
+                      height={48}
                       className="size-12 rounded-full object-cover ring-1 ring-border"
+                      unoptimized
                     />
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold">
