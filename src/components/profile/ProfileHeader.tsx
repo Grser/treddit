@@ -53,7 +53,7 @@ export default function ProfileHeader({
         {user.banner_url ? (
           <Image
             src={user.banner_url}
-            className="object-cover"
+            className="object-cover object-center"
             alt=""
             fill
             sizes="100vw"
@@ -63,7 +63,7 @@ export default function ProfileHeader({
           <div className="absolute inset-0 bg-gradient-to-r from-brand/40 via-brand/20 to-transparent" aria-hidden="true" />
         )}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" aria-hidden="true" />
-        <div className="absolute bottom-4 left-4 flex items-end gap-3 sm:bottom-6 sm:left-6">
+        <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-end gap-3 sm:bottom-6 sm:left-6 sm:translate-x-0">
           <div className="relative size-28 overflow-hidden rounded-full border-4 border-surface bg-surface shadow-lg">
             <Image
               src={avatar}

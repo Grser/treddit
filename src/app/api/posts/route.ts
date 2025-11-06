@@ -5,6 +5,7 @@ import type { ResultSetHeader, RowDataPacket } from "mysql2";
 
 import { db, isDatabaseConfigured } from "@/lib/db";
 import { getSessionUser, requireUser } from "@/lib/auth";
+import { createDemoPost, getDemoFeed } from "@/lib/demoStore";
 
 type PostRow = {
   id: number;
@@ -102,14 +103,19 @@ export async function GET(req: Request) {
     joinParams.push(meId);
   }
 
-  const fallback = () =>
-    NextResponse.json(
-      { items: [], nextCursor: null },
+  if (!isDatabaseConfigured()) {
+    const { items, nextCursor } = getDemoFeed({
+      limit,
+      cursor: cursorValue || null,
+      userId: userId || undefined,
+      username: usernameFilter || undefined,
+      tag: normalizedTag || undefined,
+      filter,
+    });
+    return NextResponse.json(
+      { items, nextCursor },
       { headers: { "Cache-Control": "no-store" } }
     );
-
-  if (!isDatabaseConfigured()) {
-    return fallback();
   }
 
   try {
@@ -173,7 +179,10 @@ export async function GET(req: Request) {
     });
   } catch (error) {
     console.error("Failed to load posts from database", error);
-    return fallback();
+    return NextResponse.json(
+      { items: [], nextCursor: null },
+      { headers: { "Cache-Control": "no-store" } }
+    );
   }
 }
 
@@ -183,10 +192,7 @@ function escapeLike(value: string) {
 
 export async function POST(req: Request) {
   const me = await requireUser();
-
-  if (!isDatabaseConfigured()) {
-    return NextResponse.json({ error: "Base de datos no configurada" }, { status: 503 });
-  }
+  const databaseReady = isDatabaseConfigured();
 
   let payload: unknown;
   try {
@@ -242,7 +248,7 @@ export async function POST(req: Request) {
   let pollId: number | null = null;
   let communityId: number | null = null;
 
-  if (normalizedCommunityId) {
+  if (normalizedCommunityId && databaseReady) {
     try {
       const [rows] = await db.query<CommunityMembershipRow[]>(
         `
@@ -274,6 +280,18 @@ export async function POST(req: Request) {
       console.error("Failed to verify community", error);
       return NextResponse.json({ error: "No se pudo validar la comunidad" }, { status: 500 });
     }
+  } else if (normalizedCommunityId) {
+    communityId = normalizedCommunityId;
+  }
+
+  if (!databaseReady) {
+    const { id } = createDemoPost(me, {
+      description: description || null,
+      mediaUrl: mediaUrl || null,
+      poll: null,
+      communityId: normalizedCommunityId,
+    });
+    return NextResponse.json({ ok: true, id }, { status: 201 });
   }
 
   try {

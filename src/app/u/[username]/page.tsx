@@ -1,12 +1,13 @@
 import type { RowDataPacket } from "mysql2";
 
-import { db } from "@/lib/db";
+import { db, isDatabaseConfigured } from "@/lib/db";
 import Navbar from "@/components/Navbar";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import ProfileTabs from "@/components/profile/ProfileTabs";
 import { getSessionUser } from "@/lib/auth";
 import type { Post as PostCardType } from "@/components/PostCard";
 import { canSendDirectMessage } from "@/lib/messages";
+import { getDemoFeed, resolveDemoUserByUsername } from "@/lib/demoStore";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +61,51 @@ export default async function UserPage({
 }) {
   const { username } = await params;
   const me = await getSessionUser();
+
+  if (!isDatabaseConfigured()) {
+    const demoUser = resolveDemoUserByUsername(username);
+    if (!demoUser) {
+      return <div className="p-6">Usuario no encontrado</div>;
+    }
+
+    const feed = getDemoFeed({ limit: 20, username: demoUser.username });
+    const pinnedPost = feed.items[0] ?? null;
+    const followers = 120;
+    const following = 48;
+
+    return (
+      <div className="min-h-dvh">
+        <Navbar />
+        <ProfileHeader
+          viewerId={me?.id}
+          user={{
+            id: demoUser.id,
+            username: demoUser.username,
+            nickname: demoUser.nickname,
+            avatar_url: demoUser.avatar_url,
+            banner_url: "/demo-x.png",
+            description: "Perfil de demostración sin base de datos.",
+            location: "Internet",
+            website: "https://treddit.app",
+            created_at: new Date().toISOString(),
+            is_admin: demoUser.is_admin,
+            is_verified: demoUser.is_verified,
+          }}
+          stats={{ posts: feed.items.length, followers, following }}
+          initiallyFollowing={false}
+          canMessage={false}
+          messageHref={null}
+        />
+        <ProfileTabs
+          profileId={demoUser.id}
+          viewerId={me?.id}
+          showLikes={false}
+          showBookmarks={false}
+          pinnedPost={pinnedPost}
+        />
+      </div>
+    );
+  }
 
   const [rows] = await db.query<UserRow[]>(
     `SELECT id, username, nickname, avatar_url, banner_url, description, location, website,
