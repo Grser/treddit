@@ -8,6 +8,7 @@ import { getSessionUser } from "@/lib/auth";
 import type { Post as PostCardType } from "@/components/PostCard";
 import { canSendDirectMessage } from "@/lib/messages";
 import { getDemoFeed, resolveDemoUserByUsername } from "@/lib/demoStore";
+import { getPostsCommunityColumn } from "@/lib/communityColumns";
 
 export const dynamic = "force-dynamic";
 
@@ -167,6 +168,12 @@ export default async function UserPage({
 
   let pinnedPost: PostCardType | null = null;
   if (user.pinned_post_id) {
+    const communityColumn = await getPostsCommunityColumn();
+    const hasCommunityColumn = Boolean(communityColumn);
+    const communityIdSelect = hasCommunityColumn && communityColumn ? `p.${communityColumn}` : "NULL";
+    const communityJoin = hasCommunityColumn && communityColumn ? `LEFT JOIN Communities c ON c.id = p.${communityColumn}` : "";
+    const communitySlugSelect = hasCommunityColumn ? "c.slug" : "NULL";
+    const communityNameSelect = hasCommunityColumn ? "c.name" : "NULL";
     const [pinnedRows] = await db.query<PinnedPostRow[]>(
       `
       SELECT
@@ -191,12 +198,12 @@ export default async function UserPage({
         CASE WHEN ? IS NULL THEN 0 ELSE EXISTS(
           SELECT 1 FROM Reposts y WHERE y.post_id=p.id AND y.user_id=?
         ) END AS repostedByMe,
-        p.community_id,
-        c.slug AS community_slug,
-        c.name AS community_name
+        ${communityIdSelect} AS community_id,
+        ${communitySlugSelect} AS community_slug,
+        ${communityNameSelect} AS community_name
       FROM Posts p
       JOIN Users u ON u.id = p.user
-      LEFT JOIN Communities c ON c.id = p.community_id
+      ${communityJoin}
       WHERE p.id = ?
       LIMIT 1
       `,

@@ -13,15 +13,16 @@ type DemoUser = {
 };
 
 type DemoInboxEntry = {
-  id: number;
-  text: string;
-  created_at: string;
+  userId: number;
   username: string;
   nickname: string | null;
   avatar_url: string | null;
-  postId: number;
   is_admin: boolean;
   is_verified: boolean;
+  lastMessage: string;
+  lastSenderId: number;
+  created_at: string;
+  unreadCount: number;
 };
 
 type DemoConversation = {
@@ -34,7 +35,6 @@ type DemoStore = {
   usernameIndex: Map<string, number>;
   posts: Post[];
   nextPostId: number;
-  inbox: Map<number, DemoInboxEntry[]>;
   conversations: Map<string, DemoConversation>;
 };
 
@@ -111,44 +111,7 @@ function createInitialStore(): DemoStore {
     community: post.community ?? null,
   }));
 
-  const inbox = new Map<number, DemoInboxEntry[]>();
   const now = Date.now();
-  const sampleInbox: DemoInboxEntry[] = [
-    {
-      id: 101,
-      text: "¡Me encantó tu último post! ¿Vas a compartir más contenido así?",
-      created_at: new Date(now - 10 * 60 * 1000).toISOString(),
-      username: "techmaven",
-      nickname: "Ana Tech",
-      avatar_url: null,
-      postId: seededPosts[0]?.id ?? 1,
-      is_admin: false,
-      is_verified: false,
-    },
-    {
-      id: 102,
-      text: "Hola 👋 ¿podrías explicar un poco más sobre el segundo punto?",
-      created_at: new Date(now - 2 * 60 * 60 * 1000).toISOString(),
-      username: "pixel_artist",
-      nickname: "Arte en pixeles",
-      avatar_url: null,
-      postId: seededPosts[1]?.id ?? 2,
-      is_admin: false,
-      is_verified: false,
-    },
-    {
-      id: 103,
-      text: "Somos el equipo de Treddit, ¡gracias por participar en la beta!",
-      created_at: new Date(now - 26 * 60 * 60 * 1000).toISOString(),
-      username: "treddit_admin",
-      nickname: "Equipo Treddit",
-      avatar_url: "/demo-reddit.png",
-      postId: seededPosts[2]?.id ?? 3,
-      is_admin: true,
-      is_verified: true,
-    },
-  ];
-  inbox.set(4, sampleInbox);
 
   const conversations = new Map<string, DemoConversation>();
   const conversationKey = (a: number, b: number) => [Math.min(a, b), Math.max(a, b)].join(":");
@@ -192,7 +155,6 @@ function createInitialStore(): DemoStore {
     usernameIndex,
     posts: seededPosts,
     nextPostId: seededPosts.reduce((acc, post) => Math.max(acc, post.id), 100) + 1,
-    inbox,
     conversations,
   };
 }
@@ -327,15 +289,67 @@ export function getDemoRecommendedUsers(currentUserId?: number | null): DemoUser
   return [...store.users.values()].filter((user) => user.id !== currentUserId);
 }
 
-export function getDemoInbox(userId: number): DemoInboxEntry[] {
+export function getDemoInbox(userId: number, since?: number): DemoInboxEntry[] {
   const store = ensureStore();
-  return store.inbox.get(userId)?.slice() ?? [];
+  const sinceTime = since ?? 0;
+  const entries: DemoInboxEntry[] = [];
+  store.conversations.forEach((conversation, key) => {
+    const [a, b] = key.split(":").map((value) => Number(value));
+    if (a !== userId && b !== userId) {
+      return;
+    }
+    const otherId = a === userId ? b : a;
+    const participant = store.users.get(otherId);
+    if (!participant) return;
+    const messages = conversation.messages
+      .slice()
+      .sort((left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime());
+    const last = messages[messages.length - 1];
+    if (!last) return;
+    const unreadCount = messages.filter((msg) => {
+      if (msg.recipientId !== userId) return false;
+      if (msg.senderId === userId) return false;
+      if (!since) return true;
+      return new Date(msg.createdAt).getTime() > sinceTime;
+    }).length;
+    entries.push({
+      userId: participant.id,
+      username: participant.username,
+      nickname: participant.nickname,
+      avatar_url: participant.avatar_url,
+      is_admin: participant.is_admin,
+      is_verified: participant.is_verified,
+      lastMessage: last.text,
+      lastSenderId: last.senderId,
+      created_at: last.createdAt,
+      unreadCount,
+    });
+  });
+  return entries.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 }
 
 export function getDemoUnreadCount(userId: number, since?: number): number {
-  const entries = getDemoInbox(userId);
-  if (!since) return entries.length;
-  return entries.filter((entry) => new Date(entry.created_at).getTime() > since).length;
+  const store = ensureStore();
+  const sinceTime = since ?? 0;
+  let total = 0;
+  store.conversations.forEach((conversation, key) => {
+    const [a, b] = key.split(":").map((value) => Number(value));
+    if (a !== userId && b !== userId) {
+      return;
+    }
+    conversation.messages.forEach((msg) => {
+      if (msg.recipientId !== userId) return;
+      if (msg.senderId === userId) return;
+      if (!since) {
+        total += 1;
+        return;
+      }
+      if (new Date(msg.createdAt).getTime() > sinceTime) {
+        total += 1;
+      }
+    });
+  });
+  return total;
 }
 
 function conversationKey(a: number, b: number) {
