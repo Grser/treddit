@@ -21,16 +21,23 @@ const missingVariables = Object.entries({
 
 const isConfigured = missingVariables.length === 0;
 
+const globalForDb = globalThis as unknown as { __tredditDbPool?: mysql.Pool | null };
+
 let pool: mysql.Pool | null = null;
 
 if (isConfigured) {
-  pool = mysql.createPool({
-    host: DATABASE_HOST!,
-    user: DATABASE_USER!,
-    password: DATABASE_PASS!,
-    database: DATABASE_NAME!,
-    connectionLimit: 10,
-  });
+  if (!globalForDb.__tredditDbPool) {
+    globalForDb.__tredditDbPool = mysql.createPool({
+      host: DATABASE_HOST!,
+      user: DATABASE_USER!,
+      password: DATABASE_PASS!,
+      database: DATABASE_NAME!,
+      connectionLimit: 10,
+      waitForConnections: true,
+      queueLimit: 0,
+    });
+  }
+  pool = globalForDb.__tredditDbPool;
 } else {
   console.warn(
     `Database connection is not configured. Missing variables: ${missingVariables.join(", ")}`,
