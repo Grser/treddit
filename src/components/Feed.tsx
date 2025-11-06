@@ -12,6 +12,7 @@ type FeedProps = {
   userId?: number;
   likesOf?: number;
   limit?: number;
+  filter?: string;
   /** Elementos precargados desde el servidor (SSR) */
   initialItems?: PostCardType[];
 };
@@ -24,6 +25,7 @@ export default function Feed({
   userId,
   likesOf,
   limit = 20,
+  filter,
   initialItems,
 }: FeedProps) {
   const { strings } = useLocale();
@@ -45,8 +47,10 @@ export default function Feed({
       if (kind === "likes" && id) params.set("likesOf", id);
     }
 
+    if (filter) params.set("filter", filter);
+
     return params.toString();
-  }, [source, userId, likesOf, limit]);
+  }, [source, userId, likesOf, limit, filter]);
 
   useEffect(() => {
     let alive = true;

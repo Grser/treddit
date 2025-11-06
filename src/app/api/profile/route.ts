@@ -8,10 +8,10 @@ export async function POST(req: Request) {
   const form = await req.formData();
   const nickname = String(form.get("nickname") || "").slice(0, 80);
   const description = String(form.get("description") || "").slice(0, 200);
-  const avatar_url = String(form.get("avatar_url") || "");
-  const banner_url = String(form.get("banner_url") || "");
-  const location = String(form.get("location") || "");
-  const website = String(form.get("website") || "");
+  const avatar_url = String(form.get("avatar_url") || "").trim();
+  const banner_url = String(form.get("banner_url") || "").trim();
+  const location = String(form.get("location") || "").trim();
+  const website = String(form.get("website") || "").trim();
   const show_likes = form.get("show_likes") ? 1 : 0;
   const show_bookmarks = form.get("show_bookmarks") ? 1 : 0;
 

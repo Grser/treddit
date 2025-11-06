@@ -1,30 +1,53 @@
 import UserBadges from "@/components/UserBadges";
 
+type ProfileUser = {
+  id: number;
+  username: string;
+  nickname?: string | null;
+  avatar_url?: string | null;
+  banner_url?: string | null;
+  description?: string | null;
+  location?: string | null;
+  website?: string | null;
+  created_at: string | Date;
+  is_admin?: boolean;
+  is_verified?: boolean;
+};
+
+type ProfileStats = { posts: number; followers: number; following: number };
+
 export default function ProfileHeader({
   user,
   stats,
   viewerId,
 }: {
   viewerId?: number | null;
-  user: any;
-  stats: { posts: number; followers: number; following: number };
+  user: ProfileUser;
+  stats: ProfileStats;
 }) {
   const isOwner = viewerId === user.id;
   const avatar = user?.avatar_url?.trim() || "/demo-reddit.png";
   const displayName = user?.nickname?.trim() || user.username;
 
   return (
-    <section>
+    <section className="bg-surface">
       {/* Banner */}
-      <div className="relative h-44 w-full bg-muted">
-        {user.banner_url && <img src={user.banner_url} className="h-full w-full object-cover" alt="" />}
-        <div className="absolute -bottom-12 left-4">
-          <img src={avatar} className="size-24 rounded-full ring-2 ring-surface object-cover" alt="" />
+      <div className="relative h-48 w-full overflow-hidden bg-muted">
+        {user.banner_url ? (
+          <img src={user.banner_url} className="absolute inset-0 h-full w-full object-cover" alt="" />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-r from-brand/40 via-brand/20 to-transparent" aria-hidden="true" />
+        )}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" aria-hidden="true" />
+        <div className="absolute bottom-4 left-4 flex items-end gap-3 sm:bottom-6 sm:left-6">
+          <div className="relative size-28 overflow-hidden rounded-full border-4 border-surface bg-surface shadow-lg">
+            <img src={avatar} className="absolute inset-0 h-full w-full object-cover" alt="" />
+          </div>
         </div>
       </div>
 
       {/* Info */}
-      <div className="border-b border-border px-4 pb-4 pt-14">
+      <div className="border-b border-border px-4 pb-4 pt-20 sm:px-6">
         <div className="flex justify-end">
           {isOwner && (
             <a

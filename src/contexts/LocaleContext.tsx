@@ -110,6 +110,7 @@ export type LocaleStrings = {
   postCard: {
     reposted: string;
     replyingTo: string;
+    pinned: string;
   };
   poll: {
     voteFailed: string;
@@ -129,6 +130,39 @@ export type LocaleStrings = {
   badges: {
     verified: string;
     admin: string;
+  };
+  profilePage: {
+    tabs: {
+      posts: string;
+      replies: string;
+      highlights: string;
+      articles: string;
+      media: string;
+      likes: string;
+      bookmarks: string;
+    };
+    empty: {
+      replies: string;
+      highlights: string;
+      articles: string;
+      media: string;
+      likes: string;
+      bookmarks: string;
+    };
+    replies: {
+      loading: string;
+      error: string;
+      respondedTo: string;
+    };
+    pinnedBadge: string;
+  };
+  profileEditor: {
+    useUrl: string;
+    uploadImage: string;
+    uploading: string;
+    uploadFailed: string;
+    clear: string;
+    previewAlt: string;
   };
   createCommunity: {
     title: string;
@@ -276,6 +310,7 @@ const translations: Record<Locale, LocaleStrings> = {
     postCard: {
       reposted: "Reposteaste",
       replyingTo: "En respuesta a",
+      pinned: "Fijado",
     },
     poll: {
       voteFailed: "No se pudo registrar tu voto",
@@ -316,6 +351,39 @@ const translations: Record<Locale, LocaleStrings> = {
     badges: {
       verified: "Cuenta verificada",
       admin: "Administrador",
+    },
+    profilePage: {
+      tabs: {
+        posts: "Posts",
+        replies: "Respuestas",
+        highlights: "Destacados",
+        articles: "Artículos",
+        media: "Multimedia",
+        likes: "Me gusta",
+        bookmarks: "Guardados",
+      },
+      empty: {
+        replies: "Este usuario aún no ha respondido a ninguna publicación.",
+        highlights: "No hay publicaciones destacadas todavía.",
+        articles: "No hay artículos publicados.",
+        media: "Todavía no hay contenido multimedia.",
+        likes: "Las publicaciones con Me gusta no están disponibles.",
+        bookmarks: "Los guardados estarán disponibles próximamente.",
+      },
+      replies: {
+        loading: "Cargando respuestas…",
+        error: "No pudimos cargar las respuestas.",
+        respondedTo: "Respondió a",
+      },
+      pinnedBadge: "Fijado en el perfil",
+    },
+    profileEditor: {
+      useUrl: "Usar URL",
+      uploadImage: "Subir imagen",
+      uploading: "Subiendo imagen…",
+      uploadFailed: "No se pudo subir la imagen. Intenta de nuevo.",
+      clear: "Quitar imagen",
+      previewAlt: "Vista previa de la imagen seleccionada",
     },
     createCommunity: {
       title: "Crea tu comunidad",
@@ -474,6 +542,7 @@ const translations: Record<Locale, LocaleStrings> = {
     postCard: {
       reposted: "You reposted",
       replyingTo: "Replying to",
+      pinned: "Pinned",
     },
     poll: {
       voteFailed: "Your vote could not be recorded",
@@ -514,6 +583,39 @@ const translations: Record<Locale, LocaleStrings> = {
     badges: {
       verified: "Verified account",
       admin: "Administrator",
+    },
+    profilePage: {
+      tabs: {
+        posts: "Posts",
+        replies: "Replies",
+        highlights: "Highlights",
+        articles: "Articles",
+        media: "Media",
+        likes: "Likes",
+        bookmarks: "Bookmarks",
+      },
+      empty: {
+        replies: "This user hasn't replied yet.",
+        highlights: "No highlighted posts yet.",
+        articles: "No articles published yet.",
+        media: "No media shared yet.",
+        likes: "Likes aren't available right now.",
+        bookmarks: "Bookmarks will arrive soon.",
+      },
+      replies: {
+        loading: "Loading replies…",
+        error: "We couldn't load replies.",
+        respondedTo: "Replied to",
+      },
+      pinnedBadge: "Pinned on profile",
+    },
+    profileEditor: {
+      useUrl: "Use URL",
+      uploadImage: "Upload image",
+      uploading: "Uploading image…",
+      uploadFailed: "We couldn't upload the image. Try again.",
+      clear: "Remove image",
+      previewAlt: "Preview of the selected image",
     },
     createCommunity: {
       title: "Create your community",
@@ -671,6 +773,7 @@ const translations: Record<Locale, LocaleStrings> = {
     postCard: {
       reposted: "Вы сделали репост",
       replyingTo: "В ответ",
+      pinned: "Закреплено",
     },
     poll: {
       voteFailed: "Не удалось сохранить ваш голос",
@@ -711,6 +814,39 @@ const translations: Record<Locale, LocaleStrings> = {
     badges: {
       verified: "Подтвержденный аккаунт",
       admin: "Администратор",
+    },
+    profilePage: {
+      tabs: {
+        posts: "Посты",
+        replies: "Ответы",
+        highlights: "Избранное",
+        articles: "Статьи",
+        media: "Мультимедиа",
+        likes: "Понравилось",
+        bookmarks: "Закладки",
+      },
+      empty: {
+        replies: "Пока нет ответов.",
+        highlights: "Избранных публикаций нет.",
+        articles: "Статей пока нет.",
+        media: "Мультимедиа ещё не добавлено.",
+        likes: "Понравившиеся записи скрыты.",
+        bookmarks: "Закладки пока недоступны.",
+      },
+      replies: {
+        loading: "Загружаем ответы…",
+        error: "Не удалось загрузить ответы.",
+        respondedTo: "Ответил(а)",
+      },
+      pinnedBadge: "Закреплено в профиле",
+    },
+    profileEditor: {
+      useUrl: "Использовать ссылку",
+      uploadImage: "Загрузить изображение",
+      uploading: "Загрузка изображения…",
+      uploadFailed: "Не удалось загрузить изображение. Попробуйте ещё раз.",
+      clear: "Удалить изображение",
+      previewAlt: "Предпросмотр выбранного изображения",
     },
     createCommunity: {
       title: "Создайте сообщество",

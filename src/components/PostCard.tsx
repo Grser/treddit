@@ -34,17 +34,28 @@ export type Post = {
 export default function PostCard({
   post,
   canInteract,
+  pinned = false,
 }: {
   post: Post;
   canInteract: boolean;
+  pinned?: boolean;
 }) {
   const { strings } = useLocale();
   const avatar = post.avatar_url?.trim() || "/demo-reddit.png";
   const repostedByMe = Boolean(post.repostedByMe);
   const displayName = post.nickname?.trim() || post.username;
+  const pinnedLabel = strings.profilePage?.pinnedBadge || strings.postCard.pinned;
 
   return (
     <article className="bg-surface text-foreground rounded-xl border border-border p-4">
+      {pinned && (
+        <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-amber-500">
+          <svg className="size-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M14 2a1 1 0 0 0-.94.66L12.3 6H9a1 1 0 0 0-.78 1.63l2.16 2.52-3.65 9.13a.75.75 0 0 0 1.26.77l4.6-5.09 2.9 3.39a.75.75 0 0 0 1.31-.53v-6.15l2.64-1.69a1 1 0 0 0-.13-1.78L15 6.76V3a1 1 0 0 0-1-1Z" />
+          </svg>
+          <span>{pinnedLabel}</span>
+        </div>
+      )}
       {repostedByMe && (
         <>
           {/* Banda superior: Reposteaste */}
@@ -93,7 +104,7 @@ export default function PostCard({
               postId={post.id}
               isOwner={!!post.isOwner}
               isAdmin={!!post.isAdminViewer}
-              pinned={false}
+              pinned={pinned}
               replyScope={post.reply_scope}
             />
           </div>

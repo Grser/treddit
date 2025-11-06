@@ -34,6 +34,7 @@ export async function GET(req: Request) {
   const cursor = url.searchParams.get("cursor");
   const userId = Number(url.searchParams.get("userId") || 0);
   const likesOf = Number(url.searchParams.get("likesOf") || 0);
+  const filter = (url.searchParams.get("filter") || "").toLowerCase();
   const params: number[] = [];
   const joins: string[] = [];
   const whereParts: string[] = [];
@@ -54,6 +55,10 @@ export async function GET(req: Request) {
     params.push(userId);
   }
 
+  if (filter === "media") {
+    whereParts.push("EXISTS(SELECT 1 FROM Files f WHERE f.postid = p.id)");
+  }
+
   const whereClause = whereParts.length ? `WHERE ${whereParts.join(" AND ")}` : "";
 
   const meId = me?.id ?? null;
@@ -66,6 +71,9 @@ export async function GET(req: Request) {
     if (likesOf > 0) {
       // sin base de datos no hay likes reales, devolvemos vacío
       items = [];
+    }
+    if (filter === "media") {
+      items = items.filter((item) => Boolean(item.mediaUrl));
     }
     const normalized = items.slice(0, limit).map((item) => ({
       ...item,

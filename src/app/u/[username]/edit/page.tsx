@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import Navbar from "@/components/Navbar";
+import ImagePickerField from "@/components/profile/ImagePickerField";
 
 export default async function EditProfilePage({ params }: { params: { username: string } }) {
   const me = await requireUser();
@@ -15,7 +16,11 @@ export default async function EditProfilePage({ params }: { params: { username: 
   return (
     <div className="min-h-dvh">
       <Navbar />
-      <form action="/api/profile" method="post" className="max-w-2xl mx-auto p-4 space-y-4">
+      <form
+        action="/api/profile"
+        method="post"
+        className="max-w-2xl mx-auto p-4 space-y-4"
+      >
         <input type="hidden" name="mode" value="update" />
         <label className="block">
           <span className="text-sm">Nombre</span>
@@ -25,15 +30,17 @@ export default async function EditProfilePage({ params }: { params: { username: 
           <span className="text-sm">Biografía</span>
           <textarea name="description" defaultValue={u.description || ""} className="w-full bg-input rounded-md p-3 ring-1 ring-border outline-none" rows={4} />
         </label>
-        <div className="grid sm:grid-cols-2 gap-4">
-          <label className="block">
-            <span className="text-sm">Avatar URL</span>
-            <input name="avatar_url" defaultValue={u.avatar_url || ""} className="w-full bg-input rounded-md h-10 px-3 ring-1 ring-border outline-none" />
-          </label>
-          <label className="block">
-            <span className="text-sm">Banner URL</span>
-            <input name="banner_url" defaultValue={u.banner_url || ""} className="w-full bg-input rounded-md h-10 px-3 ring-1 ring-border outline-none" />
-          </label>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <ImagePickerField
+            name="avatar_url"
+            label="Avatar"
+            initialUrl={u.avatar_url}
+          />
+          <ImagePickerField
+            name="banner_url"
+            label="Banner"
+            initialUrl={u.banner_url}
+          />
         </div>
         <div className="grid sm:grid-cols-2 gap-4">
           <label className="block">
