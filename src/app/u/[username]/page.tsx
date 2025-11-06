@@ -53,14 +53,19 @@ type PinnedPostRow = RowDataPacket & {
   community_name: string | null;
 };
 
-export default async function UserPage({ params }: { params: { username: string } }) {
+export default async function UserPage({
+  params,
+}: {
+  params: Promise<{ username: string }>;
+}) {
+  const { username } = await params;
   const me = await getSessionUser();
 
   const [rows] = await db.query<UserRow[]>(
     `SELECT id, username, nickname, avatar_url, banner_url, description, location, website,
             show_likes, show_bookmarks, created_at, is_admin, is_verified, pinned_post_id
      FROM Users WHERE username=? AND visible=1 LIMIT 1`,
-    [params.username]
+    [username]
   );
   const userRow = rows[0];
   if (!userRow) return <div className="p-6">Usuario no encontrado</div>;
