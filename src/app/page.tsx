@@ -1,3 +1,5 @@
+import { cookies } from "next/headers";
+
 import Navbar from "@/components/Navbar";
 import SidebarLeft from "@/components/SidebarLeft";
 import SidebarRight from "@/components/SidebarRight";
@@ -21,13 +23,21 @@ type DiscoveryResponse = {
   trendingTags: { tag: string; count: number }[];
 };
 
-async function getFeed(base: string): Promise<FeedResponse> {
-  const res = await fetch(`${base}/api/posts`, { cache: "no-store" });
+async function getFeed(base: string, cookieHeader?: string): Promise<FeedResponse> {
+  const headers: Record<string, string> = {};
+  if (cookieHeader) {
+    headers["Cookie"] = cookieHeader;
+  }
+  const res = await fetch(`${base}/api/posts`, { cache: "no-store", headers });
   if (!res.ok) return { items: [] };
   return (await res.json()) as FeedResponse;
 }
-async function getDiscovery(base: string): Promise<DiscoveryResponse> {
-  const res = await fetch(`${base}/api/discovery`, { cache: "no-store" });
+async function getDiscovery(base: string, cookieHeader?: string): Promise<DiscoveryResponse> {
+  const headers: Record<string, string> = {};
+  if (cookieHeader) {
+    headers["Cookie"] = cookieHeader;
+  }
+  const res = await fetch(`${base}/api/discovery`, { cache: "no-store", headers });
   if (!res.ok)
     return { recommendedUsers: [], trendingTags: [] } satisfies DiscoveryResponse;
   return (await res.json()) as DiscoveryResponse;
@@ -35,10 +45,12 @@ async function getDiscovery(base: string): Promise<DiscoveryResponse> {
 
 export default async function Page() {
   const base = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+  const cookieStore = cookies();
+  const cookieHeader = cookieStore.getAll().map((item) => `${item.name}=${item.value}`).join("; ") || undefined;
   const session = await getSessionUser();
   const [{ items }, discovery] = await Promise.all([
-    getFeed(base),
-    getDiscovery(base),
+    getFeed(base, cookieHeader),
+    getDiscovery(base, cookieHeader),
   ]);
 
   const canInteract = Boolean(session);
