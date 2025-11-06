@@ -1,3 +1,8 @@
+"use client";
+
+import { useMemo, useState } from "react";
+
+import FollowButton from "@/components/follow/FollowButton";
 import UserBadges from "@/components/UserBadges";
 
 type ProfileUser = {
@@ -20,14 +25,18 @@ export default function ProfileHeader({
   user,
   stats,
   viewerId,
+  initiallyFollowing = false,
 }: {
   viewerId?: number | null;
   user: ProfileUser;
   stats: ProfileStats;
+  initiallyFollowing?: boolean;
 }) {
   const isOwner = viewerId === user.id;
   const avatar = user?.avatar_url?.trim() || "/demo-reddit.png";
   const displayName = user?.nickname?.trim() || user.username;
+  const [followers, setFollowers] = useState(stats.followers);
+  const followerLabel = useMemo(() => Math.max(0, followers), [followers]);
 
   return (
     <section className="bg-surface">
@@ -48,7 +57,18 @@ export default function ProfileHeader({
 
       {/* Info */}
       <div className="border-b border-border px-4 pb-4 pt-20 sm:px-6">
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
+          {!isOwner && (
+            <FollowButton
+              userId={user.id}
+              canInteract={Boolean(viewerId)}
+              initiallyFollowing={initiallyFollowing}
+              variant="outline"
+              onFollowChange={(value) => {
+                setFollowers((prev) => Math.max(0, prev + (value ? 1 : -1)));
+              }}
+            />
+          )}
           {isOwner && (
             <a
               href={`/u/${user.username}/edit`}
@@ -81,7 +101,7 @@ export default function ProfileHeader({
             <b>{stats.following}</b> Siguiendo
           </span>
           <span>
-            <b>{stats.followers}</b> Seguidores
+            <b>{followerLabel}</b> Seguidores
           </span>
         </div>
       </div>

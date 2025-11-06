@@ -13,6 +13,9 @@ type FeedProps = {
   likesOf?: number;
   limit?: number;
   filter?: string;
+  communityId?: number;
+  tag?: string;
+  username?: string;
   /** Elementos precargados desde el servidor (SSR) */
   initialItems?: PostCardType[];
 };
@@ -26,10 +29,13 @@ export default function Feed({
   likesOf,
   limit = 20,
   filter,
+  communityId,
+  tag,
+  username,
   initialItems,
 }: FeedProps) {
   const { strings } = useLocale();
-  const [posts, setPosts] = useState<PostCardType[]>(initialItems || []);
+  const [posts, setPosts] = useState<PostCardType[]>(dedupePosts(initialItems || []));
   const [loading, setLoading] = useState(initialItems?.length ? false : true);
   const [hasError, setHasError] = useState(false);
   const [errMsg, setErrMsg] = useState<string | null>(null);
@@ -40,6 +46,9 @@ export default function Feed({
 
     if (userId) params.set("userId", String(userId));
     if (likesOf) params.set("likesOf", String(likesOf));
+    if (communityId) params.set("communityId", String(communityId));
+    if (username) params.set("username", username);
+    if (tag) params.set("tag", tag.startsWith("#") ? tag : `#${tag}`);
 
     if (source && !userId && !likesOf) {
       const [kind, id] = source.split(":");
@@ -50,7 +59,7 @@ export default function Feed({
     if (filter) params.set("filter", filter);
 
     return params.toString();
-  }, [source, userId, likesOf, limit, filter]);
+  }, [source, userId, likesOf, limit, filter, communityId, tag, username]);
 
   useEffect(() => {
     let alive = true;
@@ -66,7 +75,8 @@ export default function Feed({
         }
         const data = (await res.json()) as ApiResponse;
         if (!alive) return;
-        setPosts(Array.isArray(data.items) ? data.items : []);
+        const normalized = Array.isArray(data.items) ? data.items : [];
+        setPosts(dedupePosts(normalized));
       } catch (error: unknown) {
         if (!alive) return;
         console.error("Feed load error:", error);
@@ -105,4 +115,13 @@ export default function Feed({
       ))}
     </div>
   );
+}
+
+function dedupePosts(list: PostCardType[]) {
+  const seen = new Set<number>();
+  return list.filter((item) => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
 }

@@ -24,6 +24,15 @@ export default async function UserPage({ params }: { params: { username: string 
   const [[{ following }]]: any = await db.query("SELECT COUNT(*) AS following FROM Follows WHERE follower=?", [user.id]);
   const [[{ followers }]]: any = await db.query("SELECT COUNT(*) AS followers FROM Follows WHERE followed=?", [user.id]);
 
+  let isFollowing = false;
+  if (me) {
+    const [[{ isFollowing: followingValue }]]: any = await db.query(
+      "SELECT EXISTS(SELECT 1 FROM Follows WHERE follower=? AND followed=?) AS isFollowing",
+      [me.id, user.id],
+    );
+    isFollowing = Boolean(followingValue);
+  }
+
   let pinnedPost: PostCardType | null = null;
   if (user.pinned_post_id) {
     const [pinnedRows] = await db.query(
@@ -91,6 +100,7 @@ export default async function UserPage({ params }: { params: { username: string 
         viewerId={me?.id}
         user={user}
         stats={{ posts, followers, following }}
+        initiallyFollowing={isFollowing}
       />
       <ProfileTabs
         profileId={user.id}

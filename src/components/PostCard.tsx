@@ -120,7 +120,9 @@ export default function PostCard({
         </div>
       </div>
 
-      {post.description && <p className="text-sm mb-2 whitespace-pre-wrap break-words">{post.description}</p>}
+      {post.description && (
+        <p className="text-sm mb-2 whitespace-pre-wrap break-words">{renderDescription(post.description)}</p>
+      )}
 
       {post.mediaUrl && (
         <div className="overflow-hidden rounded-lg mb-2 ring-1 ring-border">
@@ -148,4 +150,19 @@ export default function PostCard({
       </div>
     </article>
   );
+}
+
+function renderDescription(text: string) {
+  const parts = text.split(/(#[\p{L}\p{N}_]+)/gu);
+  return parts.map((part, index) => {
+    if (/^#[\p{L}\p{N}_]+$/u.test(part)) {
+      const href = `/buscar?q=${encodeURIComponent(part)}`;
+      return (
+        <a key={`tag-${index}-${part}`} href={href} className="text-blue-400 hover:underline">
+          {part}
+        </a>
+      );
+    }
+    return <span key={`text-${index}`}>{part}</span>;
+  });
 }

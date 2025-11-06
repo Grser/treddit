@@ -55,6 +55,10 @@ export const db = {
   ) {
     return ensurePool().execute<T>(...args);
   },
+  async getConnection() {
+    const instance = ensurePool();
+    return instance.getConnection();
+  },
 };
 
 export function isDatabaseConfigured() {

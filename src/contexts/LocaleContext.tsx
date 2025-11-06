@@ -69,8 +69,12 @@ export type LocaleStrings = {
     whoToFollow: string;
     follow: string;
     followTitle: string;
+    following: string;
+    unfollow: string;
+    unfollowTitle: string;
     noSuggestions: string;
     followError: string;
+    unfollowError: string;
     viewProfile: (username: string) => string;
   };
   comments: {
@@ -182,6 +186,27 @@ export type LocaleStrings = {
     roleOwner: string;
     roleModerator: string;
   };
+  communityPage: {
+    notConfiguredTitle: string;
+    notConfiguredDescription: string;
+    notFoundTitle: string;
+    notFoundDescription: string;
+    headerLabel: string;
+    membersLabel: (count: number) => string;
+    createdAtLabel: (date: Date) => string;
+    roleOwner: string;
+    roleAdmin: string;
+    roleModerator: string;
+    privateLabel: string;
+    loginToJoin: string;
+    hiddenMessage: string;
+    emptyFeed: string;
+    moderationTitle: string;
+    noModerators: string;
+    join: string;
+    leave: string;
+    joinError: string;
+  };
   adminPage: {
     title: string;
     subtitle: string;
@@ -198,6 +223,7 @@ export type LocaleStrings = {
       posts: { title: string; description: string };
       communities: { title: string; description: string };
       verification: { title: string; description: string };
+      ads: { title: string; description: string };
     };
   };
 };
@@ -269,8 +295,12 @@ const translations: Record<Locale, LocaleStrings> = {
       whoToFollow: "A quién seguir",
       follow: "Seguir",
       followTitle: "Seguir",
+      following: "Siguiendo",
+      unfollow: "Dejar de seguir",
+      unfollowTitle: "Dejar de seguir",
       noSuggestions: "Sin sugerencias",
       followError: "No se pudo seguir al usuario",
+      unfollowError: "No se pudo dejar de seguir",
       viewProfile: (username) => `Ir al perfil de @${username}`,
     },
     comments: {
@@ -400,10 +430,32 @@ const translations: Record<Locale, LocaleStrings> = {
       existingTitle: "Tus comunidades",
       existingSubtitle: "Administra las comunidades que moderas o has creado.",
       empty: "Todavía no administras ninguna comunidad.",
-      manage: "Administrar",
-      roleOwner: "Propietario",
-      roleModerator: "Moderador",
-    },
+    manage: "Administrar",
+    roleOwner: "Propietario",
+    roleModerator: "Moderador",
+  },
+  communityPage: {
+    notConfiguredTitle: "Comunidades no configuradas",
+    notConfiguredDescription:
+      "Para explorar comunidades necesitas configurar la base de datos. Mientras tanto puedes usar la sección de Popular o Explorar.",
+    notFoundTitle: "Comunidad no encontrada",
+    notFoundDescription: "Verifica que el identificador sea correcto o crea una nueva comunidad.",
+    headerLabel: "Comunidad",
+    membersLabel: (count) => `${count.toLocaleString()} miembros`,
+    createdAtLabel: (date) => `Creada el ${date.toLocaleDateString()}`,
+    roleOwner: "Fundador",
+    roleAdmin: "Administrador",
+    roleModerator: "Moderador",
+    privateLabel: "Comunidad privada",
+    loginToJoin: "Inicia sesión para solicitar acceso",
+    hiddenMessage: "Esta comunidad está actualmente oculta. Solo sus miembros pueden acceder a su contenido.",
+    emptyFeed: "Aún no hay publicaciones en esta comunidad.",
+    moderationTitle: "Moderación",
+    noModerators: "Nadie está moderando esta comunidad todavía.",
+    join: "Unirse",
+    leave: "Abandonar",
+    joinError: "No se pudo actualizar tu membresía",
+  },
     adminPage: {
       title: "Panel de administración",
       subtitle: "Controla la actividad de la plataforma y responde a los reportes de la comunidad.",
@@ -431,6 +483,10 @@ const translations: Record<Locale, LocaleStrings> = {
         verification: {
           title: "Verificación de perfiles",
           description: "Concede o retira la insignia verificada a los usuarios que lo soliciten.",
+        },
+        ads: {
+          title: "Panel de anuncios",
+          description: "Crea campañas promocionadas y publícalas en el centro de anuncios.",
         },
       },
     },
@@ -501,8 +557,12 @@ const translations: Record<Locale, LocaleStrings> = {
       whoToFollow: "Who to follow",
       follow: "Follow",
       followTitle: "Follow",
+      following: "Following",
+      unfollow: "Unfollow",
+      unfollowTitle: "Unfollow",
       noSuggestions: "No suggestions",
       followError: "Could not follow the user",
+      unfollowError: "Could not unfollow the user",
       viewProfile: (username) => `View @${username}'s profile`,
     },
     comments: {
@@ -635,6 +695,28 @@ const translations: Record<Locale, LocaleStrings> = {
       roleOwner: "Owner",
       roleModerator: "Moderator",
     },
+    communityPage: {
+      notConfiguredTitle: "Communities are not configured",
+      notConfiguredDescription:
+        "To browse communities you need to configure the database. In the meantime try the Popular or Explore sections.",
+      notFoundTitle: "Community not found",
+      notFoundDescription: "Double-check the identifier or create a new community.",
+      headerLabel: "Community",
+      membersLabel: (count) => `${count.toLocaleString()} members`,
+      createdAtLabel: (date) => `Created on ${date.toLocaleDateString()}`,
+      roleOwner: "Founder",
+      roleAdmin: "Administrator",
+      roleModerator: "Moderator",
+      privateLabel: "Private community",
+      loginToJoin: "Sign in to request access",
+      hiddenMessage: "This community is currently hidden. Only members can access its content.",
+      emptyFeed: "There are no posts in this community yet.",
+      moderationTitle: "Moderation",
+      noModerators: "No one is moderating this community yet.",
+      join: "Join",
+      leave: "Leave",
+      joinError: "We couldn't update your membership",
+    },
     adminPage: {
       title: "Admin dashboard",
       subtitle: "Monitor platform activity and respond to community reports.",
@@ -662,6 +744,10 @@ const translations: Record<Locale, LocaleStrings> = {
         verification: {
           title: "Profile verification",
           description: "Grant or revoke the verified badge for trusted accounts.",
+        },
+        ads: {
+          title: "Manage ads",
+          description: "Publish sponsored messages to feature them in the ads center.",
         },
       },
     },
@@ -732,8 +818,12 @@ const translations: Record<Locale, LocaleStrings> = {
       whoToFollow: "Кого читать",
       follow: "Читать",
       followTitle: "Читать",
+      following: "Вы читаете",
+      unfollow: "Отписаться",
+      unfollowTitle: "Отписаться",
       noSuggestions: "Нет рекомендаций",
       followError: "Не удалось подписаться на пользователя",
+      unfollowError: "Не удалось отписаться",
       viewProfile: (username) => `Перейти в профиль @${username}`,
     },
     comments: {
@@ -866,6 +956,28 @@ const translations: Record<Locale, LocaleStrings> = {
       roleOwner: "Владелец",
       roleModerator: "Модератор",
     },
+    communityPage: {
+      notConfiguredTitle: "Сообщества не настроены",
+      notConfiguredDescription:
+        "Чтобы просматривать сообщества, необходимо настроить базу данных. Пока что воспользуйтесь разделами Популярное или Обзор.",
+      notFoundTitle: "Сообщество не найдено",
+      notFoundDescription: "Проверьте правильность идентификатора или создайте новое сообщество.",
+      headerLabel: "Сообщество",
+      membersLabel: (count) => `${count.toLocaleString()} участников`,
+      createdAtLabel: (date) => `Создано ${date.toLocaleDateString()}`,
+      roleOwner: "Основатель",
+      roleAdmin: "Администратор",
+      roleModerator: "Модератор",
+      privateLabel: "Закрытое сообщество",
+      loginToJoin: "Войдите, чтобы запросить доступ",
+      hiddenMessage: "Это сообщество сейчас скрыто. Его контент доступен только участникам.",
+      emptyFeed: "В этом сообществе пока нет публикаций.",
+      moderationTitle: "Модерация",
+      noModerators: "У сообщества пока нет модераторов.",
+      join: "Вступить",
+      leave: "Покинуть",
+      joinError: "Не удалось обновить участие",
+    },
     adminPage: {
       title: "Панель администратора",
       subtitle: "Следите за активностью платформы и реагируйте на жалобы сообщества.",
@@ -893,6 +1005,10 @@ const translations: Record<Locale, LocaleStrings> = {
         verification: {
           title: "Верификация профилей",
           description: "Выдавайте или снимайте значок подтверждения с доверенных аккаунтов.",
+        },
+        ads: {
+          title: "Рекламные кампании",
+          description: "Публикуйте спонсорские сообщения для раздела объявлений.",
         },
       },
     },
