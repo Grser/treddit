@@ -16,6 +16,7 @@ import {
   fetchConversationMessages,
   getAllowMessagesFromAnyone,
 } from "@/lib/messages";
+import { getDemoConversation, resolveDemoUserByUsername } from "@/lib/demoStore";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +38,66 @@ type ConversationRow = RowDataPacket & {
 export default async function ConversationPage({ params }: ConversationParams) {
   const me = await requireUser();
   const slug = params.username;
+
+  if (!isDatabaseConfigured()) {
+    const demoTarget = resolveDemoUserByUsername(slug);
+    if (!demoTarget) {
+      return (
+        <div className="min-h-dvh">
+          <Navbar />
+          <main className="mx-auto max-w-3xl px-4 py-8">
+            <p className="text-sm">Usuario no encontrado.</p>
+          </main>
+        </div>
+      );
+    }
+
+    if (demoTarget.id === me.id) {
+      redirect("/mensajes");
+    }
+
+    const messages = getDemoConversation(me.id, demoTarget.id);
+    const participant: ConversationUser = {
+      id: demoTarget.id,
+      username: demoTarget.username,
+      nickname: demoTarget.nickname,
+      avatar_url: demoTarget.avatar_url,
+      is_admin: demoTarget.is_admin,
+      is_verified: demoTarget.is_verified,
+      allowsAnyone: true,
+    };
+
+    const avatar = participant.avatar_url?.trim() || "/demo-reddit.png";
+    const displayName = participant.nickname || participant.username;
+
+    return (
+      <div className="min-h-dvh bg-background text-foreground">
+        <Navbar />
+        <main className="mx-auto max-w-3xl space-y-6 px-4 py-6">
+          <header className="flex items-center gap-3 rounded-xl border border-border bg-surface p-4">
+            <Image
+              src={avatar}
+              alt={displayName}
+              width={64}
+              height={64}
+              className="size-16 rounded-full object-cover ring-1 ring-border"
+              unoptimized
+            />
+            <div className="min-w-0">
+              <p className="text-lg font-semibold flex items-center gap-2">
+                <span className="truncate">{displayName}</span>
+                <UserBadges size="sm" isAdmin={participant.is_admin} isVerified={participant.is_verified} />
+              </p>
+              <p className="text-sm opacity-70">@{participant.username}</p>
+              <p className="text-xs text-emerald-500">Modo demostración: adjunta imágenes, audio o video libremente.</p>
+            </div>
+          </header>
+
+          <DirectConversation initialMessages={messages} viewerId={me.id} recipient={participant} />
+        </main>
+      </div>
+    );
+  }
 
   const [rows] = await db.query<ConversationRow[]>(
     `SELECT id, username, nickname, avatar_url, is_admin, is_verified

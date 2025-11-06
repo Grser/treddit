@@ -1,8 +1,16 @@
 import type { ResultSetHeader, RowDataPacket } from "mysql2";
 
 import { db, isDatabaseConfigured } from "@/lib/db";
+import { appendDemoMessage, getDemoConversation } from "@/lib/demoStore";
+import type { SessionUser } from "@/lib/auth";
 
 let tablesReady = false;
+
+export type DirectMessageAttachment = {
+  url: string;
+  type: "image" | "audio" | "video" | "file";
+  name?: string | null;
+};
 
 export type DirectMessageEntry = {
   id: number;
@@ -17,6 +25,7 @@ export type DirectMessageEntry = {
     is_admin: boolean;
     is_verified: boolean;
   };
+  attachments?: DirectMessageAttachment[];
 };
 
 export async function ensureMessageTables() {
@@ -91,7 +100,7 @@ export async function setAllowMessagesFromAnyone(userId: number, allow: boolean)
 }
 
 export async function canSendDirectMessage(senderId: number, recipientId: number): Promise<boolean> {
-  if (!isDatabaseConfigured()) return false;
+  if (!isDatabaseConfigured()) return true;
   await ensureMessageTables();
   const [rows] = await db.query<FollowRelationRow[]>(
     `
@@ -112,7 +121,9 @@ export async function fetchConversationMessages(
   otherId: number,
   limit = 80,
 ): Promise<DirectMessageEntry[]> {
-  if (!isDatabaseConfigured()) return [];
+  if (!isDatabaseConfigured()) {
+    return getDemoConversation(viewerId, otherId);
+  }
   await ensureMessageTables();
   const [rows] = await db.query<ConversationRow[]>(
     `
@@ -150,16 +161,18 @@ export async function fetchConversationMessages(
       is_admin: Boolean(row.is_admin),
       is_verified: Boolean(row.is_verified),
     },
+    attachments: [],
   }));
 }
 
 export async function createDirectMessage(
-  senderId: number,
+  sender: SessionUser,
   recipientId: number,
   text: string,
+  attachments: DirectMessageAttachment[] = [],
 ): Promise<DirectMessageEntry> {
   if (!isDatabaseConfigured()) {
-    throw new Error("DATABASE_NOT_CONFIGURED");
+    return appendDemoMessage(sender, recipientId, text.trim(), attachments);
   }
   const normalized = text.trim().slice(0, 1000);
   if (!normalized) {
@@ -168,7 +181,7 @@ export async function createDirectMessage(
   await ensureMessageTables();
   const [result] = await db.execute<ResultSetHeader>(
     "INSERT INTO Direct_Messages (sender_id, recipient_id, message, created_at) VALUES (?, ?, ?, NOW())",
-    [senderId, recipientId, normalized],
+    [sender.id, recipientId, normalized],
   );
   const insertId = (result as ResultSetHeader).insertId;
   const [rows] = await db.query<InsertedMessageRow[]>(
@@ -208,5 +221,6 @@ export async function createDirectMessage(
       is_admin: Boolean(row.is_admin),
       is_verified: Boolean(row.is_verified),
     },
+    attachments: attachments.slice(),
   };
 }

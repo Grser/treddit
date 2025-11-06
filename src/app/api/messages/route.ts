@@ -6,11 +6,13 @@ import {
   canSendDirectMessage,
   createDirectMessage,
   ensureMessageTables,
+  type DirectMessageAttachment,
 } from "@/lib/messages";
 
 type DirectMessagePayload = {
   recipientId?: unknown;
   text?: unknown;
+  attachments?: unknown;
 };
 
 function isDirectMessagePayload(value: unknown): value is DirectMessagePayload {
@@ -22,10 +24,6 @@ function isDirectMessagePayload(value: unknown): value is DirectMessagePayload {
 
 export async function POST(req: Request) {
   const me = await requireUser();
-
-  if (!isDatabaseConfigured()) {
-    return NextResponse.json({ error: "Base de datos no configurada" }, { status: 503 });
-  }
 
   let payload: unknown;
   try {
@@ -41,6 +39,21 @@ export async function POST(req: Request) {
   const recipientId = Number(payload.recipientId);
   const textValue = typeof payload.text === "string" ? payload.text : "";
   const normalizedText = textValue.trim();
+  const attachmentsRaw = Array.isArray(payload.attachments) ? payload.attachments : [];
+  const attachments: DirectMessageAttachment[] = attachmentsRaw
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const data = item as Record<string, unknown>;
+      const url = typeof data.url === "string" ? data.url.trim() : "";
+      const type =
+        data.type === "image" || data.type === "audio" || data.type === "video" || data.type === "file"
+          ? data.type
+          : "file";
+      const name = typeof data.name === "string" ? data.name : null;
+      if (!url) return null;
+      return { url, type, name } satisfies DirectMessageAttachment;
+    })
+    .filter(Boolean) as DirectMessageAttachment[];
 
   if (!recipientId || recipientId <= 0) {
     return NextResponse.json({ error: "Destinatario inválido" }, { status: 400 });
@@ -50,11 +63,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No puedes enviarte mensajes a ti mismo" }, { status: 400 });
   }
 
-  if (!normalizedText) {
+  if (!normalizedText && attachments.length === 0) {
     return NextResponse.json({ error: "Escribe un mensaje" }, { status: 400 });
   }
 
-  await ensureMessageTables();
+  if (isDatabaseConfigured()) {
+    await ensureMessageTables();
+  }
 
   const allowed = await canSendDirectMessage(me.id, recipientId);
   if (!allowed) {
@@ -62,7 +77,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const message = await createDirectMessage(me.id, recipientId, normalizedText);
+    const message = await createDirectMessage(me, recipientId, normalizedText, attachments);
     return NextResponse.json({ message }, { status: 201 });
   } catch (error) {
     console.error("Failed to create direct message", error);

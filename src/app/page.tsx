@@ -20,7 +20,7 @@ type DiscoveryResponse = {
     is_admin?: boolean;
     is_verified?: boolean;
   }[];
-  trendingTags: { tag: string; count: number }[];
+  trendingTags: { tag: string; count: number; views?: number }[];
 };
 
 async function getFeed(base: string, cookieHeader?: string): Promise<FeedResponse> {

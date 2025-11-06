@@ -2,8 +2,9 @@
 import type { RowDataPacket } from "mysql2";
 
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, isDatabaseConfigured } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
+import { getDemoRecommendedUsers, getDemoTrendingTags } from "@/lib/demoStore";
 
 type DiscoveryUserRow = RowDataPacket & {
   id: number;
@@ -23,11 +24,6 @@ type DiscoveryUser = {
   is_verified: boolean;
 };
 
-type DiscoveryPostRow = RowDataPacket & {
-  id: number;
-  description: string | null;
-};
-
 // extrae hashtags tipo #algo
 function extractHashtags(text?: string | null) {
   if (!text) return [] as string[];
@@ -37,6 +33,27 @@ function extractHashtags(text?: string | null) {
 
 export async function GET() {
   const me = await getSessionUser();
+
+  if (!isDatabaseConfigured()) {
+    const recommendedUsers = getDemoRecommendedUsers(me?.id);
+    const trendingTags = getDemoTrendingTags(5).map((item) => ({
+      tag: item.tag,
+      count: item.count,
+      views: item.views,
+    }));
+
+    return NextResponse.json({
+      recommendedUsers: recommendedUsers.map((user) => ({
+        id: user.id,
+        username: user.username,
+        nickname: user.nickname,
+        avatar_url: user.avatar_url,
+        is_admin: user.is_admin,
+        is_verified: user.is_verified,
+      })),
+      trendingTags,
+    });
+  }
 
   // recomendados: visibles, distintos a mí y que no sigo
   const [users] = await db.query<DiscoveryUserRow[]>(
@@ -53,7 +70,7 @@ export async function GET() {
   );
 
   // hashtags desde posts recientes
-  const [posts] = await db.query<DiscoveryPostRow[]>(
+  const [posts] = await db.query<(RowDataPacket & { id: number; description: string | null })[]>(
     `
     SELECT p.id, p.description
     FROM Posts p
@@ -79,9 +96,9 @@ export async function GET() {
   }));
 
   const trendingTags = [...freq.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 10)
-    .map(([tag, count]) => ({ tag, count }));
+    .map(([tag, count]) => ({ tag, count, views: count }))
+    .sort((a, b) => b.views - a.views)
+    .slice(0, 5);
 
   return NextResponse.json({
     recommendedUsers,

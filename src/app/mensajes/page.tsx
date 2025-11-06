@@ -1,11 +1,12 @@
-import Navbar from "@/components/Navbar";
-import UserBadges from "@/components/UserBadges";
-
 import Image from "next/image";
 import Link from "next/link";
+import Navbar from "@/components/Navbar";
+import UserBadges from "@/components/UserBadges";
+import MarkMessagesSeen from "@/components/messages/MarkMessagesSeen";
 
 import { getSessionUser } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { db, isDatabaseConfigured } from "@/lib/db";
+import { getDemoInbox } from "@/lib/demoStore";
 
 export const dynamic = "force-dynamic";
 
@@ -60,12 +61,14 @@ export default async function MessagesPage() {
         )}
 
         {me && entries.length > 0 && (
-          <ul className="space-y-4">
-            {entries.map((item) => {
-              const avatar = item.avatar_url?.trim() || "/demo-reddit.png";
-              return (
-                <li key={item.id} className="rounded-xl border border-border bg-surface p-4">
-                  <div className="flex gap-3">
+          <>
+            <MarkMessagesSeen />
+            <ul className="space-y-4">
+              {entries.map((item) => {
+                const avatar = item.avatar_url?.trim() || "/demo-reddit.png";
+                return (
+                  <li key={item.id} className="rounded-xl border border-border bg-surface p-4">
+                    <div className="flex gap-3">
                     <Image
                       src={avatar}
                       alt={item.nickname || item.username}
@@ -99,9 +102,10 @@ export default async function MessagesPage() {
                     </div>
                   </div>
                 </li>
-              );
-            })}
-          </ul>
+                );
+              })}
+            </ul>
+          </>
         )}
       </main>
     </div>
@@ -109,6 +113,9 @@ export default async function MessagesPage() {
 }
 
 async function loadInbox(userId: number): Promise<InboxEntry[]> {
+  if (!isDatabaseConfigured()) {
+    return getDemoInbox(userId);
+  }
   const [rows] = await db.query(
     `
     SELECT c.id, c.text, c.created_at, u.username, u.nickname, u.avatar_url, u.is_admin, u.is_verified, c.post AS postId

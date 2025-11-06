@@ -4,7 +4,8 @@ import Link from "next/link";
 
 import Navbar from "@/components/Navbar";
 import PageHero from "@/components/PageHero";
-import { db } from "@/lib/db";
+import { db, isDatabaseConfigured } from "@/lib/db";
+import { getDemoFeed, getDemoRecommendedUsers } from "@/lib/demoStore";
 
 export const dynamic = "force-dynamic";
 
@@ -32,8 +33,8 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   const sanitized = likeEscape(query);
   const like = `%${sanitized}%`;
 
-  const posts: SearchPost[] = query ? await findPosts(like) : [];
-  const users: SearchUser[] = query ? await findUsers(like) : [];
+  const posts: SearchPost[] = query ? await findPosts(like, query) : [];
+  const users: SearchUser[] = query ? await findUsers(like, query) : [];
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
@@ -143,7 +144,22 @@ function likeEscape(term: string) {
   return term.replace(/[\\_%]/g, (char) => `\\${char}`);
 }
 
-async function findPosts(like: string): Promise<SearchPost[]> {
+async function findPosts(like: string, term: string): Promise<SearchPost[]> {
+  if (!isDatabaseConfigured()) {
+    const normalized = term.toLowerCase();
+    return getDemoFeed({ limit: 40 }).items
+      .filter((post) => {
+        const haystack = `${post.description ?? ""} ${post.username}`.toLowerCase();
+        return normalized ? haystack.includes(normalized) : true;
+      })
+      .map((post) => ({
+        id: post.id,
+        description: post.description ?? null,
+        created_at: post.created_at,
+        username: post.username,
+        nickname: post.nickname ?? null,
+      }));
+  }
   const [rows] = await db.query(
     `
     SELECT p.id, p.description, p.created_at, u.username, u.nickname
@@ -158,7 +174,21 @@ async function findPosts(like: string): Promise<SearchPost[]> {
   return rows as SearchPost[];
 }
 
-async function findUsers(like: string): Promise<SearchUser[]> {
+async function findUsers(like: string, term: string): Promise<SearchUser[]> {
+  if (!isDatabaseConfigured()) {
+    const normalized = term.toLowerCase();
+    return getDemoRecommendedUsers(null)
+      .filter((user) => {
+        const haystack = `${user.username} ${user.nickname ?? ""}`.toLowerCase();
+        return normalized ? haystack.includes(normalized) : true;
+      })
+      .map((user) => ({
+        id: user.id,
+        username: user.username,
+        nickname: user.nickname,
+        avatar_url: user.avatar_url,
+      }));
+  }
   const [rows] = await db.query(
     `
     SELECT u.id, u.username, u.nickname, u.avatar_url

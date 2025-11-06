@@ -184,7 +184,11 @@ function renderDescription(text: string) {
     if (/^#[\p{L}\p{N}_]+$/u.test(part)) {
       const href = `/buscar?q=${encodeURIComponent(part)}`;
       return (
-        <a key={`tag-${index}-${part}`} href={href} className="text-blue-400 hover:underline">
+        <a
+          key={`tag-${index}-${part}`}
+          href={href}
+          className="text-brand font-semibold hover:underline"
+        >
           {part}
         </a>
       );

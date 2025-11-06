@@ -11,6 +11,37 @@ import UserBadges from "./UserBadges";
 export default function NavbarClient({ session }: { session: SessionUser | null }) {
   const { strings } = useLocale();
   const avatar = session?.avatar_url?.trim() || "/demo-reddit.png";
+  const [unreadMessages, setUnreadMessages] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    async function load() {
+      try {
+        const res = await fetch("/api/messages/summary", { cache: "no-store" });
+        if (!res.ok) return;
+        const payload = (await res.json().catch(() => ({}))) as { unread?: number };
+        if (!active) return;
+        setUnreadMessages(Math.max(0, Number(payload.unread) || 0));
+      } catch {
+        if (!active) return;
+        setUnreadMessages(0);
+      }
+    }
+    load();
+    const interval = setInterval(load, 60_000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [session?.id]);
+
+  useEffect(() => {
+    function handleRead() {
+      setUnreadMessages(0);
+    }
+    window.addEventListener("treddit:messages-read", handleRead);
+    return () => window.removeEventListener("treddit:messages-read", handleRead);
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80 border-b border-border">
@@ -48,7 +79,7 @@ export default function NavbarClient({ session }: { session: SessionUser | null 
             <IconLink href="/anuncios" title={strings.navbar.ads}>
               <AdIcon />
             </IconLink>
-            <IconLink href="/mensajes" title={strings.navbar.messages}>
+            <IconLink href="/mensajes" title={strings.navbar.messages} badge={unreadMessages}>
               <ChatIcon />
             </IconLink>
             <div className="hidden sm:block h-6 w-px bg-border mx-1" />
@@ -99,7 +130,7 @@ export default function NavbarClient({ session }: { session: SessionUser | null 
                   />
                 </div>
 
-                <Link href={`/u/${session.username}`} className="relative inline-flex">
+                <Link href={`/u/${session.username}`} className="inline-flex">
                   <Image
                     alt="Usuario"
                     src={avatar}
@@ -108,17 +139,6 @@ export default function NavbarClient({ session }: { session: SessionUser | null 
                     className="size-9 rounded-full ring-1 ring-border object-cover"
                     unoptimized
                   />
-                  {!session.is_admin && !session.is_verified ? null : (
-                    <div className="absolute -bottom-1 -right-1">
-                      <UserBadges
-                        size="sm"
-                        isAdmin={session.is_admin}
-                        isVerified={session.is_verified}
-                        className="gap-0"
-                        labels={strings.badges}
-                      />
-                    </div>
-                  )}
                 </Link>
 
                 <form method="POST" action="/api/auth/logout">
@@ -148,13 +168,19 @@ function IconLink({
   href,
   title,
   children,
-}: React.PropsWithChildren<{ href: string; title: string }>) {
+  badge = 0,
+}: React.PropsWithChildren<{ href: string; title: string; badge?: number }>) {
   return (
     <Link
       href={href}
       title={title}
-      className="inline-grid place-items-center size-9 rounded-full hover:bg-muted/60 ring-1 ring-transparent hover:ring-border transition"
+      className="relative inline-grid place-items-center size-9 rounded-full hover:bg-muted/60 ring-1 ring-transparent hover:ring-border transition"
     >
+      {badge > 0 && (
+        <span className="absolute -top-1 -right-1 inline-flex min-h-[1.25rem] min-w-[1.25rem] items-center justify-center rounded-full bg-brand px-1 text-xs font-semibold text-white">
+          {badge > 99 ? "99+" : badge}
+        </span>
+      )}
       {children}
     </Link>
   );

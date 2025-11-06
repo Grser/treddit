@@ -7,7 +7,7 @@ import { useLocale } from "@/contexts/LocaleContext";
 import FollowButton from "./follow/FollowButton";
 import UserBadges from "./UserBadges";
 
-type Trend = { tag: string; count: number };
+type Trend = { tag: string; count: number; views?: number };
 type UserRec = {
   id: number;
   username: string;
@@ -60,7 +60,15 @@ export default function SidebarRight({
         <ul className="mt-2 space-y-2 text-sm">
           {trending.slice(0, 5).map((trend) => (
             <li key={trend.tag} className="truncate">
-              {trend.tag}
+              <a
+                href={`/buscar?q=${encodeURIComponent(trend.tag)}`}
+                className="flex flex-col rounded-lg border border-transparent px-2 py-1 transition hover:border-brand/60 hover:bg-brand/5"
+              >
+                <span className="font-semibold text-brand">{trend.tag}</span>
+                <span className="text-xs opacity-70">
+                  {Intl.NumberFormat().format(trend.views ?? trend.count)} visualizaciones · {trend.count} publicaciones
+                </span>
+              </a>
             </li>
           ))}
           {trending.length === 0 && <li className="opacity-60">{t.noTrends}</li>}
