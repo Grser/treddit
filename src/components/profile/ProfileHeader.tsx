@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { useLocale } from "@/contexts/LocaleContext";
@@ -47,7 +48,7 @@ export default function ProfileHeader({
   const followerLabel = useMemo(() => Math.max(0, followers), [followers]);
 
   return (
-    <section className="bg-surface">
+    <section className="bg-surface mt-4 sm:mt-6">
       {/* Banner */}
       <div className="relative h-48 w-full overflow-hidden bg-muted">
         {user.banner_url ? (
@@ -78,7 +79,7 @@ export default function ProfileHeader({
       </div>
 
       {/* Info */}
-      <div className="border-b border-border px-4 pb-4 pt-20 sm:px-6">
+      <div className="border-b border-border px-4 pb-4 pt-24 sm:px-6 sm:pt-28">
         <div className="flex justify-end gap-2">
           {!isOwner && (
             <>
@@ -129,12 +130,12 @@ export default function ProfileHeader({
         </div>
 
         <div className="mt-2 flex gap-4 text-sm">
-          <span>
+          <Link href={`/u/${user.username}/siguiendo`} className="hover:underline">
             <b>{stats.following}</b> Siguiendo
-          </span>
-          <span>
+          </Link>
+          <Link href={`/u/${user.username}/seguidores`} className="hover:underline">
             <b>{followerLabel}</b> Seguidores
-          </span>
+          </Link>
         </div>
       </div>
     </section>

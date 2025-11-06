@@ -6,6 +6,7 @@ import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import { db, isDatabaseConfigured } from "@/lib/db";
 import { getSessionUser, requireUser } from "@/lib/auth";
 import { createDemoPost, getDemoFeed } from "@/lib/demoStore";
+import { getPostsCommunityColumn } from "@/lib/communityColumns";
 
 type PostRow = {
   id: number;
@@ -45,6 +46,7 @@ export async function GET(req: Request) {
   const likesOf = Number(url.searchParams.get("likesOf") || 0);
   const filter = (url.searchParams.get("filter") || "").toLowerCase();
   const communityId = Number(url.searchParams.get("communityId") || 0);
+  const wantsCommunityFilter = communityId > 0;
   const usernameFilter = (url.searchParams.get("username") || "").trim();
   const tagRaw = (url.searchParams.get("tag") || "").trim();
   const normalizedTag = tagRaw
@@ -71,11 +73,6 @@ export async function GET(req: Request) {
     whereParams.push(userId);
   }
 
-  if (communityId > 0) {
-    whereParts.push("p.community_id = ?");
-    whereParams.push(communityId);
-  }
-
   if (usernameFilter) {
     whereParts.push("u.username LIKE ? ESCAPE '\\'");
     whereParams.push(`%${escapeLike(usernameFilter)}%`);
@@ -90,12 +87,10 @@ export async function GET(req: Request) {
     whereParams.push(`%${escapeLike(normalizedTag)}%`);
   }
 
-  const whereClause = whereParts.length ? `WHERE ${whereParts.join(" AND ")}` : "";
-
   const meId = me?.id ?? null;
 
   const shouldPrioritizeFollowed = Boolean(
-    meId && !userId && !likesOf && communityId <= 0 && !usernameFilter && !normalizedTag,
+    meId && !userId && !likesOf && !wantsCommunityFilter && !usernameFilter && !normalizedTag,
   );
 
   if (shouldPrioritizeFollowed) {
@@ -118,6 +113,26 @@ export async function GET(req: Request) {
     );
   }
 
+  const communityColumn = await getPostsCommunityColumn();
+  const hasCommunityColumn = Boolean(communityColumn);
+
+  if (wantsCommunityFilter) {
+    if (!hasCommunityColumn || !communityColumn) {
+      return NextResponse.json(
+        { items: [], nextCursor: null },
+        { headers: { "Cache-Control": "no-store" } }
+      );
+    }
+    whereParts.push(`p.${communityColumn} = ?`);
+    whereParams.push(communityId);
+  }
+
+  const whereClause = whereParts.length ? `WHERE ${whereParts.join(" AND ")}` : "";
+  const communityIdSelect = hasCommunityColumn && communityColumn ? `p.${communityColumn}` : "NULL";
+  const communityJoin = hasCommunityColumn && communityColumn ? `LEFT JOIN Communities c ON c.id = p.${communityColumn}` : "";
+  const communitySlugSelect = hasCommunityColumn ? "c.slug" : "NULL";
+  const communityNameSelect = hasCommunityColumn ? "c.name" : "NULL";
+
   try {
     const [rows] = await db.query<PostRow[]>(
       `
@@ -137,13 +152,13 @@ export async function GET(req: Request) {
         CASE WHEN ? IS NULL THEN 0 ELSE EXISTS(
           SELECT 1 FROM Reposts y WHERE y.post_id=p.id AND y.user_id=?
         ) END AS repostedByMe,
-        p.community_id,
-        c.slug AS community_slug,
-        c.name AS community_name
+        ${communityIdSelect} AS community_id,
+        ${communitySlugSelect} AS community_slug,
+        ${communityNameSelect} AS community_name
       FROM Posts p
       ${joins.join(" ")}
       JOIN Users u ON u.id = p.user
-      LEFT JOIN Communities c ON c.id = p.community_id
+      ${communityJoin}
       ${whereClause}
       ORDER BY ${shouldPrioritizeFollowed ? "CASE WHEN ff.follower IS NULL THEN 1 ELSE 0 END, p.id DESC" : "p.id DESC"}
       LIMIT ?
@@ -215,6 +230,8 @@ export async function POST(req: Request) {
   const communityIdRaw = typeof communityValue === "number" ? communityValue : Number(communityValue);
   const normalizedCommunityId = Number.isFinite(communityIdRaw) && communityIdRaw > 0 ? communityIdRaw : null;
 
+  const communityColumn = databaseReady ? await getPostsCommunityColumn() : "community_id";
+
   description = description.slice(0, 2000);
 
   type NormalizedPoll = { question: string; options: string[]; days: number } | null;
@@ -249,6 +266,9 @@ export async function POST(req: Request) {
   let communityId: number | null = null;
 
   if (normalizedCommunityId && databaseReady) {
+    if (!communityColumn) {
+      return NextResponse.json({ error: "La base de datos no admite comunidades" }, { status: 400 });
+    }
     try {
       const [rows] = await db.query<CommunityMembershipRow[]>(
         `
@@ -295,10 +315,18 @@ export async function POST(req: Request) {
   }
 
   try {
-    const [insertPost] = await db.execute<ResultSetHeader>(
-      "INSERT INTO Posts (user, description, created_at, reply_scope, community_id) VALUES (?, ?, NOW(), 0, ?)",
-      [me.id, description || null, communityId]
-    );
+    const columns = ["user", "description", "created_at", "reply_scope"];
+    const placeholders = ["?", "?", "NOW()", "?"];
+    const params: (number | string | null)[] = [me.id, description || null, 0];
+
+    if (communityColumn) {
+      columns.push(communityColumn);
+      placeholders.push("?");
+      params.push(communityId);
+    }
+
+    const insertSql = `INSERT INTO Posts (${columns.join(", ")}) VALUES (${placeholders.join(", ")})`;
+    const [insertPost] = await db.execute<ResultSetHeader>(insertSql, params);
     postId = insertPost.insertId;
 
     if (mediaUrl) {

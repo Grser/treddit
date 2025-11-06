@@ -1,38 +1,16 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-import type { RowDataPacket } from "mysql2";
-
 import { getSessionUser, requireUser } from "@/lib/auth";
-import { db, isDatabaseConfigured } from "@/lib/db";
+import { isDatabaseConfigured } from "@/lib/db";
 import { getDemoInbox, getDemoUnreadCount } from "@/lib/demoStore";
-
-type InboxRow = RowDataPacket & {
-  id: number;
-  text: string;
-  created_at: Date | string;
-};
+import { fetchConversationSummaries } from "@/lib/messages";
 
 type SummaryResponse = {
   unread: number;
   total: number;
   latest: string | null;
 };
-
-async function loadInboxSummary(userId: number): Promise<InboxRow[]> {
-  const [rows] = await db.query<InboxRow[]>(
-    `
-    SELECT c.id, c.text, c.created_at
-    FROM Comments c
-    JOIN Posts p ON p.id = c.post
-    WHERE p.user = ? AND c.user <> ?
-    ORDER BY c.created_at DESC
-    LIMIT 40
-    `,
-    [userId, userId],
-  );
-  return rows;
-}
 
 export async function GET() {
   const me = await getSessionUser();
@@ -45,10 +23,11 @@ export async function GET() {
 
   const cookieStore = cookies();
   const lastSeenValue = cookieStore.get("messages_last_seen")?.value;
-  const lastSeen = lastSeenValue ? Number(lastSeenValue) : 0;
+  const lastSeenRaw = lastSeenValue ? Number(lastSeenValue) : 0;
+  const lastSeen = Number.isFinite(lastSeenRaw) && lastSeenRaw > 0 ? lastSeenRaw : 0;
 
   if (!isDatabaseConfigured()) {
-    const entries = getDemoInbox(me.id);
+    const entries = getDemoInbox(me.id, lastSeen || undefined);
     const unread = getDemoUnreadCount(me.id, lastSeen || undefined);
     const latest = entries[0]?.created_at ?? null;
     return NextResponse.json<SummaryResponse>(
@@ -57,14 +36,12 @@ export async function GET() {
     );
   }
 
-  const rows = await loadInboxSummary(me.id);
-  const latestDate = rows[0]?.created_at ? new Date(rows[0].created_at).toISOString() : null;
-  const unread = lastSeen
-    ? rows.filter((row) => new Date(row.created_at).getTime() > lastSeen).length
-    : rows.length;
+  const summaries = await fetchConversationSummaries(me.id, { limit: 40, lastSeen });
+  const latestDate = summaries[0]?.createdAt ?? null;
+  const unread = summaries.reduce((acc, row) => acc + (Number.isFinite(row.unreadCount) ? row.unreadCount : 0), 0);
 
   return NextResponse.json<SummaryResponse>(
-    { unread, total: rows.length, latest: latestDate },
+    { unread, total: summaries.length, latest: latestDate },
     { headers: { "Cache-Control": "no-store" } },
   );
 }

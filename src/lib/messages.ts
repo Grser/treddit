@@ -77,6 +77,32 @@ type ConversationRow = RowDataPacket & {
 
 type InsertedMessageRow = ConversationRow;
 
+type ConversationSummaryRow = RowDataPacket & {
+  other_user_id: number;
+  username: string;
+  nickname: string | null;
+  avatar_url: string | null;
+  is_admin: number;
+  is_verified: number;
+  message: string;
+  created_at: Date | string;
+  sender_id: number;
+  unreadCount: number | null;
+};
+
+export type ConversationSummary = {
+  userId: number;
+  username: string;
+  nickname: string | null;
+  avatar_url: string | null;
+  is_admin: boolean;
+  is_verified: boolean;
+  lastMessage: string;
+  lastSenderId: number;
+  createdAt: string;
+  unreadCount: number;
+};
+
 export async function getAllowMessagesFromAnyone(userId: number): Promise<boolean> {
   if (!isDatabaseConfigured()) return false;
   await ensureMessageTables();
@@ -162,6 +188,64 @@ export async function fetchConversationMessages(
       is_verified: Boolean(row.is_verified),
     },
     attachments: [],
+  }));
+}
+
+export async function fetchConversationSummaries(
+  userId: number,
+  options: { limit?: number; lastSeen?: number } = {},
+): Promise<ConversationSummary[]> {
+  if (!isDatabaseConfigured()) {
+    return [];
+  }
+  await ensureMessageTables();
+  const limit = Math.max(1, Math.min(options.limit ?? 40, 200));
+  const lastSeen = Number.isFinite(options.lastSeen) && (options.lastSeen ?? 0) > 0 ? Number(options.lastSeen) : 0;
+
+  const [rows] = await db.query<ConversationSummaryRow[]>(
+    `
+    SELECT
+      other.id AS other_user_id,
+      other.username,
+      other.nickname,
+      other.avatar_url,
+      other.is_admin,
+      other.is_verified,
+      dm.message,
+      dm.created_at,
+      dm.sender_id,
+      (
+        SELECT COUNT(*)
+        FROM Direct_Messages unread
+        WHERE unread.sender_id = other.id
+          AND unread.recipient_id = ?
+          AND unread.created_at > FROM_UNIXTIME(? / 1000)
+      ) AS unreadCount
+    FROM (
+      SELECT MAX(id) AS id
+      FROM Direct_Messages
+      WHERE sender_id = ? OR recipient_id = ?
+      GROUP BY LEAST(sender_id, recipient_id), GREATEST(sender_id, recipient_id)
+    ) latest
+    JOIN Direct_Messages dm ON dm.id = latest.id
+    JOIN Users other ON other.id = CASE WHEN dm.sender_id = ? THEN dm.recipient_id ELSE dm.sender_id END
+    ORDER BY dm.created_at DESC
+    LIMIT ?
+    `,
+    [userId, lastSeen, userId, userId, userId, userId, limit],
+  );
+
+  return rows.map((row) => ({
+    userId: Number(row.other_user_id),
+    username: String(row.username),
+    nickname: row.nickname ? String(row.nickname) : null,
+    avatar_url: row.avatar_url ? String(row.avatar_url) : null,
+    is_admin: Boolean(row.is_admin),
+    is_verified: Boolean(row.is_verified),
+    lastMessage: String(row.message ?? ""),
+    lastSenderId: Number(row.sender_id),
+    createdAt: new Date(row.created_at).toISOString(),
+    unreadCount: Number(row.unreadCount ?? 0),
   }));
 }
 
