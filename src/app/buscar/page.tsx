@@ -165,7 +165,7 @@ async function findPosts(like: string, term: string): Promise<SearchPost[]> {
     SELECT p.id, p.description, p.created_at, u.username, u.nickname
     FROM Posts p
     JOIN Users u ON u.id = p.user
-    WHERE (p.description LIKE ? ESCAPE '\\' OR u.username LIKE ? ESCAPE '\\')
+    WHERE (p.description LIKE ? OR u.username LIKE ?)
     ORDER BY p.created_at DESC
     LIMIT 30
     `,
@@ -193,7 +193,7 @@ async function findUsers(like: string, term: string): Promise<SearchUser[]> {
     `
     SELECT u.id, u.username, u.nickname, u.avatar_url
     FROM Users u
-    WHERE u.visible = 1 AND (u.username LIKE ? ESCAPE '\\' OR u.nickname LIKE ? ESCAPE '\\')
+    WHERE u.visible = 1 AND (u.username LIKE ? OR u.nickname LIKE ?)
     ORDER BY u.username ASC
     LIMIT 40
     `,
