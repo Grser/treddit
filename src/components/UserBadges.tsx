@@ -19,14 +19,16 @@ export default function UserBadges({
   labels,
 }: UserBadgesProps) {
   if (!isVerified && !isAdmin) return null;
-  const iconClass = size === "sm" ? "h-2.5 w-2.5" : "h-3.5 w-3.5";
-  const wrapClass = size === "sm" ? "h-4 w-4" : "h-6 w-6";
+  const wrapper = size === "sm" ? "h-5 w-5" : "h-6 w-6";
+  const iconClass = size === "sm" ? "h-3 w-3" : "h-3.5 w-3.5";
+  const base = `inline-flex items-center justify-center rounded-full ${wrapper}`;
+  const container = `inline-flex items-center gap-1 align-middle ${className}`;
 
   return (
-    <span className={`inline-flex items-center gap-1 ${className}`}>
+    <span className={container}>
       {isVerified && (
         <span
-          className={`inline-flex items-center justify-center rounded-full bg-blue-500/90 text-white ${wrapClass}`}
+          className={`${base} bg-blue-500 text-white`}
           title={labels?.verified || "Verified profile"}
           aria-label={labels?.verified || "Verified profile"}
         >
@@ -35,7 +37,7 @@ export default function UserBadges({
       )}
       {isAdmin && (
         <span
-          className={`inline-flex items-center justify-center text-amber-400 ${wrapClass}`}
+          className={`${base} bg-amber-400/20 text-amber-500`}
           title={labels?.admin || "Administrator"}
           aria-label={labels?.admin || "Administrator"}
         >

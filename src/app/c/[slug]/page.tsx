@@ -1,3 +1,5 @@
+import type { RowDataPacket } from "mysql2";
+
 import JoinCommunityButton from "@/components/community/JoinCommunityButton";
 import Navbar from "@/components/Navbar";
 import Feed from "@/components/Feed";
@@ -37,6 +39,25 @@ type FeedResponse = { items: PostCardType[] };
 type CommunityViewModel = Community & {
   moderators: Moderator[];
   initialPosts: PostCardType[];
+};
+
+type CommunityRow = RowDataPacket & {
+  id: number;
+  slug: string;
+  name: string;
+  description: string | null;
+  created_at: Date | string;
+  visible: number;
+  members: number;
+  isMember: number;
+  myRole: string | null;
+};
+
+type ModeratorRow = RowDataPacket & {
+  id: number;
+  username: string;
+  nickname: string | null;
+  role: string | null;
 };
 
 function formatRole(role: string | null) {
@@ -175,7 +196,7 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
 
 async function loadCommunity(slug: string, viewerId: number | null): Promise<CommunityViewModel | null> {
   const normalized = slug.toLowerCase();
-  const [rows] = await db.query(
+  const [rows] = await db.query<CommunityRow[]>(
     `
     SELECT
       c.id,
@@ -200,22 +221,22 @@ async function loadCommunity(slug: string, viewerId: number | null): Promise<Com
     [viewerId, viewerId, viewerId, normalized]
   );
 
-  const row = (rows as any[])[0];
+  const row = rows[0];
   if (!row) return null;
 
   const community: Community = {
-    id: row.id,
-    slug: row.slug,
-    name: row.name,
-    description: row.description,
+    id: Number(row.id),
+    slug: String(row.slug),
+    name: String(row.name),
+    description: row.description ? String(row.description) : null,
     created_at: new Date(row.created_at).toISOString(),
     members: Number(row.members) || 0,
     visible: Boolean(row.visible),
     isMember: Boolean(row.isMember),
-    myRole: row.myRole || null,
+    myRole: row.myRole ? String(row.myRole) : null,
   };
 
-  const [modsRows] = await db.query(
+  const [modsRows] = await db.query<ModeratorRow[]>(
     `
     SELECT u.id, u.username, u.nickname, cm.role
     FROM Community_Members cm
@@ -227,11 +248,11 @@ async function loadCommunity(slug: string, viewerId: number | null): Promise<Com
     [community.id]
   );
 
-  const moderators = (modsRows as any[]).map((row) => ({
-    id: row.id as number,
-    username: row.username as string,
-    nickname: row.nickname as string | null,
-    role: row.role as string | null,
+  const moderators = modsRows.map((mod) => ({
+    id: Number(mod.id),
+    username: String(mod.username),
+    nickname: mod.nickname ? String(mod.nickname) : null,
+    role: mod.role ? String(mod.role) : null,
   }));
 
   const feed = await getCommunityFeed(community.id);

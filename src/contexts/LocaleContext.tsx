@@ -39,6 +39,12 @@ export type LocaleStrings = {
     addOption: string;
     removeOption: string;
     pollDuration: string;
+    communityLabel: string;
+    communityDefault: string;
+    communityEmpty: string;
+    communityLoading: string;
+    communityHint: string;
+    communityLoadFailed: string;
     errors: {
       needContent: string;
       uploadFailed: string;
@@ -265,6 +271,12 @@ const translations: Record<Locale, LocaleStrings> = {
       addOption: "Añadir opción",
       removeOption: "Quitar opción",
       pollDuration: "Duración (días)",
+      communityLabel: "Publicar en",
+      communityDefault: "Mi perfil",
+      communityEmpty: "No administras ninguna comunidad",
+      communityLoading: "Cargando comunidades…",
+      communityHint: "Comparte tus publicaciones directamente en una de tus comunidades.",
+      communityLoadFailed: "No se pudieron cargar tus comunidades.",
       errors: {
         needContent: "Escribe algo para publicar.",
         uploadFailed: "No se pudo subir el archivo",
@@ -527,6 +539,12 @@ const translations: Record<Locale, LocaleStrings> = {
       addOption: "Add option",
       removeOption: "Remove option",
       pollDuration: "Duration (days)",
+      communityLabel: "Share to",
+      communityDefault: "My profile",
+      communityEmpty: "You don't manage any communities",
+      communityLoading: "Loading communities…",
+      communityHint: "Publish directly to one of the communities you moderate.",
+      communityLoadFailed: "We couldn't load your communities.",
       errors: {
         needContent: "Write something before posting.",
         uploadFailed: "File upload failed",
@@ -788,6 +806,12 @@ const translations: Record<Locale, LocaleStrings> = {
       addOption: "Добавить вариант",
       removeOption: "Удалить вариант",
       pollDuration: "Длительность (дни)",
+      communityLabel: "Опубликовать в",
+      communityDefault: "Мой профиль",
+      communityEmpty: "Вы не управляете сообществами",
+      communityLoading: "Загрузка сообществ…",
+      communityHint: "Поделитесь записью напрямую в одном из ваших сообществ.",
+      communityLoadFailed: "Не удалось загрузить ваши сообщества.",
       errors: {
         needContent: "Напишите что-нибудь перед публикацией.",
         uploadFailed: "Не удалось загрузить файл",

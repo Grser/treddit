@@ -29,6 +29,7 @@ export type Post = {
   isAdminViewer?: boolean;
   is_admin?: boolean;
   is_verified?: boolean;
+  community?: { id: number; slug: string; name: string } | null;
 };
 
 export default function PostCard({
@@ -45,6 +46,7 @@ export default function PostCard({
   const repostedByMe = Boolean(post.repostedByMe);
   const displayName = post.nickname?.trim() || post.username;
   const pinnedLabel = strings.profilePage?.pinnedBadge || strings.postCard.pinned;
+  const community = post.community;
 
   return (
     <article className="bg-surface text-foreground rounded-xl border border-border p-4">
@@ -97,6 +99,18 @@ export default function PostCard({
                 <a href={`/p/${post.id}`} className="hover:underline">
                   {new Date(post.created_at).toLocaleString()}
                 </a>
+                {community && (
+                  <>
+                    <span aria-hidden="true"> · </span>
+                    <a
+                      href={`/c/${community.slug}`}
+                      className="hover:underline"
+                      title={community.name}
+                    >
+                      {community.name}
+                    </a>
+                  </>
+                )}
               </p>
             </div>
 

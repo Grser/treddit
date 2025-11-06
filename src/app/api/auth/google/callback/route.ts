@@ -1,3 +1,5 @@
+import type { ResultSetHeader, RowDataPacket } from "mysql2";
+
 import { NextResponse, type NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import { db } from "@/lib/db";
@@ -30,6 +32,17 @@ type GoogleUserInfo = {
   given_name?: string;
   family_name?: string;
 };
+
+type UserRecord = {
+  id: number;
+  username: string;
+  email: string;
+  avatar_url: string | null;
+  is_admin: number;
+  is_verified: number;
+};
+
+type UserRow = RowDataPacket & UserRecord;
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
@@ -92,18 +105,18 @@ export async function GET(req: NextRequest) {
   const info = (await userRes.json()) as GoogleUserInfo;
 
   // Upsert en Users
-  const [bySub] = await db.execute(
+  const [bySub] = await db.execute<UserRow[]>(
     "SELECT id, username, email, avatar_url, is_admin, is_verified FROM Users WHERE google_sub=? LIMIT 1",
     [info.sub]
   );
-  let user = (bySub as any[])[0];
+  let user: UserRecord | undefined = bySub[0];
 
   if (!user && info.email) {
-    const [byEmail] = await db.execute(
+    const [byEmail] = await db.execute<UserRow[]>(
       "SELECT id, username, email, avatar_url, is_admin, is_verified FROM Users WHERE email=? LIMIT 1",
       [info.email]
     );
-    user = (byEmail as any[])[0];
+    user = byEmail[0];
     if (user) {
       await db.execute(
         "UPDATE Users SET google_sub=?, avatar_url=? WHERE id=?",
@@ -118,7 +131,7 @@ export async function GET(req: NextRequest) {
       .replace(/[^a-zA-Z0-9_]/g, "");
     const username = await findFreeUsername(baseUsername);
 
-    const [ins] = await db.execute(
+    const [ins] = await db.execute<ResultSetHeader>(
       "INSERT INTO Users (username, nickname, email, password, google_sub, avatar_url, created_at, visible) VALUES (?, ?, ?, ?, ?, ?, NOW(), 1)",
       [
         username,
@@ -130,7 +143,7 @@ export async function GET(req: NextRequest) {
         info.picture ?? null,
       ]
     );
-    const newId = (ins as any).insertId as number;
+    const newId = Number(ins.insertId);
     user = {
       id: newId,
       username,
@@ -139,6 +152,10 @@ export async function GET(req: NextRequest) {
       is_admin: 0,
       is_verified: 0,
     };
+  }
+
+  if (!user) {
+    throw new Error("USER_CREATION_FAILED");
   }
 
   // Crear sesión
@@ -171,11 +188,11 @@ async function findFreeUsername(base: string) {
   let candidate = base.toLowerCase().slice(0, 32) || "usuario";
   let i = 0;
   for (;;) {
-    const [rows] = await db.execute(
+    const [rows] = await db.execute<RowDataPacket[]>(
       "SELECT 1 FROM Users WHERE username=? LIMIT 1",
       [candidate]
     );
-    if ((rows as any[]).length === 0) return candidate;
+    if (rows.length === 0) return candidate;
     i += 1;
     candidate = (base + i).toLowerCase().slice(0, 32);
   }

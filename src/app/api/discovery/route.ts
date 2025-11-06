@@ -1,7 +1,32 @@
 // src/app/api/discovery/route.ts
+import type { RowDataPacket } from "mysql2";
+
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
+
+type DiscoveryUserRow = RowDataPacket & {
+  id: number;
+  username: string;
+  nickname: string | null;
+  avatar_url: string | null;
+  is_admin: number;
+  is_verified: number;
+};
+
+type DiscoveryUser = {
+  id: number;
+  username: string;
+  nickname: string | null;
+  avatar_url: string | null;
+  is_admin: boolean;
+  is_verified: boolean;
+};
+
+type DiscoveryPostRow = RowDataPacket & {
+  id: number;
+  description: string | null;
+};
 
 // extrae hashtags tipo #algo
 function extractHashtags(text?: string | null) {
@@ -14,7 +39,7 @@ export async function GET() {
   const me = await getSessionUser();
 
   // recomendados: visibles, distintos a mí y que no sigo
-  const [users] = await db.query(
+  const [users] = await db.query<DiscoveryUserRow[]>(
     `
     SELECT u.id, u.username, u.nickname, u.avatar_url, u.is_admin, u.is_verified
     FROM Users u
@@ -28,7 +53,7 @@ export async function GET() {
   );
 
   // hashtags desde posts recientes
-  const [posts] = await db.query(
+  const [posts] = await db.query<DiscoveryPostRow[]>(
     `
     SELECT p.id, p.description
     FROM Posts p
@@ -38,11 +63,20 @@ export async function GET() {
   );
 
   const freq = new Map<string, number>();
-  (posts as any[]).forEach((p) => {
-    extractHashtags(p.description).forEach((tag) => {
+  posts.forEach((p) => {
+    extractHashtags(p.description ?? undefined).forEach((tag) => {
       freq.set(tag, (freq.get(tag) || 0) + 1);
     });
   });
+
+  const recommendedUsers: DiscoveryUser[] = users.map((row) => ({
+    id: Number(row.id),
+    username: String(row.username),
+    nickname: row.nickname ? String(row.nickname) : null,
+    avatar_url: row.avatar_url ? String(row.avatar_url) : null,
+    is_admin: Boolean(row.is_admin),
+    is_verified: Boolean(row.is_verified),
+  }));
 
   const trendingTags = [...freq.entries()]
     .sort((a, b) => b[1] - a[1])
@@ -50,7 +84,7 @@ export async function GET() {
     .map(([tag, count]) => ({ tag, count }));
 
   return NextResponse.json({
-    recommendedUsers: users,
+    recommendedUsers,
     trendingTags,
   });
 }

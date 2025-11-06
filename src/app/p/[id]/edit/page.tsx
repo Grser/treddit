@@ -1,22 +1,33 @@
 // src/app/p/[id]/edit/page.tsx
+import type { RowDataPacket } from "mysql2";
+
 import Navbar from "@/components/Navbar";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
+
+type PostRow = RowDataPacket & {
+  id: number;
+  user: number;
+  description: string | null;
+  reply_scope: number;
+};
+
+type AdminFlagRow = RowDataPacket & { is_admin: number };
 
 export default async function EditPostPage({ params }: { params: { id: string } }) {
   const me = await requireUser();
   const id = Number(params.id);
 
-  const [rows] = await db.query(
+  const [rows] = await db.query<PostRow[]>(
     "SELECT p.id, p.user, p.description, p.reply_scope FROM Posts p WHERE p.id=? LIMIT 1",
     [id]
   );
-  const post = (rows as any[])[0];
+  const post = rows[0];
   if (!post) return <div className="p-6">Post no encontrado</div>;
 
-  const [r] = await db.query("SELECT is_admin FROM Users WHERE id=?", [me.id]);
-  const isAdmin = !!(r as any[])[0]?.is_admin;
-  if (post.user !== me.id && !isAdmin) return <div className="p-6">No autorizado</div>;
+  const [r] = await db.query<AdminFlagRow[]>("SELECT is_admin FROM Users WHERE id=?", [me.id]);
+  const isAdmin = Boolean(r[0]?.is_admin);
+  if (Number(post.user) !== me.id && !isAdmin) return <div className="p-6">No autorizado</div>;
 
   return (
     <div className="min-h-dvh">
@@ -29,7 +40,8 @@ export default async function EditPostPage({ params }: { params: { id: string } 
           reply_scope: Number(form.get("reply_scope") || 0),
         };
         const res = await fetch(`/api/posts/${id}`, {
-          method: "PATCH", headers: {"Content-Type":"application/json"},
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
         });
         if (res.ok) location.href = `/p/${id}`;

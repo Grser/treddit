@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 
+import { useLocale } from "@/contexts/LocaleContext";
+
 import FollowButton from "@/components/follow/FollowButton";
 import UserBadges from "@/components/UserBadges";
 
@@ -26,12 +28,17 @@ export default function ProfileHeader({
   stats,
   viewerId,
   initiallyFollowing = false,
+  canMessage = false,
+  messageHref = null,
 }: {
   viewerId?: number | null;
   user: ProfileUser;
   stats: ProfileStats;
   initiallyFollowing?: boolean;
+  canMessage?: boolean;
+  messageHref?: string | null;
 }) {
+  const { strings } = useLocale();
   const isOwner = viewerId === user.id;
   const avatar = user?.avatar_url?.trim() || "/demo-reddit.png";
   const displayName = user?.nickname?.trim() || user.username;
@@ -59,15 +66,25 @@ export default function ProfileHeader({
       <div className="border-b border-border px-4 pb-4 pt-20 sm:px-6">
         <div className="flex justify-end gap-2">
           {!isOwner && (
-            <FollowButton
-              userId={user.id}
-              canInteract={Boolean(viewerId)}
-              initiallyFollowing={initiallyFollowing}
-              variant="outline"
-              onFollowChange={(value) => {
-                setFollowers((prev) => Math.max(0, prev + (value ? 1 : -1)));
-              }}
-            />
+            <>
+              {canMessage && messageHref && (
+                <a
+                  href={messageHref}
+                  className="h-9 rounded-full border border-border px-4 text-sm hover:bg-muted/60"
+                >
+                  {strings.navbar.messages}
+                </a>
+              )}
+              <FollowButton
+                userId={user.id}
+                canInteract={Boolean(viewerId)}
+                initiallyFollowing={initiallyFollowing}
+                variant="outline"
+                onFollowChange={(value) => {
+                  setFollowers((prev) => Math.max(0, prev + (value ? 1 : -1)));
+                }}
+              />
+            </>
           )}
           {isOwner && (
             <a

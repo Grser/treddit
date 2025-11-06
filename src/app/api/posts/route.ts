@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
-import type { ResultSetHeader } from "mysql2";
+import type { ResultSetHeader, RowDataPacket } from "mysql2";
 
 import { db, isDatabaseConfigured } from "@/lib/db";
 import { getSessionUser, requireUser } from "@/lib/auth";
@@ -25,6 +25,15 @@ type PostRow = {
   hasPoll: number;
   likedByMe: number;
   repostedByMe: number;
+  community_id: number | null;
+  community_slug: string | null;
+  community_name: string | null;
+};
+
+type CommunityMembershipRow = RowDataPacket & {
+  id: number;
+  visible: number;
+  isMember: number;
 };
 
 export async function GET(req: Request) {
@@ -120,6 +129,7 @@ export async function GET(req: Request) {
       ...item,
       isOwner: meId ? item.user === meId : false,
       isAdminViewer: Boolean(me?.is_admin),
+      community: null,
     }));
     return NextResponse.json(
       { items: normalized, nextCursor: null },
@@ -149,10 +159,14 @@ export async function GET(req: Request) {
         ) END AS likedByMe,
         CASE WHEN ? IS NULL THEN 0 ELSE EXISTS(
           SELECT 1 FROM Reposts y WHERE y.post_id=p.id AND y.user_id=?
-        ) END AS repostedByMe
+        ) END AS repostedByMe,
+        p.community_id,
+        c.slug AS community_slug,
+        c.name AS community_name
       FROM Posts p
       ${joins.join(" ")}
       JOIN Users u ON u.id = p.user
+      LEFT JOIN Communities c ON c.id = p.community_id
       ${whereClause}
       ORDER BY ${shouldPrioritizeFollowed ? "CASE WHEN ff.follower IS NULL THEN 1 ELSE 0 END, p.id DESC" : "p.id DESC"}
       LIMIT ?
@@ -172,6 +186,14 @@ export async function GET(req: Request) {
       reply_scope: Number(row.reply_scope ?? 0),
       isOwner: meId ? Number(row.user) === meId : false,
       isAdminViewer: Boolean(me?.is_admin),
+      community:
+        row.community_id && row.community_slug
+          ? {
+              id: Number(row.community_id),
+              slug: String(row.community_slug),
+              name: row.community_name ? String(row.community_name) : String(row.community_slug),
+            }
+          : null,
     }));
     const nextCursor = list.length > limit ? String(items[items.length - 1].id) : null;
 
@@ -212,6 +234,9 @@ export async function POST(req: Request) {
   const mediaUrlValue = body["mediaUrl"];
   const mediaUrl = typeof mediaUrlValue === "string" ? mediaUrlValue.trim() : "";
   const pollPayload = body["poll"];
+  const communityValue = body["communityId"];
+  const communityIdRaw = typeof communityValue === "number" ? communityValue : Number(communityValue);
+  const normalizedCommunityId = Number.isFinite(communityIdRaw) && communityIdRaw > 0 ? communityIdRaw : null;
 
   description = description.slice(0, 2000);
 
@@ -244,11 +269,46 @@ export async function POST(req: Request) {
 
   let postId: number | null = null;
   let pollId: number | null = null;
+  let communityId: number | null = null;
+
+  if (normalizedCommunityId) {
+    try {
+      const [rows] = await db.query<CommunityMembershipRow[]>(
+        `
+        SELECT c.id, c.visible,
+               EXISTS(
+                 SELECT 1 FROM Community_Members cm WHERE cm.community_id = c.id AND cm.user_id = ?
+               ) AS isMember
+        FROM Communities c
+        WHERE c.id = ?
+        LIMIT 1
+        `,
+        [me.id, normalizedCommunityId],
+      );
+      const row = rows[0];
+      if (!row) {
+        return NextResponse.json({ error: "La comunidad no existe" }, { status: 404 });
+      }
+      const isMember = Boolean(row.isMember);
+      const isAdmin = Boolean(me.is_admin);
+      const isVisible = Boolean(row.visible);
+      if (!isMember && !isAdmin) {
+        return NextResponse.json({ error: "No puedes publicar en esta comunidad" }, { status: 403 });
+      }
+      if (!isVisible && !isMember && !isAdmin) {
+        return NextResponse.json({ error: "No puedes publicar en esta comunidad" }, { status: 403 });
+      }
+      communityId = Number(row.id);
+    } catch (error) {
+      console.error("Failed to verify community", error);
+      return NextResponse.json({ error: "No se pudo validar la comunidad" }, { status: 500 });
+    }
+  }
 
   try {
     const [insertPost] = await db.execute<ResultSetHeader>(
-      "INSERT INTO Posts (user, description, created_at, reply_scope) VALUES (?, ?, NOW(), 0)",
-      [me.id, description || null]
+      "INSERT INTO Posts (user, description, created_at, reply_scope, community_id) VALUES (?, ?, NOW(), 0, ?)",
+      [me.id, description || null, communityId]
     );
     postId = insertPost.insertId;
 

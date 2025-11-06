@@ -53,9 +53,13 @@ export default function FollowButton({
       }
       if (!res.ok) {
         const payload = await res.json().catch(() => ({}));
-        throw new Error(
-          payload.error || (following ? t.unfollowError : t.followError),
-        );
+        const message =
+          typeof payload.error === "string"
+            ? payload.error
+            : following
+            ? t.unfollowError
+            : t.followError;
+        throw new Error(message);
       }
       const next = !following;
       setFollowing(next);

@@ -1,17 +1,32 @@
+import type { RowDataPacket } from "mysql2";
+
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getAllowMessagesFromAnyone } from "@/lib/messages";
 import Navbar from "@/components/Navbar";
 import ImagePickerField from "@/components/profile/ImagePickerField";
+
+type ProfileRow = RowDataPacket & {
+  nickname: string | null;
+  avatar_url: string | null;
+  banner_url: string | null;
+  description: string | null;
+  location: string | null;
+  website: string | null;
+  show_likes: number;
+  show_bookmarks: number;
+};
 
 export default async function EditProfilePage({ params }: { params: { username: string } }) {
   const me = await requireUser();
   if (!me || me.username !== params.username) return <div className="p-6">No autorizado</div>;
 
-  const [rows] = await db.query(
+  const [rows] = await db.query<ProfileRow[]>(
     "SELECT nickname, avatar_url, banner_url, description, location, website, show_likes, show_bookmarks FROM Users WHERE id=? LIMIT 1",
     [me.id]
   );
-  const u = (rows as any[])[0];
+  const u = rows[0];
+  const allowMessages = await getAllowMessagesFromAnyone(me.id);
 
   return (
     <div className="min-h-dvh">
@@ -52,7 +67,7 @@ export default async function EditProfilePage({ params }: { params: { username: 
             <input name="website" defaultValue={u.website || ""} className="w-full bg-input rounded-md h-10 px-3 ring-1 ring-border outline-none" />
           </label>
         </div>
-        <div className="flex gap-6 text-sm">
+        <div className="flex flex-wrap gap-6 text-sm">
           <label className="inline-flex items-center gap-2">
             <input type="checkbox" name="show_likes" defaultChecked={!!u.show_likes} />
             Mostrar Me gusta
@@ -60,6 +75,10 @@ export default async function EditProfilePage({ params }: { params: { username: 
           <label className="inline-flex items-center gap-2">
             <input type="checkbox" name="show_bookmarks" defaultChecked={!!u.show_bookmarks} />
             Mostrar Guardados
+          </label>
+          <label className="inline-flex items-center gap-2">
+            <input type="checkbox" name="allow_messages_anyone" defaultChecked={allowMessages} />
+            Aceptar mensajes de terceros
           </label>
         </div>
         <div className="flex gap-2">
