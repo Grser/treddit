@@ -35,38 +35,76 @@ export async function GET(req: Request) {
   const userId = Number(url.searchParams.get("userId") || 0);
   const likesOf = Number(url.searchParams.get("likesOf") || 0);
   const filter = (url.searchParams.get("filter") || "").toLowerCase();
-  const params: number[] = [];
+  const communityId = Number(url.searchParams.get("communityId") || 0);
+  const usernameFilter = (url.searchParams.get("username") || "").trim();
+  const tagRaw = (url.searchParams.get("tag") || "").trim();
+  const normalizedTag = tagRaw
+    ? (tagRaw.startsWith("#") ? tagRaw : `#${tagRaw}`).toLowerCase()
+    : "";
+  const joinParams: (number | string)[] = [];
+  const whereParams: (number | string)[] = [];
   const joins: string[] = [];
   const whereParts: string[] = [];
 
   if (likesOf > 0) {
     joins.push("JOIN Like_Posts lpFilter ON lpFilter.post = p.id AND lpFilter.user = ?");
-    params.push(likesOf);
+    joinParams.push(likesOf);
   }
 
   const cursorValue = Number(cursor);
   if (cursor && !Number.isNaN(cursorValue)) {
     whereParts.push("p.id < ?");
-    params.push(cursorValue);
+    whereParams.push(cursorValue);
   }
 
   if (userId > 0) {
     whereParts.push("p.user = ?");
-    params.push(userId);
+    whereParams.push(userId);
+  }
+
+  if (communityId > 0) {
+    whereParts.push("p.community_id = ?");
+    whereParams.push(communityId);
+  }
+
+  if (usernameFilter) {
+    whereParts.push("u.username LIKE ? ESCAPE '\\'");
+    whereParams.push(`%${escapeLike(usernameFilter)}%`);
   }
 
   if (filter === "media") {
     whereParts.push("EXISTS(SELECT 1 FROM Files f WHERE f.postid = p.id)");
   }
 
+  if (normalizedTag) {
+    whereParts.push("LOWER(p.description) LIKE ? ESCAPE '\\'");
+    whereParams.push(`%${escapeLike(normalizedTag)}%`);
+  }
+
   const whereClause = whereParts.length ? `WHERE ${whereParts.join(" AND ")}` : "";
 
   const meId = me?.id ?? null;
+
+  const shouldPrioritizeFollowed = Boolean(
+    meId && !userId && !likesOf && communityId <= 0 && !usernameFilter && !normalizedTag,
+  );
+
+  if (shouldPrioritizeFollowed) {
+    joins.push("LEFT JOIN Follows ff ON ff.followed = p.user AND ff.follower = ?");
+    joinParams.push(meId);
+  }
 
   const fallback = () => {
     let items = getDemoPosts(limit);
     if (userId > 0) {
       items = items.filter((item) => item.user === userId);
+    }
+    if (communityId > 0) {
+      items = [];
+    }
+    if (usernameFilter) {
+      const needle = usernameFilter.toLowerCase();
+      items = items.filter((item) => item.username.toLowerCase().includes(needle));
     }
     if (likesOf > 0) {
       // sin base de datos no hay likes reales, devolvemos vacío
@@ -74,6 +112,9 @@ export async function GET(req: Request) {
     }
     if (filter === "media") {
       items = items.filter((item) => Boolean(item.mediaUrl));
+    }
+    if (normalizedTag) {
+      items = items.filter((item) => item.description?.toLowerCase().includes(normalizedTag));
     }
     const normalized = items.slice(0, limit).map((item) => ({
       ...item,
@@ -113,10 +154,10 @@ export async function GET(req: Request) {
       ${joins.join(" ")}
       JOIN Users u ON u.id = p.user
       ${whereClause}
-      ORDER BY p.id DESC
+      ORDER BY ${shouldPrioritizeFollowed ? "CASE WHEN ff.follower IS NULL THEN 1 ELSE 0 END, p.id DESC" : "p.id DESC"}
       LIMIT ?
       `,
-      [meId, meId, meId, meId, ...params, limit + 1]
+      [meId, meId, meId, meId, ...joinParams, ...whereParams, limit + 1]
     );
 
     const list = rows;
@@ -141,6 +182,10 @@ export async function GET(req: Request) {
     console.error("Failed to load posts from database", error);
     return fallback();
   }
+}
+
+function escapeLike(value: string) {
+  return value.replace(/[\\%_]/g, (char) => `\\${char}`);
 }
 
 export async function POST(req: Request) {

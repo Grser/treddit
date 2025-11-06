@@ -1,6 +1,9 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
+
 import { useLocale } from "@/contexts/LocaleContext";
+import FollowButton from "./follow/FollowButton";
 import UserBadges from "./UserBadges";
 
 type Trend = { tag: string; count: number };
@@ -25,6 +28,24 @@ export default function SidebarRight({
   const { strings } = useLocale();
   const t = strings.sidebarRight;
   const badges = strings.badges;
+  const [suggestions, setSuggestions] = useState(recommended);
+  const originalById = useMemo(() => new Map(recommended.map((user) => [user.id, user])), [recommended]);
+
+  useEffect(() => {
+    setSuggestions(recommended);
+  }, [recommended]);
+
+  function handleFollowChange(userId: number, following: boolean) {
+    setSuggestions((prev) => {
+      if (following) {
+        return prev.filter((item) => item.id !== userId);
+      }
+      const original = originalById.get(userId);
+      if (!original) return prev;
+      const filtered = prev.filter((item) => item.id !== userId);
+      return [original, ...filtered];
+    });
+  }
 
   return (
     <aside className="w-80 hidden lg:flex flex-col gap-4 p-4 border-l border-border">
@@ -54,7 +75,7 @@ export default function SidebarRight({
         </div>
 
         <ul className="mt-3 space-y-3">
-          {recommended.slice(0, 6).map((user) => (
+          {suggestions.slice(0, 6).map((user) => (
             <li key={user.id} className="flex items-center justify-between gap-3">
               <a
                 href={`/u/${user.username}`}
@@ -82,53 +103,20 @@ export default function SidebarRight({
                 </div>
               </a>
 
-              <FollowButton userId={user.id} canInteract={canInteract} />
+              <FollowButton
+                userId={user.id}
+                canInteract={canInteract}
+                size="sm"
+                onFollowChange={(value) => handleFollowChange(user.id, value)}
+              />
             </li>
           ))}
 
-          {recommended.length === 0 && (
+          {suggestions.length === 0 && (
             <li className="opacity-60 text-sm">{t.noSuggestions}</li>
           )}
         </ul>
       </div>
     </aside>
-  );
-}
-
-function FollowButton({ userId, canInteract }: { userId: number; canInteract: boolean }) {
-  const { strings } = useLocale();
-  const t = strings.sidebarRight;
-
-  async function follow() {
-    if (!canInteract) {
-      location.assign("/auth/login");
-      return;
-    }
-    const res = await fetch("/api/follows", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId }),
-    });
-    if (res.status === 401) {
-      location.assign("/auth/login");
-      return;
-    }
-    if (!res.ok) {
-      const j = await res.json().catch(() => ({}));
-      alert(j.error || t.followError);
-      return;
-    }
-    (document.activeElement as HTMLButtonElement | null)?.blur();
-  }
-
-  return (
-    <button
-      onClick={follow}
-      className="h-8 px-3 rounded-full text-sm text-blue-400 ring-1 ring-transparent hover:ring-blue-400/40"
-      title={t.followTitle}
-      type="button"
-    >
-      {t.follow}
-    </button>
   );
 }

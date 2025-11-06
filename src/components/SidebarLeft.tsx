@@ -30,11 +30,15 @@ export default function SidebarLeft({ communities = [] as string[] }) {
         {communities.length === 0 && (
           <span className="px-3 py-2 text-sm opacity-60">{t.empty}</span>
         )}
-        {communities.map((tag) => (
-          <Link key={tag} href={`/r/${tag.replace(/^#/, "")}`} className="px-3 py-2 hover:bg-muted/60 rounded-lg">
-            r/{tag.replace(/^#/, "")}
-          </Link>
-        ))}
+        {communities.map((tag) => {
+          const normalized = tag.startsWith("#") ? tag : `#${tag}`;
+          const href = `/buscar?q=${encodeURIComponent(normalized)}`;
+          return (
+            <Link key={tag} href={href} className="px-3 py-2 hover:bg-muted/60 rounded-lg">
+              {normalized}
+            </Link>
+          );
+        })}
       </div>
     </aside>
   );
