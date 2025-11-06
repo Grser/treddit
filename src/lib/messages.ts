@@ -23,7 +23,7 @@ export async function ensureMessageTables() {
   if (tablesReady || !isDatabaseConfigured()) return;
   await db.execute(`
     CREATE TABLE IF NOT EXISTS Direct_Message_Preferences (
-      user_id INT PRIMARY KEY,
+      user_id INT UNSIGNED PRIMARY KEY,
       allow_from_anyone TINYINT(1) NOT NULL DEFAULT 0,
       updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       CONSTRAINT fk_dmp_user FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
@@ -32,8 +32,8 @@ export async function ensureMessageTables() {
   await db.execute(`
     CREATE TABLE IF NOT EXISTS Direct_Messages (
       id INT AUTO_INCREMENT PRIMARY KEY,
-      sender_id INT NOT NULL,
-      recipient_id INT NOT NULL,
+      sender_id INT UNSIGNED NOT NULL,
+      recipient_id INT UNSIGNED NOT NULL,
       message TEXT NOT NULL,
       created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       INDEX idx_direct_pair (sender_id, recipient_id, created_at),

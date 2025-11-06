@@ -5,7 +5,6 @@ import type { ResultSetHeader, RowDataPacket } from "mysql2";
 
 import { db, isDatabaseConfigured } from "@/lib/db";
 import { getSessionUser, requireUser } from "@/lib/auth";
-import { getDemoPosts } from "@/data/demoPosts";
 
 type PostRow = {
   id: number;
@@ -103,39 +102,11 @@ export async function GET(req: Request) {
     joinParams.push(meId);
   }
 
-  const fallback = () => {
-    let items = getDemoPosts(limit);
-    if (userId > 0) {
-      items = items.filter((item) => item.user === userId);
-    }
-    if (communityId > 0) {
-      items = [];
-    }
-    if (usernameFilter) {
-      const needle = usernameFilter.toLowerCase();
-      items = items.filter((item) => item.username.toLowerCase().includes(needle));
-    }
-    if (likesOf > 0) {
-      // sin base de datos no hay likes reales, devolvemos vacío
-      items = [];
-    }
-    if (filter === "media") {
-      items = items.filter((item) => Boolean(item.mediaUrl));
-    }
-    if (normalizedTag) {
-      items = items.filter((item) => item.description?.toLowerCase().includes(normalizedTag));
-    }
-    const normalized = items.slice(0, limit).map((item) => ({
-      ...item,
-      isOwner: meId ? item.user === meId : false,
-      isAdminViewer: Boolean(me?.is_admin),
-      community: null,
-    }));
-    return NextResponse.json(
-      { items: normalized, nextCursor: null },
+  const fallback = () =>
+    NextResponse.json(
+      { items: [], nextCursor: null },
       { headers: { "Cache-Control": "no-store" } }
     );
-  };
 
   if (!isDatabaseConfigured()) {
     return fallback();
