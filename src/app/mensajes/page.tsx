@@ -1,6 +1,7 @@
 import Navbar from "@/components/Navbar";
 import UserBadges from "@/components/UserBadges";
 
+import Image from "next/image";
 import Link from "next/link";
 
 import { getSessionUser } from "@/lib/auth";
@@ -65,10 +66,13 @@ export default async function MessagesPage() {
               return (
                 <li key={item.id} className="rounded-xl border border-border bg-surface p-4">
                   <div className="flex gap-3">
-                    <img
+                    <Image
                       src={avatar}
                       alt={item.nickname || item.username}
+                      width={48}
+                      height={48}
                       className="size-12 rounded-full object-cover ring-1 ring-border"
+                      unoptimized
                     />
                     <div className="min-w-0 flex-1 space-y-1">
                       <div className="flex flex-wrap items-center gap-2 text-sm">

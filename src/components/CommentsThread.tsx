@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 
 import { useLocale } from "@/contexts/LocaleContext";
@@ -153,10 +154,13 @@ function CommentItem({
 
   return (
     <li className="flex gap-2">
-      <img
+      <Image
         src={avatar}
         className="size-7 rounded-full object-cover ring-1 ring-border mt-0.5"
         alt={node.nickname || node.username}
+        width={28}
+        height={28}
+        unoptimized
       />
       <div className="flex-1 min-w-0">
         <p className="text-sm">

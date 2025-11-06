@@ -1,18 +1,9 @@
-import Navbar from "@/components/Navbar";
-import PageHero from "@/components/PageHero";
-
-export default function SearchPage() {
-  return (
-    <div className="min-h-dvh">
-      <Navbar />
-      <PageHero page="search" />
-    </div>
-  );
-}
 import type { ReactNode } from "react";
+import Image from "next/image";
 import Link from "next/link";
 
 import Navbar from "@/components/Navbar";
+import PageHero from "@/components/PageHero";
 import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -41,16 +32,13 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   const sanitized = likeEscape(query);
   const like = `%${sanitized}%`;
 
-  const posts: SearchPost[] = query
-    ? await findPosts(like)
-    : [];
-  const users: SearchUser[] = query
-    ? await findUsers(like)
-    : [];
+  const posts: SearchPost[] = query ? await findPosts(like) : [];
+  const users: SearchUser[] = query ? await findUsers(like) : [];
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
       <Navbar />
+      <PageHero page="search" />
       <main className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-8">
         <header className="space-y-2">
           <h1 className="text-2xl font-semibold">Buscar</h1>
@@ -97,7 +85,9 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                     </Link>
                   </div>
                   {post.description && (
-                    <p className="mt-2 text-sm whitespace-pre-wrap break-words">{highlight(post.description, query)}</p>
+                    <p className="mt-2 whitespace-pre-wrap break-words text-sm">
+                      {highlight(post.description, query)}
+                    </p>
                   )}
                 </li>
               ))}
@@ -116,18 +106,21 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                 const avatar = user.avatar_url?.trim() || "/demo-reddit.png";
                 return (
                   <li key={user.id} className="flex items-center gap-3 rounded-xl border border-border bg-surface p-3">
-                    <img
+                    <Image
                       src={avatar}
                       alt={user.nickname || user.username}
+                      width={48}
+                      height={48}
                       className="size-12 rounded-full object-cover ring-1 ring-border"
+                      unoptimized
                     />
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold truncate">
+                      <p className="truncate text-sm font-semibold">
                         <Link href={`/u/${user.username}`} className="hover:underline">
                           {highlight(user.nickname || user.username, query)}
                         </Link>
                       </p>
-                      <p className="text-xs opacity-70 truncate">@{highlight(user.username, query)}</p>
+                      <p className="truncate text-xs opacity-70">@{highlight(user.username, query)}</p>
                     </div>
                     <Link
                       href={`/u/${user.username}`}

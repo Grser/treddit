@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useMemo, useState } from "react";
 
 import { useLocale } from "@/contexts/LocaleContext";
@@ -50,14 +51,28 @@ export default function ProfileHeader({
       {/* Banner */}
       <div className="relative h-48 w-full overflow-hidden bg-muted">
         {user.banner_url ? (
-          <img src={user.banner_url} className="absolute inset-0 h-full w-full object-cover" alt="" />
+          <Image
+            src={user.banner_url}
+            className="object-cover"
+            alt=""
+            fill
+            sizes="100vw"
+            unoptimized
+          />
         ) : (
           <div className="absolute inset-0 bg-gradient-to-r from-brand/40 via-brand/20 to-transparent" aria-hidden="true" />
         )}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" aria-hidden="true" />
         <div className="absolute bottom-4 left-4 flex items-end gap-3 sm:bottom-6 sm:left-6">
           <div className="relative size-28 overflow-hidden rounded-full border-4 border-surface bg-surface shadow-lg">
-            <img src={avatar} className="absolute inset-0 h-full w-full object-cover" alt="" />
+            <Image
+              src={avatar}
+              className="object-cover"
+              alt=""
+              fill
+              sizes="112px"
+              unoptimized
+            />
           </div>
         </div>
       </div>

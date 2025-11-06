@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { ChangeEvent, useState } from "react";
 
 import { useLocale } from "@/contexts/LocaleContext";
@@ -143,10 +144,13 @@ export default function ImagePickerField({
 
       {value && (
         <div className="relative h-28 w-full overflow-hidden rounded-lg border border-border sm:h-36">
-          <img
+          <Image
             src={value}
             alt={t.previewAlt}
-            className="absolute inset-0 h-full w-full object-cover"
+            fill
+            sizes="100%"
+            className="object-cover"
+            unoptimized
           />
         </div>
       )}
