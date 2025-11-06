@@ -3,7 +3,7 @@ export const runtime = "nodejs";
 import type { ResultSetHeader, RowDataPacket } from "mysql2";
 
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, isDatabaseConnectionLimitError } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 
 type CommentRow = RowDataPacket & {
@@ -48,14 +48,15 @@ type ParentRow = RowDataPacket & { post: number };
  * Devuelve árbol (máx 200 comentarios por post para no reventar).
  */
 export async function GET(req: Request) {
-  const url = new URL(req.url);
-  const postId = Number(url.searchParams.get("postId") || 0);
-  const limit = Math.min(Number(url.searchParams.get("limit") || 200), 500);
-  if (!postId) return NextResponse.json([], { headers: { "Cache-Control": "no-store" } });
+  try {
+    const url = new URL(req.url);
+    const postId = Number(url.searchParams.get("postId") || 0);
+    const limit = Math.min(Number(url.searchParams.get("limit") || 200), 500);
+    if (!postId) return NextResponse.json([], { headers: { "Cache-Control": "no-store" } });
 
-  // Trae todos los comentarios visibles del post
-  const [rows] = await db.query<CommentRow[]>(
-    `
+    // Trae todos los comentarios visibles del post
+    const [rows] = await db.query<CommentRow[]>(
+      `
     SELECT
       c.id,
       c.user             AS userId,
@@ -73,35 +74,47 @@ export async function GET(req: Request) {
     ORDER BY c.created_at DESC
     LIMIT ?
     `,
-    [postId, limit]
-  );
+      [postId, limit],
+    );
 
-  // Construye árbol simple en memoria
-  const byId = new Map<number, CommentNode>();
-  const roots: CommentNode[] = [];
-  rows.forEach((row) => {
-    const node = mapRowToNode(row);
-    byId.set(node.id, node);
-  });
-  rows.forEach((row) => {
-    const node = byId.get(Number(row.id));
-    if (!node) return;
-    const parentId = node.parentId;
-    if (parentId && byId.has(parentId)) {
-      byId.get(parentId)!.replies.push(node);
-    } else {
-      roots.push(node);
+    // Construye árbol simple en memoria
+    const byId = new Map<number, CommentNode>();
+    const roots: CommentNode[] = [];
+    rows.forEach((row) => {
+      const node = mapRowToNode(row);
+      byId.set(node.id, node);
+    });
+    rows.forEach((row) => {
+      const node = byId.get(Number(row.id));
+      if (!node) return;
+      const parentId = node.parentId;
+      if (parentId && byId.has(parentId)) {
+        byId.get(parentId)!.replies.push(node);
+      } else {
+        roots.push(node);
+      }
+    });
+
+    // Opcional: ordena hijos cronológicamente ascendente
+    function sortTree(nodes: CommentNode[]) {
+      nodes.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      nodes.forEach((n) => sortTree(n.replies));
     }
-  });
+    sortTree(roots);
 
-  // Opcional: ordena hijos cronológicamente ascendente
-  function sortTree(nodes: CommentNode[]) {
-    nodes.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-    nodes.forEach((n) => sortTree(n.replies));
+    return NextResponse.json(roots, { headers: { "Cache-Control": "no-store" } });
+  } catch (error) {
+    if (isDatabaseConnectionLimitError(error)) {
+      return NextResponse.json(
+        { error: "Servicio temporalmente no disponible" },
+        {
+          status: 503,
+          headers: { "Cache-Control": "no-store", "Retry-After": "5" },
+        },
+      );
+    }
+    throw error;
   }
-  sortTree(roots);
-
-  return NextResponse.json(roots, { headers: { "Cache-Control": "no-store" } });
 }
 
 /**
@@ -109,54 +122,67 @@ export async function GET(req: Request) {
  * body: { postId: number, text: string, parentId?: number }
  */
 export async function POST(req: Request) {
-  const me = await requireUser();
-  const rawBody = (await req.json().catch(() => null)) as CommentRequestBody | null;
-  const postId = Number(rawBody?.postId ?? 0);
-  const text = typeof rawBody?.text === "string" ? rawBody.text : "";
-  const parentIdRaw = rawBody?.parentId;
-  const parsedParent =
-    typeof parentIdRaw === "number" || typeof parentIdRaw === "string"
-      ? Number(parentIdRaw)
-      : null;
-  const parentId =
-    typeof parsedParent === "number" && Number.isFinite(parsedParent) && parsedParent > 0
-      ? parsedParent
-      : null;
+  try {
+    const me = await requireUser();
+    const rawBody = (await req.json().catch(() => null)) as CommentRequestBody | null;
+    const postId = Number(rawBody?.postId ?? 0);
+    const text = typeof rawBody?.text === "string" ? rawBody.text : "";
+    const parentIdRaw = rawBody?.parentId;
+    const parsedParent =
+      typeof parentIdRaw === "number" || typeof parentIdRaw === "string"
+        ? Number(parentIdRaw)
+        : null;
+    const parentId =
+      typeof parsedParent === "number" && Number.isFinite(parsedParent) && parsedParent > 0
+        ? parsedParent
+        : null;
 
-  if (!postId || !text.trim()) {
-    return NextResponse.json({ error: "Datos inválidos" }, { status: 400 });
-  }
-
-  // Verifica que el parent pertenezca al mismo post (si viene)
-  if (parentId) {
-    const [chk] = await db.query<ParentRow[]>("SELECT post FROM Comments WHERE id=? LIMIT 1", [parentId]);
-    const parent = chk[0];
-    if (!parent || Number(parent.post) !== Number(postId)) {
-      return NextResponse.json({ error: "Parent inválido" }, { status: 400 });
+    if (!postId || !text.trim()) {
+      return NextResponse.json({ error: "Datos inválidos" }, { status: 400 });
     }
-  }
 
-  const [ins] = await db.execute<ResultSetHeader>(
-    "INSERT INTO Comments (post, user, comment, text, created_at, visible) VALUES (?, ?, ?, ?, NOW(), 1)",
-    [postId, me.id, parentId ?? null, String(text)]
-  );
-  const id = Number(ins.insertId);
+    // Verifica que el parent pertenezca al mismo post (si viene)
+    if (parentId) {
+      const [chk] = await db.query<ParentRow[]>("SELECT post FROM Comments WHERE id=? LIMIT 1", [parentId]);
+      const parent = chk[0];
+      if (!parent || Number(parent.post) !== Number(postId)) {
+        return NextResponse.json({ error: "Parent inválido" }, { status: 400 });
+      }
+    }
 
-  // Devuelve el comment recién creado (plano)
-  const [row] = await db.query<CommentRow[]>(
-    `
+    const [ins] = await db.execute<ResultSetHeader>(
+      "INSERT INTO Comments (post, user, comment, text, created_at, visible) VALUES (?, ?, ?, ?, NOW(), 1)",
+      [postId, me.id, parentId ?? null, String(text)],
+    );
+    const id = Number(ins.insertId);
+
+    // Devuelve el comment recién creado (plano)
+    const [row] = await db.query<CommentRow[]>(
+      `
     SELECT c.id, c.user AS userId, u.username, u.nickname, u.avatar_url, u.is_admin, u.is_verified,
            c.text, c.created_at, c.comment AS parentId
     FROM Comments c JOIN Users u ON u.id=c.user WHERE c.id=? LIMIT 1
     `,
-    [id]
-  );
+      [id],
+    );
 
-  if (!row[0]) {
-    return NextResponse.json({ id }, { status: 201 });
+    if (!row[0]) {
+      return NextResponse.json({ id }, { status: 201 });
+    }
+
+    return NextResponse.json(mapRowToResponse(row[0]), { status: 201 });
+  } catch (error) {
+    if (isDatabaseConnectionLimitError(error)) {
+      return NextResponse.json(
+        { error: "Servicio temporalmente no disponible" },
+        {
+          status: 503,
+          headers: { "Cache-Control": "no-store", "Retry-After": "5" },
+        },
+      );
+    }
+    throw error;
   }
-
-  return NextResponse.json(mapRowToResponse(row[0]), { status: 201 });
 }
 
 function mapRowToNode(row: CommentRow): CommentNode {
