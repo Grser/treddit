@@ -1,8 +1,6 @@
 import Navbar from "@/components/Navbar";
-import PageHero from "@/components/PageHero";
 
-
-import { db } from "@/lib/db";
+import { db, isDatabaseConfigured } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +13,8 @@ type Campaign = {
 };
 
 export default async function AdsPage() {
-  const campaigns = await loadCampaigns();
+  const databaseReady = isDatabaseConfigured();
+  const campaigns = databaseReady ? await loadCampaigns() : [];
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
@@ -47,7 +46,9 @@ export default async function AdsPage() {
           </ul>
         ) : (
           <div className="rounded-xl border border-border bg-surface p-6 text-sm opacity-70">
-            No hay campañas promocionadas en este momento. Sé el primero en destacar tu comunidad.
+            {databaseReady
+              ? "No hay campañas promocionadas en este momento. Sé el primero en destacar tu comunidad."
+              : "Configura la base de datos para empezar a mostrar campañas promocionadas."}
           </div>
         )}
 
@@ -67,6 +68,7 @@ export default async function AdsPage() {
 }
 
 async function loadCampaigns(): Promise<Campaign[]> {
+  if (!isDatabaseConfigured()) return [];
   const [rows] = await db.query(
     `
     SELECT p.id, p.created_at, p.description, u.username, u.nickname

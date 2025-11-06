@@ -1,41 +1,122 @@
+import type { RowDataPacket } from "mysql2";
+
 import { db } from "@/lib/db";
 import Navbar from "@/components/Navbar";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import ProfileTabs from "@/components/profile/ProfileTabs";
 import { getSessionUser } from "@/lib/auth";
 import type { Post as PostCardType } from "@/components/PostCard";
+import { canSendDirectMessage } from "@/lib/messages";
 
 export const dynamic = "force-dynamic";
+
+type UserRow = RowDataPacket & {
+  id: number;
+  username: string;
+  nickname: string | null;
+  avatar_url: string | null;
+  banner_url: string | null;
+  description: string | null;
+  location: string | null;
+  website: string | null;
+  show_likes: number;
+  show_bookmarks: number;
+  created_at: Date | string;
+  is_admin: number;
+  is_verified: number;
+  pinned_post_id: number | null;
+};
+
+type CountRow = RowDataPacket & { posts?: number; followers?: number; following?: number };
+type FollowStatusRow = RowDataPacket & { isFollowing: number };
+
+type PinnedPostRow = RowDataPacket & {
+  id: number;
+  user: number;
+  username: string;
+  nickname: string | null;
+  avatar_url: string | null;
+  is_admin: number;
+  is_verified: number;
+  description: string | null;
+  created_at: Date | string;
+  reply_scope: number | null;
+  mediaUrl: string | null;
+  likes: number;
+  comments: number;
+  reposts: number;
+  likedByMe: number;
+  repostedByMe: number;
+  hasPoll: number;
+  community_id: number | null;
+  community_slug: string | null;
+  community_name: string | null;
+};
 
 export default async function UserPage({ params }: { params: { username: string } }) {
   const me = await getSessionUser();
 
-  const [rows] = await db.query(
+  const [rows] = await db.query<UserRow[]>(
     `SELECT id, username, nickname, avatar_url, banner_url, description, location, website,
             show_likes, show_bookmarks, created_at, is_admin, is_verified, pinned_post_id
      FROM Users WHERE username=? AND visible=1 LIMIT 1`,
     [params.username]
   );
-  const user = (rows as any[])[0];
-  if (!user) return <div className="p-6">Usuario no encontrado</div>;
+  const userRow = rows[0];
+  if (!userRow) return <div className="p-6">Usuario no encontrado</div>;
+
+  const user = {
+    id: Number(userRow.id),
+    username: String(userRow.username),
+    nickname: userRow.nickname ? String(userRow.nickname) : null,
+    avatar_url: userRow.avatar_url ? String(userRow.avatar_url) : null,
+    banner_url: userRow.banner_url ? String(userRow.banner_url) : null,
+    description: userRow.description ? String(userRow.description) : null,
+    location: userRow.location ? String(userRow.location) : null,
+    website: userRow.website ? String(userRow.website) : null,
+    show_likes: Boolean(userRow.show_likes),
+    show_bookmarks: Boolean(userRow.show_bookmarks),
+    created_at: new Date(userRow.created_at).toISOString(),
+    is_admin: Boolean(userRow.is_admin),
+    is_verified: Boolean(userRow.is_verified),
+    pinned_post_id: userRow.pinned_post_id ? Number(userRow.pinned_post_id) : null,
+  };
 
   // Contadores rápidos
-  const [[{ posts }]]: any = await db.query("SELECT COUNT(*) AS posts FROM Posts WHERE user=?", [user.id]);
-  const [[{ following }]]: any = await db.query("SELECT COUNT(*) AS following FROM Follows WHERE follower=?", [user.id]);
-  const [[{ followers }]]: any = await db.query("SELECT COUNT(*) AS followers FROM Follows WHERE followed=?", [user.id]);
+  const [postCountRows] = await db.query<CountRow[]>("SELECT COUNT(*) AS posts FROM Posts WHERE user=?", [user.id]);
+  const posts = Number(postCountRows[0]?.posts ?? 0);
+  const [followingRows] = await db.query<CountRow[]>(
+    "SELECT COUNT(*) AS following FROM Follows WHERE follower=?",
+    [user.id],
+  );
+  const following = Number(followingRows[0]?.following ?? 0);
+  const [followerRows] = await db.query<CountRow[]>(
+    "SELECT COUNT(*) AS followers FROM Follows WHERE followed=?",
+    [user.id],
+  );
+  const followers = Number(followerRows[0]?.followers ?? 0);
 
   let isFollowing = false;
   if (me) {
-    const [[{ isFollowing: followingValue }]]: any = await db.query(
+    const [followStatusRows] = await db.query<FollowStatusRow[]>(
       "SELECT EXISTS(SELECT 1 FROM Follows WHERE follower=? AND followed=?) AS isFollowing",
       [me.id, user.id],
     );
-    isFollowing = Boolean(followingValue);
+    isFollowing = Boolean(followStatusRows[0]?.isFollowing);
+  }
+
+  let canMessage = false;
+  let messageHref: string | null = null;
+  if (me && me.id !== user.id) {
+    canMessage = await canSendDirectMessage(me.id, user.id);
+    if (canMessage) {
+      messageHref = `/mensajes/${user.username}`;
+    }
   }
 
   let pinnedPost: PostCardType | null = null;
   if (user.pinned_post_id) {
-    const [pinnedRows] = await db.query(
+    const [pinnedRows] = await db.query<PinnedPostRow[]>(
       `
       SELECT
         p.id,
@@ -58,29 +139,33 @@ export default async function UserPage({ params }: { params: { username: string 
         ) END AS likedByMe,
         CASE WHEN ? IS NULL THEN 0 ELSE EXISTS(
           SELECT 1 FROM Reposts y WHERE y.post_id=p.id AND y.user_id=?
-        ) END AS repostedByMe
+        ) END AS repostedByMe,
+        p.community_id,
+        c.slug AS community_slug,
+        c.name AS community_name
       FROM Posts p
       JOIN Users u ON u.id = p.user
+      LEFT JOIN Communities c ON c.id = p.community_id
       WHERE p.id = ?
       LIMIT 1
       `,
       [me?.id ?? null, me?.id ?? null, me?.id ?? null, me?.id ?? null, user.pinned_post_id]
     );
 
-    const row = (pinnedRows as any[])[0];
+    const row = pinnedRows[0];
     if (row) {
       pinnedPost = {
-        id: row.id,
-        user: row.user,
-        username: row.username,
-        nickname: row.nickname,
-        avatar_url: row.avatar_url,
-        is_admin: row.is_admin,
-        is_verified: row.is_verified,
-        description: row.description,
+        id: Number(row.id),
+        user: Number(row.user),
+        username: String(row.username),
+        nickname: row.nickname ? String(row.nickname) : null,
+        avatar_url: row.avatar_url ? String(row.avatar_url) : null,
+        is_admin: Boolean(row.is_admin),
+        is_verified: Boolean(row.is_verified),
+        description: row.description ? String(row.description) : null,
         created_at: new Date(row.created_at).toISOString(),
         reply_scope: Number(row.reply_scope ?? 0),
-        mediaUrl: row.mediaUrl,
+        mediaUrl: row.mediaUrl ? String(row.mediaUrl) : null,
         likes: Number(row.likes) || 0,
         comments: Number(row.comments) || 0,
         reposts: Number(row.reposts) || 0,
@@ -89,6 +174,14 @@ export default async function UserPage({ params }: { params: { username: string 
         hasPoll: Boolean(row.hasPoll),
         isOwner: me?.id ? Number(row.user) === me.id : false,
         isAdminViewer: Boolean(me?.is_admin),
+        community:
+          row.community_id && row.community_slug
+            ? {
+                id: Number(row.community_id),
+                slug: String(row.community_slug),
+                name: row.community_name ? String(row.community_name) : String(row.community_slug),
+              }
+            : null,
       } satisfies PostCardType;
     }
   }
@@ -98,15 +191,29 @@ export default async function UserPage({ params }: { params: { username: string 
       <Navbar />
       <ProfileHeader
         viewerId={me?.id}
-        user={user}
+        user={{
+          id: user.id,
+          username: user.username,
+          nickname: user.nickname,
+          avatar_url: user.avatar_url,
+          banner_url: user.banner_url,
+          description: user.description,
+          location: user.location,
+          website: user.website,
+          created_at: user.created_at,
+          is_admin: user.is_admin,
+          is_verified: user.is_verified,
+        }}
         stats={{ posts, followers, following }}
         initiallyFollowing={isFollowing}
+        canMessage={canMessage}
+        messageHref={messageHref}
       />
       <ProfileTabs
         profileId={user.id}
         viewerId={me?.id}
-        showLikes={!!user.show_likes}
-        showBookmarks={!!user.show_bookmarks}
+        showLikes={Boolean(user.show_likes)}
+        showBookmarks={Boolean(user.show_bookmarks)}
         pinnedPost={pinnedPost}
       />
     </div>

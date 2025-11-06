@@ -1,3 +1,5 @@
+import type { RowDataPacket } from "mysql2";
+
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 import { db } from "./db";
@@ -55,20 +57,36 @@ export async function requireUser() {
 }
 
 /** Helpers de consultas comunes */
+type AuthUserRow = RowDataPacket & {
+  id: number;
+  username: string;
+  email: string;
+  password?: string;
+  is_admin?: number;
+};
+
+type AdminRow = RowDataPacket & { is_admin: number };
+
 export async function findUserByEmail(email: string) {
-  const [rows] = await db.execute("SELECT id, username, email, password FROM Users WHERE email=? AND visible=1", [email]);
-  return (rows as any[])[0] || null;
+  const [rows] = await db.execute<AuthUserRow[]>(
+    "SELECT id, username, email, password FROM Users WHERE email=? AND visible=1",
+    [email],
+  );
+  return rows[0] || null;
 }
 
 export async function findUserById(id: number) {
-  const [rows] = await db.execute("SELECT id, username, email FROM Users WHERE id=? AND visible=1", [id]);
-  return (rows as any[])[0] || null;
+  const [rows] = await db.execute<AuthUserRow[]>(
+    "SELECT id, username, email FROM Users WHERE id=? AND visible=1",
+    [id],
+  );
+  return rows[0] || null;
 }
 
 export async function requireAdmin() {
   const me = await requireUser();
-  const [rows] = await db.query("SELECT is_admin FROM Users WHERE id=? LIMIT 1", [me.id]);
-  if (!(rows as any[])[0]?.is_admin) {
+  const [rows] = await db.query<AdminRow[]>("SELECT is_admin FROM Users WHERE id=? LIMIT 1", [me.id]);
+  if (!rows[0]?.is_admin) {
     throw new Error("FORBIDDEN");
   }
   return me;

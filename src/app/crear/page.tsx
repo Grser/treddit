@@ -1,15 +1,24 @@
+import type { RowDataPacket } from "mysql2";
+
 import Navbar from "@/components/Navbar";
 import CreateCommunityForm from "@/components/community/CreateCommunityForm";
 import ManageCommunitiesList from "@/components/community/ManageCommunitiesList";
 import { getSessionUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 
+type ManageableCommunityRow = RowDataPacket & {
+  id: number;
+  slug: string;
+  name: string;
+  role: string | null;
+};
+
 export default async function CrearPage() {
   const session = await getSessionUser();
 
   let manageable: { id: number; slug: string; name: string; role?: string | null }[] = [];
   if (session) {
-    const [rows] = await db.query(
+    const [rows] = await db.query<ManageableCommunityRow[]>(
       `SELECT c.id, c.slug, c.name, cm.role
        FROM Community_Members cm
        JOIN Communities c ON c.id = cm.community_id
@@ -17,13 +26,13 @@ export default async function CrearPage() {
        ORDER BY FIELD(cm.role, 'owner','admin','moderator','member'), c.name ASC`,
       [session.id],
     );
-    manageable = (rows as any[])
-      .filter((row) => (row.role ? String(row.role).toLowerCase() !== "member" : true))
+    manageable = rows
+      .filter((row) => (row.role ? row.role.toLowerCase() !== "member" : true))
       .map((row) => ({
-        id: row.id as number,
-        slug: row.slug as string,
-        name: row.name as string,
-        role: row.role as string | null,
+        id: Number(row.id),
+        slug: String(row.slug),
+        name: String(row.name),
+        role: row.role ? String(row.role) : null,
       }));
   }
 

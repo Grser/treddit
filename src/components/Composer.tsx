@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 import { useLocale } from "@/contexts/LocaleContext";
@@ -8,6 +8,8 @@ import { useLocale } from "@/contexts/LocaleContext";
 type Tab = "post" | "media" | "poll";
 
 type ComposerErrorKey = "needContent" | "uploadFailed" | "createFailed" | "pollInvalid" | "mediaEmpty" | null;
+
+type CommunityOption = { id: number; name: string; slug: string };
 
 export default function Composer({ enabled }: { enabled: boolean }) {
   const router = useRouter();
@@ -21,6 +23,10 @@ export default function Composer({ enabled }: { enabled: boolean }) {
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [errorKey, setErrorKey] = useState<ComposerErrorKey>(null);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [communities, setCommunities] = useState<CommunityOption[]>([]);
+  const [communitiesLoading, setCommunitiesLoading] = useState(false);
+  const [communitiesError, setCommunitiesError] = useState<string | null>(null);
+  const [communityId, setCommunityId] = useState<number>(0);
 
   const [question, setQuestion] = useState("");
   const [options, setOptions] = useState<string[]>(["", ""]);
@@ -36,6 +42,50 @@ export default function Composer({ enabled }: { enabled: boolean }) {
     setErrorKey(null);
     setServerError(null);
   }
+
+  useEffect(() => {
+    if (!enabled) {
+      setCommunities([]);
+      setCommunityId(0);
+      setCommunitiesError(null);
+      return;
+    }
+
+    let active = true;
+    setCommunitiesLoading(true);
+    setCommunitiesError(null);
+
+    fetch("/api/communities/mine", { cache: "no-store" })
+      .then(async (res) => {
+        if (!active) return;
+        if (!res.ok) {
+          throw new Error(String(res.status));
+        }
+        const data = (await res.json().catch(() => ({ items: [] }))) as {
+          items?: { id: number; name: string; slug: string }[];
+        };
+        const list = Array.isArray(data.items) ? data.items : [];
+        setCommunities(
+          list.map((item) => ({
+            id: Number(item.id),
+            name: item.name,
+            slug: item.slug,
+          })),
+        );
+      })
+      .catch(() => {
+        if (!active) return;
+        setCommunitiesError(t.communityLoadFailed);
+      })
+      .finally(() => {
+        if (!active) return;
+        setCommunitiesLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [enabled, t.communityLoadFailed]);
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     if (!enabled) return;
@@ -79,6 +129,7 @@ export default function Composer({ enabled }: { enabled: boolean }) {
     description: string | null;
     mediaUrl: string | null;
     poll: PollPayload;
+    communityId: number | null;
   };
 
   async function submit() {
@@ -88,6 +139,7 @@ export default function Composer({ enabled }: { enabled: boolean }) {
       description: text || null,
       mediaUrl: null,
       poll: null,
+      communityId: communityId > 0 ? communityId : null,
     };
 
     if (tab === "media") {
@@ -137,7 +189,7 @@ export default function Composer({ enabled }: { enabled: boolean }) {
       } else {
         const j = await res.json().catch(() => ({}));
         if (j.error) {
-          setServerError(j.error);
+          setServerError(typeof j.error === "string" ? j.error : t.errors.createFailed);
         } else {
           setErrorKey("createFailed");
         }
@@ -265,6 +317,36 @@ export default function Composer({ enabled }: { enabled: boolean }) {
           </div>
         </div>
       )}
+
+      <div className="mt-3 text-sm">
+        <label className="mb-1 block font-medium">{t.communityLabel}</label>
+        <select
+          className="h-10 w-full rounded-md bg-input px-3 text-sm outline-none ring-1 ring-border focus:ring-2 disabled:opacity-60"
+          value={communityId}
+          onChange={(e) => {
+            clearError();
+            setCommunityId(Number(e.target.value) || 0);
+          }}
+          disabled={!enabled || communitiesLoading}
+        >
+          <option value={0}>{t.communityDefault}</option>
+          {communities.map((community) => (
+            <option key={community.id} value={community.id}>
+              {community.name}
+            </option>
+          ))}
+        </select>
+        <p className="mt-1 text-xs opacity-70">{t.communityHint}</p>
+        {communitiesLoading && (
+          <p className="mt-1 text-xs opacity-60">{t.communityLoading}</p>
+        )}
+        {communitiesError && !communitiesLoading && (
+          <p className="mt-1 text-xs text-red-500">{communitiesError}</p>
+        )}
+        {enabled && !communitiesLoading && !communitiesError && communities.length === 0 && (
+          <p className="mt-1 text-xs opacity-60">{t.communityEmpty}</p>
+        )}
+      </div>
 
       {errorMessage && (
         <p className="mt-3 text-sm text-red-500" role="status">

@@ -1,3 +1,5 @@
+import type { RowDataPacket } from "mysql2";
+
 import Navbar from "@/components/Navbar";
 import UserBadges from "@/components/UserBadges";
 import { requireAdmin } from "@/lib/auth";
@@ -7,6 +9,26 @@ export const dynamic = "force-dynamic";
 
 type AdminPostsProps = {
   searchParams: { user?: string; tag?: string };
+};
+
+type AdminPostRow = RowDataPacket & {
+  id: number;
+  username: string;
+  nickname: string | null;
+  is_admin: number;
+  is_verified: number;
+  description: string;
+  created_at: Date | string;
+};
+
+type AdminPost = {
+  id: number;
+  username: string;
+  nickname: string | null;
+  isAdmin: boolean;
+  isVerified: boolean;
+  description: string;
+  createdAt: string;
 };
 
 export default async function AdminPosts({ searchParams }: AdminPostsProps) {
@@ -31,7 +53,7 @@ export default async function AdminPosts({ searchParams }: AdminPostsProps) {
 
   const whereClause = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
-  const [rows] = await db.query(
+  const [rows] = await db.query<AdminPostRow[]>(
     `SELECT p.id, u.username, u.nickname, u.is_admin, u.is_verified, p.description, p.created_at
      FROM Posts p
      JOIN Users u ON u.id = p.user
@@ -40,7 +62,15 @@ export default async function AdminPosts({ searchParams }: AdminPostsProps) {
      LIMIT 200`,
     params,
   );
-  const posts = rows as any[];
+  const posts: AdminPost[] = rows.map((row) => ({
+    id: Number(row.id),
+    username: String(row.username),
+    nickname: row.nickname ? String(row.nickname) : null,
+    isAdmin: Boolean(row.is_admin),
+    isVerified: Boolean(row.is_verified),
+    description: String(row.description),
+    createdAt: new Date(row.created_at).toISOString(),
+  }));
 
   return (
     <div>
@@ -96,9 +126,9 @@ export default async function AdminPosts({ searchParams }: AdminPostsProps) {
               <p className="mb-1 text-sm">
                 <span className="inline-flex items-center gap-2 font-semibold">
                   @{p.username}
-                  <UserBadges size="sm" isAdmin={p.is_admin} isVerified={p.is_verified} />
+                  <UserBadges size="sm" isAdmin={p.isAdmin} isVerified={p.isVerified} />
                 </span>
-                <span className="opacity-60"> · {new Date(p.created_at).toLocaleString()}</span>
+                <span className="opacity-60"> · {new Date(p.createdAt).toLocaleString()}</span>
               </p>
               <p className="mb-2 text-sm">{p.description}</p>
               <form action={`/api/posts/${p.id}`} method="post" className="inline">
