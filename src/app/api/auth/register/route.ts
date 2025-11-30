@@ -15,10 +15,16 @@ type RegisterRequestBody = {
 
 export async function POST(req: Request) {
   const rawBody = (await req.json().catch(() => null)) as RegisterRequestBody | null;
-  const username = typeof rawBody?.username === "string" ? rawBody.username : "";
-  const nickname = typeof rawBody?.nickname === "string" ? rawBody.nickname : "";
-  const email = typeof rawBody?.email === "string" ? rawBody.email : "";
-  const password = typeof rawBody?.password === "string" ? rawBody.password : "";
+  const username =
+    typeof rawBody?.username === "string" ? rawBody.username.trim() : "";
+  const nickname =
+    typeof rawBody?.nickname === "string" ? rawBody.nickname.trim() : "";
+  const email =
+    typeof rawBody?.email === "string"
+      ? rawBody.email.trim().toLowerCase()
+      : "";
+  const password =
+    typeof rawBody?.password === "string" ? rawBody.password.trim() : "";
 
   if (!username || !nickname || !email || !password) {
     return NextResponse.json({ error: "Faltan campos" }, { status: 400 });

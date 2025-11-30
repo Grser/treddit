@@ -24,8 +24,12 @@ type LoginUserRow = RowDataPacket & {
 
 export async function POST(req: Request) {
   const rawBody = (await req.json().catch(() => null)) as LoginRequestBody | null;
-  const email = typeof rawBody?.email === "string" ? rawBody.email : "";
-  const password = typeof rawBody?.password === "string" ? rawBody.password : "";
+  const email =
+    typeof rawBody?.email === "string"
+      ? rawBody.email.trim().toLowerCase()
+      : "";
+  const password =
+    typeof rawBody?.password === "string" ? rawBody.password.trim() : "";
   if (!email || !password) return NextResponse.json({ error: "Faltan campos" }, { status: 400 });
 
   const [rows] = await db.execute<LoginUserRow[]>(
