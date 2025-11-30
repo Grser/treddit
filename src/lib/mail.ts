@@ -2,11 +2,20 @@ import "server-only";
 
 import type { Transporter } from "nodemailer";
 
-let transporterPromise: Promise<Transporter> | null = null;
+let transporterPromise: Promise<Transporter | null> | null = null;
 
 function getTransporter() {
   if (!transporterPromise) {
     transporterPromise = (async () => {
+      const host = process.env.SMTP_HOST;
+      const port = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : undefined;
+      if (!host || !port) {
+        console.warn(
+          "SMTP_HOST/SMTP_PORT no están configurados; se omite el envío real de correos de recuperación.",
+        );
+        return null;
+      }
+
       let nodemailer: typeof import("nodemailer").default;
       try {
         ({ default: nodemailer } = await import("nodemailer"));
@@ -16,25 +25,26 @@ function getTransporter() {
           "No se pudo cargar Nodemailer. Asegúrate de tener la dependencia instalada en el entorno de ejecución.",
         );
       }
-      const host = process.env.SMTP_HOST;
-      const port = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : undefined;
-      if (!host || !port) {
-        throw new Error("SMTP_HOST and SMTP_PORT must be configured to enviar correos");
-      }
       const secureEnv = process.env.SMTP_SECURE;
       const secure = secureEnv ? secureEnv === "true" || secureEnv === "1" : port === 465;
       const user = process.env.SMTP_USER;
       const pass = process.env.SMTP_PASS;
 
-      const transporter = nodemailer.createTransport({
-        host,
-        port,
-        secure,
-        auth: user && pass ? { user, pass } : undefined,
-      });
+      try {
+        const transporter = nodemailer.createTransport({
+          host,
+          port,
+          secure,
+          auth: user && pass ? { user, pass } : undefined,
+        });
 
-      await transporter.verify();
-      return transporter;
+        await transporter.verify();
+        return transporter;
+      } catch (error) {
+        transporterPromise = null;
+        console.error("No se pudo verificar la conexión SMTP", error);
+        throw new Error("No se pudo conectar al servidor SMTP para enviar correos.");
+      }
     })();
   }
   return transporterPromise;
@@ -42,6 +52,12 @@ function getTransporter() {
 
 export async function sendPasswordResetEmail(to: string, code: string) {
   const transporter = await getTransporter();
+  if (!transporter) {
+    console.info(
+      `Correo de recuperación omitido. Código para ${to}: ${code} (esto solo se registra porque falta configuración SMTP).`,
+    );
+    return;
+  }
   const appName = process.env.APP_NAME || "Treddit";
   const from =
     process.env.MAIL_FROM ||
