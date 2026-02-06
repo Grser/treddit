@@ -19,7 +19,7 @@ export async function POST(req: Request) {
   };
 
   const normalizedEmail = email?.trim().toLowerCase();
-  const sanitizedCode = code?.trim();
+  const sanitizedCode = code?.replace(/\D/g, "");
   const newPassword = password?.trim();
 
   if (!normalizedEmail || !sanitizedCode || !newPassword) {
