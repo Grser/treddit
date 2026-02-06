@@ -37,11 +37,30 @@ export default function RecoverPage() {
     e.preventDefault();
     setError(null);
     setMessage(null);
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const sanitizedCode = code.replace(/\D/g, "");
+
+    if (!normalizedEmail) {
+      setError("Ingresa tu correo electrónico para continuar");
+      return;
+    }
+
+    if (!/^\d{6}$/.test(sanitizedCode)) {
+      setError("Ingresa un código válido de 6 dígitos");
+      return;
+    }
+
+    if (password.trim().length < 6) {
+      setError("La contraseña debe tener al menos 6 caracteres");
+      return;
+    }
+
     setLoading(true);
     const res = await fetch("/api/auth/password/reset", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, code, password }),
+      body: JSON.stringify({ email: normalizedEmail, code: sanitizedCode, password }),
     });
     setLoading(false);
     if (res.ok) {
@@ -92,6 +111,16 @@ export default function RecoverPage() {
           </form>
         ) : (
           <form onSubmit={handleReset} className="space-y-3">
+            <label className="block">
+              <span className="text-sm">Correo electrónico</span>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                className="mt-1 w-full h-10 px-3 rounded-md bg-input outline-none ring-1 ring-border focus:ring-2"
+              />
+            </label>
             <div>
               <label className="block">
                 <span className="text-sm">Código de verificación</span>
