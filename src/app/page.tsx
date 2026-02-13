@@ -45,7 +45,7 @@ async function getDiscovery(base: string, cookieHeader?: string): Promise<Discov
 
 export default async function Page() {
   const base = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const cookieHeader = cookieStore.getAll().map((item) => `${item.name}=${item.value}`).join("; ") || undefined;
   const session = await getSessionUser();
   const [{ items }, discovery] = await Promise.all([

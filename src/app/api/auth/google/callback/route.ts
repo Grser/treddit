@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
   if (rememberedOrigin) {
     origin = rememberedOrigin;
   }
-  const redirectUri = getRedirectUri(origin);
+  const redirectUri = await getRedirectUri(origin);
 
   if (!code || !state || !stateCookie || state !== stateCookie) {
     // redirección absoluta

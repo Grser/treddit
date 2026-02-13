@@ -237,7 +237,7 @@ export function createDemoPost(user: SessionUser, payload: {
     id,
     user: author.id,
     username: author.username,
-    nickname: author.nickname,
+    nickname: author.nickname || "",
     avatar_url: author.avatar_url,
     description: payload.description,
     mediaUrl: payload.mediaUrl,
@@ -257,7 +257,7 @@ export function createDemoPost(user: SessionUser, payload: {
 
   if (tags.length) {
     // boost visibility artificially
-    newPost.views = Math.max(newPost.views, tags.length * 120);
+    newPost.views = Math.max(newPost.views ?? 0, tags.length * 120);
   }
 
   store.posts = [newPost, ...store.posts];

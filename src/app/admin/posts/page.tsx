@@ -8,7 +8,7 @@ import { db } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 type AdminPostsProps = {
-  searchParams: { user?: string; tag?: string };
+  searchParams: Promise<{ user?: string; tag?: string }>;
 };
 
 type AdminPostRow = RowDataPacket & {
@@ -34,8 +34,9 @@ type AdminPost = {
 export default async function AdminPosts({ searchParams }: AdminPostsProps) {
   await requireAdmin();
 
-  const username = (searchParams.user || "").trim();
-  const tagRaw = (searchParams.tag || "").trim();
+  const resolvedSearchParams = await searchParams;
+  const username = (resolvedSearchParams.user || "").trim();
+  const tagRaw = (resolvedSearchParams.tag || "").trim();
   const normalizedTag = tagRaw ? (tagRaw.startsWith("#") ? tagRaw : `#${tagRaw}`) : "";
 
   const where: string[] = [];

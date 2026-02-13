@@ -5,9 +5,10 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   await requireAdmin();
-  const communityId = Number(params.id);
+  const { id } = await params;
+  const communityId = Number(id);
   if (!communityId) {
     return NextResponse.json({ error: "Comunidad inválida" }, { status: 400 });
   }

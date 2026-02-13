@@ -28,7 +28,7 @@ type InboxEntry = {
 
 export default async function MessagesPage() {
   const me = await getSessionUser();
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const lastSeenValue = cookieStore.get("messages_last_seen")?.value;
   const lastSeen = lastSeenValue ? Number(lastSeenValue) : 0;
   const normalizedLastSeen = Number.isFinite(lastSeen) && lastSeen > 0 ? lastSeen : 0;

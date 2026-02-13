@@ -3,6 +3,8 @@ import { cookies } from "next/headers";
 
 import Navbar from "@/components/Navbar";
 
+import { updateLanguage } from "./actions";
+
 const LANGUAGES = [
   { code: "es", label: "Español" },
   { code: "en", label: "Inglés" },
@@ -12,13 +14,14 @@ const LANGUAGES = [
 export const dynamic = "force-dynamic";
 
 type LanguagePageProps = {
-  searchParams: { actualizado?: string };
+  searchParams: Promise<{ actualizado?: string }>;
 };
 
 export default async function LanguagePage({ searchParams }: LanguagePageProps) {
   const cookieStore = await cookies();
   const current = cookieStore.get("treddit_lang")?.value || "es";
-  const success = searchParams.actualizado === "1";
+  const params = await searchParams;
+  const success = params.actualizado === "1";
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
@@ -37,7 +40,7 @@ export default async function LanguagePage({ searchParams }: LanguagePageProps) 
           </div>
         )}
 
-        <form method="post" className="space-y-4">
+        <form action={updateLanguage} className="space-y-4">
           <fieldset className="space-y-3">
             <legend className="text-sm font-semibold uppercase tracking-wide opacity-70">
               Idioma predeterminado

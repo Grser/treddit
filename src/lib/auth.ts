@@ -1,11 +1,11 @@
 import type { RowDataPacket } from "mysql2";
 
-import jwt from "jsonwebtoken";
+import jwt, { type SignOptions } from "jsonwebtoken";
 import { cookies } from "next/headers";
 import { db } from "./db";
 
 const JWT_SECRET = process.env.JWT_SECRET!;
-const JWT_EXPIRES = process.env.JWT_EXPIRES || "7d";
+const JWT_EXPIRES: SignOptions["expiresIn"] = (process.env.JWT_EXPIRES as SignOptions["expiresIn"]) || "7d";
 
 export type SessionUser = {
   id: number;

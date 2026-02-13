@@ -1,6 +1,5 @@
 import { headers } from "next/headers";
 import type { NextRequest, NextResponse } from "next/server";
-import type { RequestCookies } from "next/dist/compiled/@edge-runtime/cookies";
 
 type MaybeNextRequest = Request & { nextUrl?: URL };
 
@@ -120,7 +119,7 @@ export function getBaseUrl(req: Request | NextRequest) {
   return normalizeOrigin(req.url) ?? "http://localhost:3000";
 }
 
-export function getRedirectUri(baseUrl: string) {
+export async function getRedirectUri(baseUrl: string) {
   const explicitRedirect = process.env.GOOGLE_REDIRECT_URI?.trim();
   if (explicitRedirect) {
     const normalized = normalizeOrigin(explicitRedirect);
@@ -129,7 +128,7 @@ export function getRedirectUri(baseUrl: string) {
   }
 
   try {
-    const headersList = headers();
+    const headersList = await headers();
     const host = headersList.get("host")?.trim();
     if (host) {
       const forwardedProto = headersList
@@ -173,8 +172,12 @@ export function clearOauthCookies(res: NextResponse) {
   res.cookies.set(OAUTH_ORIGIN_COOKIE, "", options);
 }
 
+type CookieReader = {
+  get(name: string): { value: string } | undefined;
+};
+
 export function consumeRememberedOrigin(
-  cookieStore: RequestCookies,
+  cookieStore: CookieReader,
 ): string | null {
   const raw = cookieStore.get(OAUTH_ORIGIN_COOKIE)?.value;
   if (!raw) return null;
