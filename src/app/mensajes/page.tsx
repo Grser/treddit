@@ -38,16 +38,17 @@ export default async function MessagesPage() {
   return (
     <div className="min-h-dvh bg-background text-foreground">
       <Navbar />
-      <main className="mx-auto w-full max-w-4xl space-y-6 px-4 py-8">
-        <header className="space-y-2">
-          <h1 className="text-2xl font-semibold">Mensajes</h1>
-          <p className="text-sm opacity-70">
+      <main className="mx-auto w-full max-w-5xl space-y-6 px-4 py-8">
+        <header className="overflow-hidden rounded-3xl border border-border/80 bg-gradient-to-br from-surface via-surface to-brand/10 p-6 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand/80">Bandeja</p>
+          <h1 className="mt-2 text-3xl font-semibold">Mensajes</h1>
+          <p className="mt-2 max-w-2xl text-sm opacity-70">
             Consulta respuestas recientes a tus publicaciones. Para hablar con alguien, abre su perfil y usa el botón de mensaje directo.
           </p>
         </header>
 
         {!me && (
-          <div className="rounded-xl border border-border bg-surface p-6 text-sm">
+          <div className="rounded-2xl border border-border bg-surface p-6 text-sm shadow-sm">
             <p>
               Necesitas iniciar sesión para revisar tu bandeja.{" "}
               <Link href="/auth/login" className="text-blue-400 hover:underline">
@@ -63,7 +64,7 @@ export default async function MessagesPage() {
         )}
 
         {me && entries.length === 0 && (
-          <div className="rounded-xl border border-border bg-surface p-6 text-sm opacity-70">
+          <div className="rounded-2xl border border-border bg-surface p-6 text-sm opacity-70 shadow-sm">
             Aún no tienes mensajes nuevos. ¡Participa en las conversaciones para recibir respuestas!
           </div>
         )}
@@ -71,26 +72,26 @@ export default async function MessagesPage() {
         {me && entries.length > 0 && (
           <>
             <MarkMessagesSeen />
-            <ul className="space-y-4">
+            <ul className="space-y-3">
               {entries.map((item) => {
                 const avatar = item.avatar_url?.trim() || "/demo-reddit.png";
                 const displayName = item.nickname || item.username;
-                const lastDate = new Date(item.createdAt).toLocaleString();
+                const lastDate = getCompactTime(item.createdAt);
                 const isMine = item.lastSenderId === me.id;
                 const preview = item.lastMessage?.trim() || "Archivo adjunto";
                 const unread = item.unreadCount > 0;
                 return (
-                  <li key={item.userId} className="rounded-xl border border-border bg-surface">
+                  <li key={item.userId} className="rounded-2xl border border-border/80 bg-surface shadow-sm transition hover:-translate-y-0.5 hover:border-brand/30 hover:shadow-md">
                     <Link
                       href={`/mensajes/${item.username}`}
-                      className="flex gap-3 p-4 transition hover:bg-muted/60"
+                      className="flex items-center gap-3 p-4"
                     >
                       <Image
                         src={avatar}
                         alt={displayName}
-                        width={48}
-                        height={48}
-                        className="size-12 rounded-full object-cover ring-1 ring-border"
+                        width={56}
+                        height={56}
+                        className="size-14 rounded-full object-cover ring-2 ring-background"
                         unoptimized
                       />
                       <div className="min-w-0 flex-1 space-y-1">
@@ -98,9 +99,9 @@ export default async function MessagesPage() {
                           <span className="font-semibold line-clamp-1">{displayName}</span>
                           <UserBadges size="sm" isAdmin={item.is_admin} isVerified={item.is_verified} />
                           <span className="opacity-60">@{item.username}</span>
-                          <span className="text-xs opacity-60">{lastDate}</span>
+                          <span className="ml-auto rounded-full bg-muted px-2 py-1 text-xs opacity-70">{lastDate}</span>
                           {unread && (
-                            <span className="ml-auto inline-flex min-w-[1.75rem] items-center justify-center rounded-full bg-brand/90 px-2 text-xs font-semibold text-white">
+                            <span className="inline-flex min-w-[1.75rem] items-center justify-center rounded-full bg-brand px-2 py-0.5 text-xs font-semibold text-white shadow-sm">
                               {item.unreadCount > 99 ? "99+" : item.unreadCount}
                             </span>
                           )}
@@ -124,6 +125,20 @@ export default async function MessagesPage() {
       </main>
     </div>
   );
+}
+
+function getCompactTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "ahora";
+  const diffMs = Date.now() - date.getTime();
+  const diffMinutes = Math.floor(diffMs / 60000);
+  if (diffMinutes < 1) return "ahora";
+  if (diffMinutes < 60) return `${diffMinutes} min`;
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours} h`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return `${diffDays} d`;
+  return date.toLocaleDateString();
 }
 
 async function loadInbox(userId: number, lastSeen: number): Promise<InboxEntry[]> {

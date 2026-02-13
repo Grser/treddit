@@ -163,16 +163,16 @@ export default function DirectConversation({
 
   return (
     <div className="space-y-4">
-      <div className="space-y-3 rounded-3xl border border-border/80 bg-gradient-to-b from-surface to-surface/70 p-4 shadow-sm">
+      <div className="space-y-3 rounded-3xl border border-border/80 bg-gradient-to-b from-surface via-surface to-brand/5 p-4 shadow-sm">
         {messages.length === 0 && (
           <p className="text-sm opacity-70">{strings.comments.none || "Aún no hay mensajes. Inicia la conversación."}</p>
         )}
-        <ul className="space-y-3">
+        <ul className="space-y-4">
           {messages.map((msg) => {
             const isMine = msg.senderId === viewerId;
             const bubbleClasses = isMine
-              ? "bg-gradient-to-br from-brand to-brand/80 text-white"
-              : "bg-muted/70 text-foreground";
+              ? "bg-gradient-to-br from-brand to-fuchsia-500 text-white"
+              : "border border-border/80 bg-background/80 text-foreground";
             const timeLabel = new Date(msg.createdAt).toLocaleString();
             const avatar = !isMine ? msg.sender.avatar_url?.trim() || "/demo-reddit.png" : null;
             return (
@@ -188,9 +188,9 @@ export default function DirectConversation({
                       unoptimized
                     />
                   )}
-                  <div className={`rounded-3xl px-4 py-2 text-sm shadow-sm ${bubbleClasses}`}>
+                  <div className={`rounded-3xl px-4 py-3 text-sm shadow-sm ${bubbleClasses}`}>
                     {!isMine && (
-                      <p className="mb-1 flex items-center gap-2 font-semibold">
+                      <p className="mb-1 flex items-center gap-2 font-semibold text-xs uppercase tracking-wide opacity-80">
                         {msg.sender.nickname || msg.sender.username}
                         <UserBadges size="sm" isAdmin={msg.sender.is_admin} isVerified={msg.sender.is_verified} />
                       </p>
@@ -205,7 +205,7 @@ export default function DirectConversation({
                     {msg.attachments?.length ? (
                       <ul className="mt-3 space-y-2">
                         {msg.attachments.map((file) => (
-                          <li key={`${msg.id}-${file.url}`} className="overflow-hidden rounded-xl border border-white/10">
+                          <li key={`${msg.id}-${file.url}`} className="overflow-hidden rounded-2xl border border-white/10 bg-black/10">
                             {file.type === "image" ? (
                               <Image
                                 src={file.url}
@@ -233,8 +233,8 @@ export default function DirectConversation({
                         ))}
                       </ul>
                     ) : null}
-                    <div className="mt-1 flex items-center justify-between gap-3">
-                      <p className={`text-xs ${isMine ? "text-white/70" : "opacity-70"}`}>{timeLabel}</p>
+                    <div className="mt-2 flex items-center justify-between gap-3">
+                      <p className={`text-[11px] ${isMine ? "text-white/70" : "opacity-70"}`}>{timeLabel}</p>
                       <button
                         type="button"
                         className={`text-xs ${isMine ? "text-white/80 hover:text-white" : "opacity-70 hover:opacity-100"}`}
@@ -252,10 +252,7 @@ export default function DirectConversation({
         <div ref={endRef} />
       </div>
 
-      <form onSubmit={sendMessage} className="space-y-3 rounded-3xl border border-border bg-surface p-4">
-        <label className="block text-sm font-medium" htmlFor="dm-textarea">
-          {strings.comments.replyPlaceholder || "Escribe tu mensaje"}
-        </label>
+      <form onSubmit={sendMessage} className="space-y-3 rounded-3xl border border-border bg-surface p-4 shadow-sm">
         {replyingTo && (
           <div className="flex items-start justify-between rounded-xl border border-brand/30 bg-brand/10 px-3 py-2 text-xs">
             <div>
@@ -270,8 +267,8 @@ export default function DirectConversation({
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={3}
-          className="w-full resize-none rounded-2xl bg-input px-3 py-2 text-sm outline-none ring-1 ring-border focus:ring-2"
-          placeholder={strings.comments.placeholder}
+          className="w-full resize-none rounded-2xl bg-input px-4 py-3 text-sm outline-none ring-1 ring-border transition focus:ring-2 focus:ring-brand/40"
+          placeholder={strings.comments.replyPlaceholder || "Escribe tu mensaje"}
           disabled={sending || uploading}
         />
         {error && <p className="text-sm text-red-500">{error}</p>}
@@ -297,7 +294,7 @@ export default function DirectConversation({
             <input ref={fileInputRef} type="file" hidden accept="image/*,video/*,audio/*" onChange={handleFileChange} />
             <button
               type="button"
-              className="inline-flex h-9 items-center gap-2 rounded-full border border-border px-3 text-sm"
+              className="inline-flex h-9 items-center gap-2 rounded-full border border-border px-3 text-sm transition hover:bg-muted"
               onClick={() => fileInputRef.current?.click()}
               disabled={sending || uploading}
             >
@@ -307,7 +304,7 @@ export default function DirectConversation({
           <button
             type="submit"
             disabled={!canSend}
-            className="inline-flex h-10 items-center rounded-full bg-brand px-5 text-sm font-medium text-white disabled:opacity-60"
+            className="inline-flex h-10 items-center rounded-full bg-gradient-to-r from-brand to-fuchsia-500 px-5 text-sm font-medium text-white shadow-sm disabled:opacity-60"
           >
             {strings.comments.send}
           </button>
