@@ -23,6 +23,14 @@ type DiscoveryResponse = {
   trendingTags: { tag: string; count: number; views?: number }[];
 };
 
+type CommunityListResponse = {
+  items: {
+    id: number;
+    slug: string;
+    name: string;
+  }[];
+};
+
 async function getFeed(base: string, cookieHeader?: string): Promise<FeedResponse> {
   const headers: Record<string, string> = {};
   if (cookieHeader) {
@@ -43,14 +51,30 @@ async function getDiscovery(base: string, cookieHeader?: string): Promise<Discov
   return (await res.json()) as DiscoveryResponse;
 }
 
+async function getCommunities(
+  base: string,
+  cookieHeader?: string,
+  useMine = false,
+): Promise<CommunityListResponse> {
+  const headers: Record<string, string> = {};
+  if (cookieHeader) {
+    headers["Cookie"] = cookieHeader;
+  }
+  const path = useMine ? "/api/communities/mine" : "/api/communities/popular";
+  const res = await fetch(`${base}${path}`, { cache: "no-store", headers });
+  if (!res.ok) return { items: [] };
+  return (await res.json()) as CommunityListResponse;
+}
+
 export default async function Page() {
   const base = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
   const cookieStore = await cookies();
   const cookieHeader = cookieStore.getAll().map((item) => `${item.name}=${item.value}`).join("; ") || undefined;
   const session = await getSessionUser();
-  const [{ items }, discovery] = await Promise.all([
+  const [{ items }, discovery, communities] = await Promise.all([
     getFeed(base, cookieHeader),
     getDiscovery(base, cookieHeader),
+    getCommunities(base, cookieHeader, Boolean(session)),
   ]);
 
   const canInteract = Boolean(session);
@@ -59,7 +83,7 @@ export default async function Page() {
     <div className="min-h-dvh">
       <Navbar />
       <div className="mx-auto max-w-7xl px-3 sm:px-4 grid grid-cols-1 md:grid-cols-[16rem_1fr] lg:grid-cols-[16rem_1fr_20rem] gap-4 py-4">
-        <SidebarLeft communities={discovery.trendingTags.map((t) => t.tag)} />
+        <SidebarLeft communities={communities.items} />
 
         <main className="space-y-4">
           {!canInteract && <AuthBanner />}

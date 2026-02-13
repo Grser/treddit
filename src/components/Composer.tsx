@@ -10,6 +10,7 @@ type Tab = "post" | "media" | "poll";
 type ComposerErrorKey = "needContent" | "uploadFailed" | "createFailed" | "pollInvalid" | "mediaEmpty" | null;
 
 type CommunityOption = { id: number; name: string; slug: string };
+type MentionUser = { id: number; username: string; nickname: string | null };
 
 export default function Composer({ enabled }: { enabled: boolean }) {
   const router = useRouter();
@@ -27,6 +28,9 @@ export default function Composer({ enabled }: { enabled: boolean }) {
   const [communitiesLoading, setCommunitiesLoading] = useState(false);
   const [communitiesError, setCommunitiesError] = useState<string | null>(null);
   const [communityId, setCommunityId] = useState<number>(0);
+  const [mentionQuery, setMentionQuery] = useState("");
+  const [mentionResults, setMentionResults] = useState<MentionUser[]>([]);
+  const [mentionsLoading, setMentionsLoading] = useState(false);
 
   const [question, setQuestion] = useState("");
   const [options, setOptions] = useState<string[]>(["", ""]);
@@ -86,6 +90,55 @@ export default function Composer({ enabled }: { enabled: boolean }) {
       active = false;
     };
   }, [enabled, t.communityLoadFailed]);
+
+  useEffect(() => {
+    if (!enabled || !mentionQuery.trim()) {
+      setMentionResults([]);
+      setMentionsLoading(false);
+      return;
+    }
+
+    let active = true;
+    const controller = new AbortController();
+    setMentionsLoading(true);
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/users/search?q=${encodeURIComponent(mentionQuery.trim())}`, {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        if (!res.ok) throw new Error(String(res.status));
+        const data = (await res.json().catch(() => ({ items: [] }))) as {
+          items?: MentionUser[];
+        };
+        if (!active) return;
+        setMentionResults(Array.isArray(data.items) ? data.items : []);
+      } catch {
+        if (!active) return;
+        setMentionResults([]);
+      } finally {
+        if (active) setMentionsLoading(false);
+      }
+    }, 250);
+
+    return () => {
+      active = false;
+      controller.abort();
+      clearTimeout(timer);
+    };
+  }, [enabled, mentionQuery]);
+
+  function insertMention(username: string) {
+    const mention = `@${username}`;
+    setText((prev) => {
+      const needsSpace = prev.length > 0 && !prev.endsWith(" ") && !prev.endsWith("\n");
+      return `${prev}${needsSpace ? " " : ""}${mention} `;
+    });
+    setMentionQuery("");
+    setMentionResults([]);
+    clearError();
+  }
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     if (!enabled) return;
@@ -214,17 +267,45 @@ export default function Composer({ enabled }: { enabled: boolean }) {
       </div>
 
       {tab !== "poll" && (
-        <textarea
-          className="w-full resize-none rounded-md bg-input text-sm p-3 outline-none ring-1 ring-border focus:ring-2"
-          placeholder={enabled ? t.placeholderEnabled : t.placeholderDisabled}
-          disabled={!enabled}
-          rows={3}
-          value={text}
-          onChange={(e) => {
-            clearError();
-            setText(e.target.value);
-          }}
-        />
+        <>
+          <textarea
+            className="w-full resize-none rounded-md bg-input text-sm p-3 outline-none ring-1 ring-border focus:ring-2"
+            placeholder={enabled ? t.placeholderEnabled : t.placeholderDisabled}
+            disabled={!enabled}
+            rows={3}
+            value={text}
+            onChange={(e) => {
+              clearError();
+              setText(e.target.value);
+            }}
+          />
+          <div className="mt-2">
+            <label className="mb-1 block text-xs opacity-80">Etiquetar personas (@usuario)</label>
+            <input
+              type="text"
+              value={mentionQuery}
+              disabled={!enabled}
+              onChange={(e) => setMentionQuery(e.target.value.replace(/^@+/, ""))}
+              placeholder="Buscar usuario para mencionar"
+              className="h-9 w-full rounded-md bg-input px-3 text-sm outline-none ring-1 ring-border focus:ring-2"
+            />
+            {(mentionsLoading || mentionResults.length > 0) && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {mentionsLoading && <span className="text-xs opacity-60">Buscando personas…</span>}
+                {mentionResults.map((user) => (
+                  <button
+                    key={user.id}
+                    type="button"
+                    onClick={() => insertMention(user.username)}
+                    className="rounded-full border border-border px-3 py-1 text-xs hover:bg-muted/60"
+                  >
+                    {user.nickname || user.username} <span className="opacity-70">@{user.username}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
       )}
 
       {tab === "media" && (

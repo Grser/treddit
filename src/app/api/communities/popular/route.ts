@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+
+import { db, isDatabaseConfigured } from "@/lib/db";
 
 export async function GET() {
+  if (!isDatabaseConfigured()) {
+    return NextResponse.json({ items: [] });
+  }
+
   const [rows] = await db.query(
     `SELECT c.id, c.slug, c.name, COUNT(cm.user_id) as members
      FROM Communities c

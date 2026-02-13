@@ -179,7 +179,7 @@ export default function PostCard({
 }
 
 function renderDescription(text: string) {
-  const parts = text.split(/(#[\p{L}\p{N}_]+)/gu);
+  const parts = text.split(/([#@][\p{L}\p{N}_]+)/gu);
   return parts.map((part, index) => {
     if (/^#[\p{L}\p{N}_]+$/u.test(part)) {
       const href = `/buscar?q=${encodeURIComponent(part)}`;
@@ -193,6 +193,20 @@ function renderDescription(text: string) {
         </a>
       );
     }
+
+    if (/^@[\p{L}\p{N}_]+$/u.test(part)) {
+      const username = part.slice(1);
+      return (
+        <a
+          key={`mention-${index}-${part}`}
+          href={`/u/${encodeURIComponent(username)}`}
+          className="text-sky-500 font-semibold hover:underline"
+        >
+          {part}
+        </a>
+      );
+    }
+
     return <span key={`text-${index}`}>{part}</span>;
   });
 }

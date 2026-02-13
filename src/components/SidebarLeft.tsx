@@ -4,7 +4,13 @@ import Link from "next/link";
 
 import { useLocale } from "@/contexts/LocaleContext";
 
-export default function SidebarLeft({ communities = [] as string[] }) {
+type SidebarCommunity = {
+  id: number;
+  slug: string;
+  name: string;
+};
+
+export default function SidebarLeft({ communities = [] as SidebarCommunity[] }) {
   const { strings } = useLocale();
   const t = strings.sidebarLeft;
 
@@ -30,12 +36,16 @@ export default function SidebarLeft({ communities = [] as string[] }) {
         {communities.length === 0 && (
           <span className="px-3 py-2 text-sm opacity-60">{t.empty}</span>
         )}
-        {communities.map((tag) => {
-          const normalized = tag.startsWith("#") ? tag : `#${tag}`;
-          const href = `/buscar?q=${encodeURIComponent(normalized)}`;
+        {communities.map((community) => {
+          const href = `/c/${encodeURIComponent(community.slug)}`;
           return (
-            <Link key={tag} href={href} className="px-3 py-2 hover:bg-muted/60 rounded-lg">
-              {normalized}
+            <Link
+              key={community.id}
+              href={href}
+              className="px-3 py-2 hover:bg-muted/60 rounded-lg"
+              title={community.name}
+            >
+              c/{community.slug}
             </Link>
           );
         })}
