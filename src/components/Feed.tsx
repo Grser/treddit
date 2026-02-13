@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useLocale } from "@/contexts/LocaleContext";
 
@@ -39,6 +39,7 @@ export default function Feed({
   const [loading, setLoading] = useState(initialItems?.length ? false : true);
   const [hasError, setHasError] = useState(false);
   const [errMsg, setErrMsg] = useState<string | null>(null);
+  const skipFirstLoad = useRef(Boolean(initialItems?.length));
 
   const query = useMemo(() => {
     const params = new URLSearchParams();
@@ -62,6 +63,11 @@ export default function Feed({
   }, [source, userId, likesOf, limit, filter, communityId, tag, username]);
 
   useEffect(() => {
+    if (skipFirstLoad.current) {
+      skipFirstLoad.current = false;
+      return;
+    }
+
     let alive = true;
     async function load() {
       setLoading(true);
