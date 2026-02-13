@@ -6,7 +6,7 @@ import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import { db, isDatabaseConfigured } from "@/lib/db";
 import { getSessionUser, requireUser } from "@/lib/auth";
 import { createDemoPost, getDemoFeed } from "@/lib/demoStore";
-import { getPostsCommunityColumn } from "@/lib/communityColumns";
+import { ensurePostsCommunityColumn, getPostsCommunityColumn } from "@/lib/communityColumns";
 
 type PostRow = {
   id: number;
@@ -230,7 +230,7 @@ export async function POST(req: Request) {
   const communityIdRaw = typeof communityValue === "number" ? communityValue : Number(communityValue);
   const normalizedCommunityId = Number.isFinite(communityIdRaw) && communityIdRaw > 0 ? communityIdRaw : null;
 
-  const communityColumn = databaseReady ? await getPostsCommunityColumn() : "community_id";
+  let communityColumn = databaseReady ? await getPostsCommunityColumn() : "community_id";
 
   description = description.slice(0, 2000);
 
@@ -267,7 +267,10 @@ export async function POST(req: Request) {
 
   if (normalizedCommunityId && databaseReady) {
     if (!communityColumn) {
-      return NextResponse.json({ error: "La base de datos no admite comunidades" }, { status: 400 });
+      communityColumn = await ensurePostsCommunityColumn();
+      if (!communityColumn) {
+        return NextResponse.json({ error: "La base de datos no admite comunidades" }, { status: 400 });
+      }
     }
     try {
       const [rows] = await db.query<CommunityMembershipRow[]>(
