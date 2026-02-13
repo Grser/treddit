@@ -6,6 +6,7 @@ import {
   canSendDirectMessage,
   createDirectMessage,
   ensureMessageTables,
+  fetchConversationMessages,
   type DirectMessageAttachment,
 } from "@/lib/messages";
 
@@ -13,6 +14,7 @@ type DirectMessagePayload = {
   recipientId?: unknown;
   text?: unknown;
   attachments?: unknown;
+  replyToMessageId?: unknown;
 };
 
 function isDirectMessagePayload(value: unknown): value is DirectMessagePayload {
@@ -40,6 +42,7 @@ export async function POST(req: Request) {
   const textValue = typeof payload.text === "string" ? payload.text : "";
   const normalizedText = textValue.trim();
   const attachmentsRaw = Array.isArray(payload.attachments) ? payload.attachments : [];
+  const replyToMessageId = Number(payload.replyToMessageId);
   const attachments: DirectMessageAttachment[] = attachmentsRaw
     .map((item) => {
       if (!item || typeof item !== "object") return null;
@@ -77,10 +80,50 @@ export async function POST(req: Request) {
   }
 
   try {
-    const message = await createDirectMessage(me, recipientId, normalizedText, attachments);
+    const message = await createDirectMessage(
+      me,
+      recipientId,
+      normalizedText,
+      attachments,
+      Number.isFinite(replyToMessageId) && replyToMessageId > 0 ? replyToMessageId : null,
+    );
     return NextResponse.json({ message }, { status: 201 });
   } catch (error) {
     console.error("Failed to create direct message", error);
     return NextResponse.json({ error: "No se pudo enviar el mensaje" }, { status: 500 });
+  }
+}
+
+
+export async function GET(req: Request) {
+  const me = await requireUser();
+  const url = new URL(req.url);
+  const recipientId = Number(url.searchParams.get("recipientId"));
+  const afterId = Number(url.searchParams.get("afterId") || "0");
+  const limit = Number(url.searchParams.get("limit") || "60");
+
+  if (!Number.isFinite(recipientId) || recipientId <= 0) {
+    return NextResponse.json({ error: "Destinatario inválido" }, { status: 400 });
+  }
+
+  if (recipientId === me.id) {
+    return NextResponse.json({ messages: [] });
+  }
+
+  if (isDatabaseConfigured()) {
+    await ensureMessageTables();
+  }
+
+  const canMessage = await canSendDirectMessage(me.id, recipientId);
+  if (!canMessage) {
+    return NextResponse.json({ error: "No puedes ver esta conversación" }, { status: 403 });
+  }
+
+  try {
+    const messages = await fetchConversationMessages(me.id, recipientId, limit, Math.max(0, afterId));
+    return NextResponse.json({ messages });
+  } catch (error) {
+    console.error("Failed to fetch direct messages", error);
+    return NextResponse.json({ error: "No se pudo cargar la conversación" }, { status: 500 });
   }
 }
