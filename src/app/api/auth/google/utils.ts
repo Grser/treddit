@@ -84,8 +84,10 @@ function buildOrigin(host: string, proto: string | null | undefined, req: Reques
 }
 
 export function getBaseUrl(req: Request | NextRequest) {
+  // Preferred variables for OAuth origin detection (most explicit first).
   const configuredBase =
     process.env.GOOGLE_OAUTH_BASE_URL?.trim() ||
+    process.env.AUTH_BASE_URL?.trim() ||
     process.env.NEXT_PUBLIC_BASE_URL?.trim() ||
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL.trim()}` : "");
 
@@ -120,7 +122,9 @@ export function getBaseUrl(req: Request | NextRequest) {
 }
 
 export async function getRedirectUri(baseUrl: string) {
-  const explicitRedirect = process.env.GOOGLE_REDIRECT_URI?.trim();
+  const explicitRedirect =
+    process.env.GOOGLE_REDIRECT_URI?.trim() ||
+    process.env.GOOGLE_CALLBACK_URL?.trim();
   if (explicitRedirect) {
     const normalized = normalizeOrigin(explicitRedirect);
     if (normalized) return explicitRedirect;
