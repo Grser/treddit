@@ -35,6 +35,34 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 
+
+## Configuración de redirección para login con Google
+
+Si después de autenticar con Google te redirige a `http://localhost:3000`, define explícitamente estas variables de entorno:
+
+```
+# URL base pública de tu app (prioridad para OAuth)
+GOOGLE_OAUTH_BASE_URL=https://tu-dominio.com
+
+# Alias soportado (más genérico)
+AUTH_BASE_URL=https://tu-dominio.com
+
+# Callback final exacto de Google (máxima prioridad)
+GOOGLE_REDIRECT_URI=https://tu-dominio.com/api/auth/google/callback
+
+# Alias soportado para la callback
+GOOGLE_CALLBACK_URL=https://tu-dominio.com/api/auth/google/callback
+```
+
+Prioridad usada por el backend:
+
+1. `GOOGLE_REDIRECT_URI` o `GOOGLE_CALLBACK_URL` (callback completa).
+2. `GOOGLE_OAUTH_BASE_URL` o `AUTH_BASE_URL` (origen base).
+3. `NEXT_PUBLIC_BASE_URL`.
+4. Detección automática por headers/proxy.
+
+Si no encuentra nada válido, cae en `http://localhost:3000`.
+
 ## Configuración de correo para recuperación de contraseña
 
 Para que la función de recuperación por código funcione necesitas configurar un servidor SMTP mediante variables de entorno:
