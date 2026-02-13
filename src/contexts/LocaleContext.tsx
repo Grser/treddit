@@ -86,6 +86,7 @@ export type LocaleStrings = {
   comments: {
     loading: string;
     none: string;
+    showComments: string;
     placeholder: string;
     replyPlaceholder: string;
     add: string;
@@ -318,6 +319,7 @@ const translations: Record<Locale, LocaleStrings> = {
     comments: {
       loading: "Cargando comentarios…",
       none: "No hay comentarios aún.",
+      showComments: "Ver comentarios",
       placeholder: "Escribe un comentario",
       replyPlaceholder: "Tu respuesta",
       add: "Comentar",
@@ -586,6 +588,7 @@ const translations: Record<Locale, LocaleStrings> = {
     comments: {
       loading: "Loading comments…",
       none: "No comments yet.",
+      showComments: "Show comments",
       placeholder: "Write a comment",
       replyPlaceholder: "Your reply",
       add: "Comment",
@@ -853,6 +856,7 @@ const translations: Record<Locale, LocaleStrings> = {
     comments: {
       loading: "Загрузка комментариев…",
       none: "Комментариев пока нет.",
+      showComments: "Показать комментарии",
       placeholder: "Напишите комментарий",
       replyPlaceholder: "Ваш ответ",
       add: "Комментировать",

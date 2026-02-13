@@ -32,6 +32,7 @@ export default function CommentsThread({
   const [tree, setTree] = useState<CommentNode[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [text, setText] = useState("");
+  const [open, setOpen] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -44,8 +45,21 @@ export default function CommentsThread({
   }, [postId]);
 
   useEffect(() => {
+    function onOpen(event: Event) {
+      const customEvent = event as CustomEvent<{ postId?: number }>;
+      if (customEvent.detail?.postId === postId) {
+        setOpen(true);
+      }
+    }
+
+    window.addEventListener("open-comments", onOpen);
+    return () => window.removeEventListener("open-comments", onOpen);
+  }, [postId]);
+
+  useEffect(() => {
+    if (!open) return;
     load();
-  }, [load]);
+  }, [open, load]);
 
   async function addRoot() {
     if (!canInteract || !text.trim() || busy) return;
@@ -61,6 +75,17 @@ export default function CommentsThread({
     } finally {
       setBusy(false);
     }
+  }
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="text-sm opacity-70 hover:opacity-100 hover:underline"
+      >
+        {t.showComments}
+      </button>
+    );
   }
 
   if (tree === null) return <p className="text-sm opacity-70">{t.loading}</p>;

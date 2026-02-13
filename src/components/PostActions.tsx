@@ -123,11 +123,12 @@ export default function PostActions({
       <button
         className={`${btnBase} hover:text-blue-400`}
         title={t.comments}
-        onClick={() =>
+        onClick={() => {
+          window.dispatchEvent(new CustomEvent("open-comments", { detail: { postId } }));
           document
             .getElementById(`comments-${postId}`)
-            ?.scrollIntoView({ behavior: "smooth", block: "center" })
-        }
+            ?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }}
       >
         <IconComment className={`${iconBase}`} />
         <span className={`${textBase}`}>{formatCount(comments)}</span>
