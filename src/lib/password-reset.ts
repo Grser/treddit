@@ -33,10 +33,9 @@ export function hashResetCode(code: string) {
 
 export async function storeResetCode(userId: number, code: string, ttlMinutes = 15) {
   await ensurePasswordResetTable();
-  const expiresAt = new Date(Date.now() + ttlMinutes * 60 * 1000);
   await db.execute(
-    "INSERT INTO PasswordResetCodes (user_id, code_hash, created_at, expires_at) VALUES (?, ?, NOW(), ?)",
-    [userId, hashResetCode(code), expiresAt],
+    "INSERT INTO PasswordResetCodes (user_id, code_hash, created_at, expires_at) VALUES (?, ?, NOW(), DATE_ADD(NOW(), INTERVAL ? MINUTE))",
+    [userId, hashResetCode(code), ttlMinutes],
   );
 }
 
@@ -45,13 +44,21 @@ export async function invalidateResetCodes(userId: number) {
   await db.execute("DELETE FROM PasswordResetCodes WHERE user_id=?", [userId]);
 }
 
-export async function findValidResetCode(userId: number): Promise<ResetCodeRecord | null> {
+export async function findValidResetCode(userId: number, code?: string): Promise<ResetCodeRecord | null> {
   await ensurePasswordResetTable();
+  const codeHash = typeof code === "string" ? hashResetCode(code) : null;
   const [rows] = await db.execute<
     (RowDataPacket & { id: number; code_hash: string; expires_at: Date })[]
   >(
-    "SELECT id, code_hash, expires_at FROM PasswordResetCodes WHERE user_id=? AND used_at IS NULL AND expires_at > NOW() ORDER BY created_at DESC LIMIT 1",
-    [userId],
+    `SELECT id, code_hash, expires_at
+     FROM PasswordResetCodes
+     WHERE user_id=?
+       AND used_at IS NULL
+       AND expires_at > NOW()
+       AND (? IS NULL OR code_hash = ?)
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [userId, codeHash, codeHash],
   );
   return rows[0] ?? null;
 }
