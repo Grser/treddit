@@ -372,6 +372,7 @@ export function appendDemoMessage(
   recipientId: number,
   text: string,
   attachments: AttachmentPayload = [],
+  replyToMessageId?: number | null,
 ): DirectMessageEntry {
   const store = ensureStore();
   const senderUser = normalizeSessionUser(sender);
@@ -385,6 +386,10 @@ export function appendDemoMessage(
     convo = { participantId: recipientId, messages: [] };
     store.conversations.set(key, convo);
   }
+  const replyTarget =
+    Number.isFinite(replyToMessageId) && Number(replyToMessageId) > 0
+      ? convo.messages.find((message) => message.id === Number(replyToMessageId))
+      : null;
   const entry: DirectMessageEntry = {
     id: ++demoMessageId,
     senderId: sender.id,
@@ -399,6 +404,14 @@ export function appendDemoMessage(
       is_verified: senderUser.is_verified,
     },
     attachments,
+    replyTo: replyTarget
+      ? {
+          id: replyTarget.id,
+          text: replyTarget.text,
+          senderUsername: replyTarget.sender.username,
+          senderNickname: replyTarget.sender.nickname,
+        }
+      : null,
   };
   convo.messages = [...convo.messages, entry];
   return entry;

@@ -26,6 +26,12 @@ export type DirectMessageEntry = {
     is_verified: boolean;
   };
   attachments?: DirectMessageAttachment[];
+  replyTo?: {
+    id: number;
+    text: string;
+    senderUsername: string;
+    senderNickname: string | null;
+  } | null;
 };
 
 export async function ensureMessageTables() {
@@ -44,12 +50,40 @@ export async function ensureMessageTables() {
       sender_id INT UNSIGNED NOT NULL,
       recipient_id INT UNSIGNED NOT NULL,
       message TEXT NOT NULL,
+      attachments_json JSON NULL,
+      reply_to_message_id INT NULL,
       created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       INDEX idx_direct_pair (sender_id, recipient_id, created_at),
+      INDEX idx_direct_reply (reply_to_message_id),
       CONSTRAINT fk_dm_sender FOREIGN KEY (sender_id) REFERENCES Users(id) ON DELETE CASCADE,
-      CONSTRAINT fk_dm_recipient FOREIGN KEY (recipient_id) REFERENCES Users(id) ON DELETE CASCADE
+      CONSTRAINT fk_dm_recipient FOREIGN KEY (recipient_id) REFERENCES Users(id) ON DELETE CASCADE,
+      CONSTRAINT fk_dm_reply FOREIGN KEY (reply_to_message_id) REFERENCES Direct_Messages(id) ON DELETE SET NULL
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `);
+  const [attachmentsColumn] = await db.query<RowDataPacket[]>(
+    "SHOW COLUMNS FROM Direct_Messages LIKE 'attachments_json'",
+  );
+  if (!attachmentsColumn.length) {
+    await db.execute("ALTER TABLE Direct_Messages ADD COLUMN attachments_json JSON NULL");
+  }
+
+  const [replyColumn] = await db.query<RowDataPacket[]>(
+    "SHOW COLUMNS FROM Direct_Messages LIKE 'reply_to_message_id'",
+  );
+  if (!replyColumn.length) {
+    await db.execute("ALTER TABLE Direct_Messages ADD COLUMN reply_to_message_id INT NULL");
+    await db.execute(
+      "ALTER TABLE Direct_Messages ADD CONSTRAINT fk_dm_reply FOREIGN KEY (reply_to_message_id) REFERENCES Direct_Messages(id) ON DELETE SET NULL",
+    );
+  }
+
+  const [replyIndex] = await db.query<RowDataPacket[]>(
+    "SHOW INDEX FROM Direct_Messages WHERE Key_name='idx_direct_reply'",
+  );
+  if (!replyIndex.length) {
+    await db.execute("ALTER TABLE Direct_Messages ADD INDEX idx_direct_reply (reply_to_message_id)");
+  }
+
   tablesReady = true;
 }
 
@@ -73,6 +107,11 @@ type ConversationRow = RowDataPacket & {
   avatar_url: string | null;
   is_admin: number;
   is_verified: number;
+  attachments_json: string | null;
+  reply_id: number | null;
+  reply_message: string | null;
+  reply_sender_username: string | null;
+  reply_sender_nickname: string | null;
 };
 
 type InsertedMessageRow = ConversationRow;
@@ -146,9 +185,10 @@ export async function fetchConversationMessages(
   viewerId: number,
   otherId: number,
   limit = 80,
+  afterId = 0,
 ): Promise<DirectMessageEntry[]> {
   if (!isDatabaseConfigured()) {
-    return getDemoConversation(viewerId, otherId);
+    return getDemoConversation(viewerId, otherId).filter((message) => message.id > Math.max(0, afterId));
   }
   await ensureMessageTables();
   const [rows] = await db.query<ConversationRow[]>(
@@ -158,20 +198,30 @@ export async function fetchConversationMessages(
       dm.sender_id,
       dm.recipient_id,
       dm.message,
+      dm.attachments_json,
       dm.created_at,
       u.username,
       u.nickname,
       u.avatar_url,
       u.is_admin,
-      u.is_verified
+      u.is_verified,
+      parent.id AS reply_id,
+      parent.message AS reply_message,
+      parent_sender.username AS reply_sender_username,
+      parent_sender.nickname AS reply_sender_nickname
     FROM Direct_Messages dm
     JOIN Users u ON u.id = dm.sender_id
-    WHERE (dm.sender_id = ? AND dm.recipient_id = ?)
-       OR (dm.sender_id = ? AND dm.recipient_id = ?)
+    LEFT JOIN Direct_Messages parent ON parent.id = dm.reply_to_message_id
+    LEFT JOIN Users parent_sender ON parent_sender.id = parent.sender_id
+    WHERE (
+      (dm.sender_id = ? AND dm.recipient_id = ?)
+      OR (dm.sender_id = ? AND dm.recipient_id = ?)
+    )
+      AND dm.id > ?
     ORDER BY dm.created_at ASC
     LIMIT ?
     `,
-    [viewerId, otherId, otherId, viewerId, Math.max(1, Math.min(limit, 200))],
+    [viewerId, otherId, otherId, viewerId, Math.max(0, afterId), Math.max(1, Math.min(limit, 200))],
   );
 
   return rows.map((row) => ({
@@ -187,8 +237,40 @@ export async function fetchConversationMessages(
       is_admin: Boolean(row.is_admin),
       is_verified: Boolean(row.is_verified),
     },
-    attachments: [],
+    attachments: parseAttachments(row.attachments_json),
+    replyTo: row.reply_id
+      ? {
+          id: Number(row.reply_id),
+          text: String(row.reply_message ?? ""),
+          senderUsername: String(row.reply_sender_username ?? ""),
+          senderNickname: row.reply_sender_nickname ? String(row.reply_sender_nickname) : null,
+        }
+      : null,
   }));
+}
+
+function parseAttachments(raw: string | null): DirectMessageAttachment[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((item) => {
+        if (!item || typeof item !== "object") return null;
+        const row = item as Record<string, unknown>;
+        const url = typeof row.url === "string" ? row.url.trim() : "";
+        const type =
+          row.type === "image" || row.type === "audio" || row.type === "video" || row.type === "file"
+            ? row.type
+            : "file";
+        const name = typeof row.name === "string" ? row.name : null;
+        if (!url) return null;
+        return { url, type, name } satisfies DirectMessageAttachment;
+      })
+      .filter(Boolean) as DirectMessageAttachment[];
+  } catch {
+    return [];
+  }
 }
 
 export async function fetchConversationSummaries(
@@ -254,18 +336,33 @@ export async function createDirectMessage(
   recipientId: number,
   text: string,
   attachments: DirectMessageAttachment[] = [],
+  replyToMessageId?: number | null,
 ): Promise<DirectMessageEntry> {
   if (!isDatabaseConfigured()) {
-    return appendDemoMessage(sender, recipientId, text.trim(), attachments);
+    return appendDemoMessage(sender, recipientId, text.trim(), attachments, replyToMessageId);
   }
   const normalized = text.trim().slice(0, 1000);
   if (!normalized) {
     throw new Error("EMPTY_MESSAGE");
   }
   await ensureMessageTables();
+  let normalizedReplyToId: number | null = null;
+  if (Number.isFinite(replyToMessageId) && Number(replyToMessageId) > 0) {
+    const candidate = Number(replyToMessageId);
+    const [replyRows] = await db.query<RowDataPacket[]>(
+      `SELECT id FROM Direct_Messages
+       WHERE id = ?
+         AND ((sender_id = ? AND recipient_id = ?) OR (sender_id = ? AND recipient_id = ?))
+       LIMIT 1`,
+      [candidate, sender.id, recipientId, recipientId, sender.id],
+    );
+    if (replyRows[0]?.id) {
+      normalizedReplyToId = Number(replyRows[0].id);
+    }
+  }
   const [result] = await db.execute<ResultSetHeader>(
-    "INSERT INTO Direct_Messages (sender_id, recipient_id, message, created_at) VALUES (?, ?, ?, NOW())",
-    [sender.id, recipientId, normalized],
+    "INSERT INTO Direct_Messages (sender_id, recipient_id, message, attachments_json, reply_to_message_id, created_at) VALUES (?, ?, ?, ?, ?, NOW())",
+    [sender.id, recipientId, normalized, JSON.stringify(attachments), normalizedReplyToId],
   );
   const insertId = (result as ResultSetHeader).insertId;
   const [rows] = await db.query<InsertedMessageRow[]>(
@@ -275,14 +372,21 @@ export async function createDirectMessage(
       dm.sender_id,
       dm.recipient_id,
       dm.message,
+      dm.attachments_json,
       dm.created_at,
       u.username,
       u.nickname,
       u.avatar_url,
       u.is_admin,
-      u.is_verified
+      u.is_verified,
+      parent.id AS reply_id,
+      parent.message AS reply_message,
+      parent_sender.username AS reply_sender_username,
+      parent_sender.nickname AS reply_sender_nickname
     FROM Direct_Messages dm
     JOIN Users u ON u.id = dm.sender_id
+    LEFT JOIN Direct_Messages parent ON parent.id = dm.reply_to_message_id
+    LEFT JOIN Users parent_sender ON parent_sender.id = parent.sender_id
     WHERE dm.id = ?
     LIMIT 1
     `,
@@ -305,6 +409,14 @@ export async function createDirectMessage(
       is_admin: Boolean(row.is_admin),
       is_verified: Boolean(row.is_verified),
     },
-    attachments: attachments.slice(),
+    attachments: parseAttachments(row.attachments_json),
+    replyTo: row.reply_id
+      ? {
+          id: Number(row.reply_id),
+          text: String(row.reply_message ?? ""),
+          senderUsername: String(row.reply_sender_username ?? ""),
+          senderNickname: row.reply_sender_nickname ? String(row.reply_sender_nickname) : null,
+        }
+      : null,
   };
 }
