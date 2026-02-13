@@ -45,7 +45,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Código inválido o expirado" }, { status: 400 });
   }
 
-  const record = await findValidResetCode(user.id);
+  const record = await findValidResetCode(user.id, sanitizedCode);
   if (!record || record.code_hash !== hashResetCode(sanitizedCode)) {
     return NextResponse.json({ error: "Código inválido o expirado" }, { status: 400 });
   }
