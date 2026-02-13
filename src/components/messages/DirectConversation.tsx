@@ -77,6 +77,13 @@ export default function DirectConversation({
     [sending, uploading, text, attachments.length],
   );
 
+  function selectLatestMessageFromSender(message: DirectMessageEntry) {
+    const latestFromSender = [...messages]
+      .reverse()
+      .find((entry) => entry.senderId === message.senderId);
+    setReplyingTo(latestFromSender ?? message);
+  }
+
   function removeAttachment(url: string) {
     setAttachments((prev) => prev.filter((item) => item.url !== url));
   }
@@ -211,12 +218,12 @@ export default function DirectConversation({
                                 src={file.url}
                                 alt={file.name || "Imagen adjunta"}
                                 width={320}
-                                height={180}
-                                className="h-auto w-full object-cover"
+                                height={220}
+                                className="h-[220px] w-[320px] max-w-full object-cover"
                                 unoptimized
                               />
                             ) : file.type === "video" ? (
-                              <video src={file.url} controls className="h-auto w-full rounded-lg" />
+                              <video src={file.url} controls className="h-[220px] w-[320px] max-w-full rounded-lg object-cover" />
                             ) : file.type === "audio" ? (
                               <audio src={file.url} controls className="w-full" />
                             ) : (
@@ -238,7 +245,7 @@ export default function DirectConversation({
                       <button
                         type="button"
                         className={`text-xs ${isMine ? "text-white/80 hover:text-white" : "opacity-70 hover:opacity-100"}`}
-                        onClick={() => setReplyingTo(msg)}
+                        onClick={() => selectLatestMessageFromSender(msg)}
                       >
                         Responder
                       </button>
