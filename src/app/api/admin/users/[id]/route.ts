@@ -3,9 +3,10 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   await requireAdmin();
-  const id = Number(params.id);
+  const { id: userId } = await params;
+  const id = Number(userId);
   const form = await req.formData();
   const op = String(form.get("op") || "");
 

@@ -17,15 +17,25 @@ type ProfileRow = RowDataPacket & {
   show_bookmarks: number;
 };
 
-export default async function EditProfilePage({ params }: { params: { username: string } }) {
+export default async function EditProfilePage({ params }: { params: Promise<{ username: string }> }) {
+  const { username } = await params;
   const me = await requireUser();
-  if (!me || me.username !== params.username) return <div className="p-6">No autorizado</div>;
+  if (!me || me.username !== username) return <div className="p-6">No autorizado</div>;
 
   const [rows] = await db.query<ProfileRow[]>(
     "SELECT nickname, avatar_url, banner_url, description, location, website, show_likes, show_bookmarks FROM Users WHERE id=? LIMIT 1",
     [me.id]
   );
-  const u = rows[0];
+  const u = rows[0] ?? {
+    nickname: "",
+    avatar_url: null,
+    banner_url: null,
+    description: "",
+    location: "",
+    website: "",
+    show_likes: 0,
+    show_bookmarks: 0,
+  };
   const allowMessages = await getAllowMessagesFromAnyone(me.id);
 
   return (
@@ -39,7 +49,7 @@ export default async function EditProfilePage({ params }: { params: { username: 
         <input type="hidden" name="mode" value="update" />
         <label className="block">
           <span className="text-sm">Nombre</span>
-          <input name="nickname" defaultValue={u.nickname} className="w-full bg-input rounded-md h-10 px-3 ring-1 ring-border outline-none" />
+          <input name="nickname" defaultValue={u.nickname || ""} className="w-full bg-input rounded-md h-10 px-3 ring-1 ring-border outline-none" />
         </label>
         <label className="block">
           <span className="text-sm">Biografía</span>

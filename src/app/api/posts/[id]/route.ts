@@ -41,13 +41,14 @@ async function deletePost(me: AuthenticatedUser, id: number) {
   return NextResponse.json({ ok: true });
 }
 
-export async function DELETE(_: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const me = await requireUser();
-  const id = Number(params.id);
+  const { id: postId } = await params;
+  const id = Number(postId);
   return deletePost(me, id);
 }
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const methodOverride = req.headers.get("content-type")?.includes("application/x-www-form-urlencoded") ||
     req.headers.get("content-type")?.includes("multipart/form-data");
   if (!methodOverride) {
@@ -61,13 +62,15 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   }
 
   const me = await requireUser();
-  const id = Number(params.id);
+  const { id: postId } = await params;
+  const id = Number(postId);
   return deletePost(me, id);
 }
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const me = await requireUser();
-  const id = Number(params.id);
+  const { id: postId } = await params;
+  const id = Number(postId);
   const rawBody = (await req.json().catch(() => null)) as PostPatchBody | null;
   const patchBody = {
     op: typeof rawBody?.op === "string" ? rawBody.op : undefined,

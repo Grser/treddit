@@ -21,7 +21,7 @@ export async function GET() {
     );
   }
 
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const lastSeenValue = cookieStore.get("messages_last_seen")?.value;
   const lastSeenRaw = lastSeenValue ? Number(lastSeenValue) : 0;
   const lastSeen = Number.isFinite(lastSeenRaw) && lastSeenRaw > 0 ? lastSeenRaw : 0;

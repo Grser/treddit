@@ -21,7 +21,7 @@ import { getDemoConversation, resolveDemoUserByUsername } from "@/lib/demoStore"
 export const dynamic = "force-dynamic";
 
 type ConversationParams = {
-  params: { username: string };
+  params: Promise<{ username: string }>;
 };
 
 type ConversationUser = ConversationParticipant & { allowsAnyone: boolean };
@@ -36,8 +36,9 @@ type ConversationRow = RowDataPacket & {
 };
 
 export default async function ConversationPage({ params }: ConversationParams) {
+  const { username } = await params;
   const me = await requireUser();
-  const slug = params.username;
+  const slug = username;
 
   if (!isDatabaseConfigured()) {
     const demoTarget = resolveDemoUserByUsername(slug);
@@ -160,8 +161,8 @@ export default async function ConversationPage({ params }: ConversationParams) {
                 {target.nickname || target.username}
                 <UserBadges
                   size="sm"
-                  isAdmin={target.is_admin}
-                  isVerified={target.is_verified}
+                  isAdmin={Boolean(target.is_admin)}
+                  isVerified={Boolean(target.is_verified)}
                 />
               </p>
               <p className="text-sm opacity-70">@{target.username}</p>

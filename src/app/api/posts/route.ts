@@ -95,7 +95,7 @@ export async function GET(req: Request) {
 
   if (shouldPrioritizeFollowed) {
     joins.push("LEFT JOIN Follows ff ON ff.followed = p.user AND ff.follower = ?");
-    joinParams.push(meId);
+    joinParams.push(Number(meId));
   }
 
   if (!isDatabaseConfigured()) {

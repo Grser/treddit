@@ -11,7 +11,7 @@ type Trend = { tag: string; count: number; views?: number };
 type UserRec = {
   id: number;
   username: string;
-  nickname: string;
+  nickname: string | null;
   avatar_url?: string | null;
   is_admin?: boolean;
   is_verified?: boolean;

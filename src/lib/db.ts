@@ -1,8 +1,5 @@
 import mysql from "mysql2/promise";
 
-type QueryArgs = Parameters<mysql.Pool["query"]>;
-type ExecuteArgs = Parameters<mysql.Pool["execute"]>;
-
 const {
   DATABASE_HOST,
   DATABASE_USER,
@@ -99,15 +96,17 @@ export function isDatabaseConnectionLimitError(
 }
 
 export const db = {
-  query<T extends mysql.RowDataPacket[][] | mysql.RowDataPacket[] | mysql.OkPacket | mysql.OkPacket[]>(
-    ...args: QueryArgs
+  query<T = mysql.RowDataPacket[]>(
+    sql: string,
+    values?: unknown[],
   ) {
-    return wrapDbPromise(ensurePool().query<T>(...args));
+    return wrapDbPromise(ensurePool().query(sql, values)) as Promise<[T, mysql.FieldPacket[]]>;
   },
-  execute<T extends mysql.RowDataPacket[][] | mysql.RowDataPacket[] | mysql.OkPacket | mysql.OkPacket[]>(
-    ...args: ExecuteArgs
+  execute<T = mysql.RowDataPacket[]>(
+    sql: string,
+    values?: unknown[],
   ) {
-    return wrapDbPromise(ensurePool().execute<T>(...args));
+    return wrapDbPromise(ensurePool().execute(sql, values)) as Promise<[T, mysql.FieldPacket[]]>;
   },
   async getConnection() {
     const instance = ensurePool();

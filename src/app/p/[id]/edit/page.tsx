@@ -14,9 +14,10 @@ type PostRow = RowDataPacket & {
 
 type AdminFlagRow = RowDataPacket & { is_admin: number };
 
-export default async function EditPostPage({ params }: { params: { id: string } }) {
+export default async function EditPostPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id: rawId } = await params;
   const me = await requireUser();
-  const id = Number(params.id);
+  const id = Number(rawId);
 
   const [rows] = await db.query<PostRow[]>(
     "SELECT p.id, p.user, p.description, p.reply_scope FROM Posts p WHERE p.id=? LIMIT 1",

@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 
 type CommunityPageProps = {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 };
 
 type Community = {
@@ -70,6 +70,7 @@ function formatRole(role: string | null) {
 }
 
 export default async function CommunityPage({ params }: CommunityPageProps) {
+  const { slug } = await params;
   const me = await getSessionUser();
 
   if (!isDatabaseConfigured()) {
@@ -87,7 +88,7 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
     );
   }
 
-  const data = await loadCommunity(params.slug, me?.id ?? null);
+  const data = await loadCommunity(slug, me?.id ?? null);
   if (!data) {
     return (
       <div className="min-h-dvh bg-background text-foreground">

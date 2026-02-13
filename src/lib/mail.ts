@@ -16,15 +16,7 @@ function getTransporter() {
         return null;
       }
 
-      let nodemailer: typeof import("nodemailer").default;
-      try {
-        ({ default: nodemailer } = await import("nodemailer"));
-      } catch (error) {
-        console.error("Nodemailer no está instalado o no pudo cargarse", error);
-        throw new Error(
-          "No se pudo cargar Nodemailer. Asegúrate de tener la dependencia instalada en el entorno de ejecución.",
-        );
-      }
+      const nodemailer = (await import("nodemailer")) as typeof import("nodemailer");
       const secureEnv = process.env.SMTP_SECURE;
       const secure = secureEnv ? secureEnv === "true" || secureEnv === "1" : port === 465;
       const user = process.env.SMTP_USER;

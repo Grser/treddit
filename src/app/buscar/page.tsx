@@ -10,7 +10,7 @@ import { getDemoFeed, getDemoRecommendedUsers } from "@/lib/demoStore";
 export const dynamic = "force-dynamic";
 
 type SearchPageProps = {
-  searchParams: { q?: string };
+  searchParams: Promise<{ q?: string }>;
 };
 
 type SearchPost = {
@@ -29,7 +29,8 @@ type SearchUser = {
 };
 
 export default async function SearchPage({ searchParams }: SearchPageProps) {
-  const query = (searchParams.q || "").trim();
+  const params = await searchParams;
+  const query = (params.q || "").trim();
   const sanitized = likeEscape(query);
   const like = `%${sanitized}%`;
 

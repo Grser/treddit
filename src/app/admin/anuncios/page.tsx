@@ -13,14 +13,15 @@ type Campaign = {
 };
 
 type AdminAdsProps = {
-  searchParams: { created?: string };
+  searchParams: Promise<{ created?: string }>;
 };
 
 export default async function AdminAdsPage({ searchParams }: AdminAdsProps) {
   const admin = await requireAdmin();
   const databaseReady = isDatabaseConfigured();
   const campaigns = databaseReady ? await loadCampaigns() : [];
-  const justCreated = searchParams.created === "1";
+  const params = await searchParams;
+  const justCreated = params.created === "1";
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
@@ -129,6 +130,7 @@ async function loadCampaigns(): Promise<Campaign[]> {
     ORDER BY p.created_at DESC
     LIMIT 40
     `,
+    [],
   );
 
   return rows as Campaign[];
