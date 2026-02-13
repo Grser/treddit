@@ -34,8 +34,9 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   const sanitized = likeEscape(query);
   const like = `%${sanitized}%`;
 
+  const normalizedUserQuery = normalizeUserSearchQuery(query);
   const posts: SearchPost[] = query ? await findPosts(like, query) : [];
-  const users: SearchUser[] = query ? await findUsers(like, query) : [];
+  const users: SearchUser[] = normalizedUserQuery ? await findUsers(normalizedUserQuery) : [];
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
@@ -127,7 +128,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
 
         <section className="space-y-5 rounded-3xl border border-border bg-surface p-6 shadow-lg backdrop-blur">
           <div className="flex items-center justify-between gap-4">
-            <h2 className="text-xl font-semibold">Usuarios</h2>
+            <h2 className="text-xl font-semibold">Personas</h2>
             {users.length > 0 && (
               <span className="rounded-full border border-border px-3 py-1 text-xs font-medium text-foreground opacity-70">
                 {users.length} resultados
@@ -182,6 +183,11 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   );
 }
 
+
+function normalizeUserSearchQuery(query: string) {
+  return query.trim().replace(/^@+/, "");
+}
+
 function likeEscape(term: string) {
   return term.replace(/[\\_%]/g, (char) => `\\${char}`);
 }
@@ -216,9 +222,9 @@ async function findPosts(like: string, term: string): Promise<SearchPost[]> {
   return rows as SearchPost[];
 }
 
-async function findUsers(like: string, term: string): Promise<SearchUser[]> {
+async function findUsers(term: string): Promise<SearchUser[]> {
   if (!isDatabaseConfigured()) {
-    const normalized = term.toLowerCase();
+    const normalized = normalizeUserSearchQuery(term).toLowerCase();
     return getDemoRecommendedUsers(null)
       .filter((user) => {
         const haystack = `${user.username} ${user.nickname ?? ""}`.toLowerCase();
@@ -231,6 +237,7 @@ async function findUsers(like: string, term: string): Promise<SearchUser[]> {
         avatar_url: user.avatar_url,
       }));
   }
+  const normalizedLike = `%${likeEscape(normalizeUserSearchQuery(term))}%`;
   const [rows] = await db.query(
     `
     SELECT u.id, u.username, u.nickname, u.avatar_url
@@ -239,7 +246,7 @@ async function findUsers(like: string, term: string): Promise<SearchUser[]> {
     ORDER BY u.username ASC
     LIMIT 40
     `,
-    [like, like]
+    [normalizedLike, normalizedLike]
   );
   return rows as SearchUser[];
 }
