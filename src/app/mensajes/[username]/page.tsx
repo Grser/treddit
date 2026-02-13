@@ -1,6 +1,8 @@
 import type { RowDataPacket } from "mysql2";
 
 import Image from "next/image";
+import Link from "next/link";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import Navbar from "@/components/Navbar";
@@ -10,13 +12,14 @@ import type { ConversationParticipant } from "@/components/messages/DirectConver
 
 import { requireUser } from "@/lib/auth";
 import { db, isDatabaseConfigured } from "@/lib/db";
+import { getDemoConversation, resolveDemoUserByUsername } from "@/lib/demoStore";
+import { getCompactTime, loadInbox } from "@/lib/inbox";
 import {
   canSendDirectMessage,
   ensureMessageTables,
   fetchConversationMessages,
   getAllowMessagesFromAnyone,
 } from "@/lib/messages";
-import { getDemoConversation, resolveDemoUserByUsername } from "@/lib/demoStore";
 
 export const dynamic = "force-dynamic";
 
@@ -35,13 +38,102 @@ type ConversationRow = RowDataPacket & {
   is_verified: number;
 };
 
+function ConversationLayout({
+  inbox,
+  participant,
+  messages,
+  viewerId,
+  helperText,
+}: {
+  inbox: Awaited<ReturnType<typeof loadInbox>>;
+  participant: ConversationUser;
+  messages: Awaited<ReturnType<typeof fetchConversationMessages>>;
+  viewerId: number;
+  helperText?: string;
+}) {
+  const avatar = participant.avatar_url?.trim() || "/demo-reddit.png";
+  const displayName = participant.nickname || participant.username;
+
+  return (
+    <div className="min-h-dvh bg-background text-foreground">
+      <Navbar />
+      <main className="mx-auto w-full max-w-6xl px-4 py-6">
+        <div className="grid h-[calc(100dvh-7.75rem)] min-h-[560px] overflow-hidden rounded-3xl border border-border/80 bg-surface shadow-xl lg:grid-cols-[360px_minmax(0,1fr)]">
+          <aside className="hidden border-r border-border/80 lg:block">
+            <div className="border-b border-border/80 px-4 py-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand/80">Mensajes</p>
+              <h1 className="mt-1 text-2xl font-semibold">Bandeja</h1>
+            </div>
+            <ul className="h-[calc(100dvh-14.5rem)] min-h-[420px] overflow-y-auto">
+              {inbox.map((item) => {
+                const isActive = item.username === participant.username;
+                const avatarSide = item.avatar_url?.trim() || "/demo-reddit.png";
+                const displaySide = item.nickname || item.username;
+                const preview = item.lastMessage?.trim() || "Archivo adjunto";
+                const unread = item.unreadCount > 0;
+                return (
+                  <li key={item.userId}>
+                    <Link
+                      href={`/mensajes/${item.username}`}
+                      className={`flex items-center gap-3 border-b border-border/60 px-4 py-3 transition ${isActive ? "bg-brand/10" : "hover:bg-muted/50"}`}
+                    >
+                      <Image src={avatarSide} alt={displaySide} width={50} height={50} className="size-12 rounded-full object-cover" unoptimized />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="line-clamp-1 font-semibold">{displaySide}</span>
+                          <span className="ml-auto text-xs opacity-60">{getCompactTime(item.createdAt)}</span>
+                        </div>
+                        <p className={`line-clamp-1 text-sm ${unread ? "font-semibold" : "opacity-70"}`}>{preview}</p>
+                      </div>
+                      {unread && <span className="rounded-full bg-brand px-1.5 py-0.5 text-xs font-semibold text-white">{item.unreadCount > 99 ? "99+" : item.unreadCount}</span>}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </aside>
+
+          <section className="flex h-full min-h-0 flex-col">
+            <header className="flex items-center gap-3 border-b border-border/80 px-4 py-3">
+              <Image
+                src={avatar}
+                alt={displayName}
+                width={52}
+                height={52}
+                className="size-12 rounded-full object-cover ring-1 ring-border"
+                unoptimized
+              />
+              <div className="min-w-0">
+                <p className="flex items-center gap-2 text-base font-semibold">
+                  <span className="truncate">{displayName}</span>
+                  <UserBadges size="sm" isAdmin={participant.is_admin} isVerified={participant.is_verified} />
+                </p>
+                <p className="text-sm opacity-70">@{participant.username}</p>
+                {helperText && <p className="text-xs text-emerald-500">{helperText}</p>}
+              </div>
+            </header>
+
+            <div className="min-h-0 flex-1 p-3 md:p-4">
+              <DirectConversation initialMessages={messages} viewerId={viewerId} recipient={participant} />
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+  );
+}
+
 export default async function ConversationPage({ params }: ConversationParams) {
   const { username } = await params;
   const me = await requireUser();
-  const slug = username;
+  const cookieStore = await cookies();
+  const lastSeenValue = cookieStore.get("messages_last_seen")?.value;
+  const lastSeen = lastSeenValue ? Number(lastSeenValue) : 0;
+  const normalizedLastSeen = Number.isFinite(lastSeen) && lastSeen > 0 ? lastSeen : 0;
+  const inbox = await loadInbox(me.id, normalizedLastSeen);
 
   if (!isDatabaseConfigured()) {
-    const demoTarget = resolveDemoUserByUsername(slug);
+    const demoTarget = resolveDemoUserByUsername(username);
     if (!demoTarget) {
       return (
         <div className="min-h-dvh">
@@ -57,7 +149,6 @@ export default async function ConversationPage({ params }: ConversationParams) {
       redirect("/mensajes");
     }
 
-    const messages = getDemoConversation(me.id, demoTarget.id);
     const participant: ConversationUser = {
       id: demoTarget.id,
       username: demoTarget.username,
@@ -68,35 +159,14 @@ export default async function ConversationPage({ params }: ConversationParams) {
       allowsAnyone: true,
     };
 
-    const avatar = participant.avatar_url?.trim() || "/demo-reddit.png";
-    const displayName = participant.nickname || participant.username;
-
     return (
-      <div className="min-h-dvh bg-background text-foreground">
-        <Navbar />
-        <main className="mx-auto max-w-3xl space-y-6 px-4 py-6">
-          <header className="flex items-center gap-3 rounded-xl border border-border bg-surface p-4">
-            <Image
-              src={avatar}
-              alt={displayName}
-              width={64}
-              height={64}
-              className="size-16 rounded-full object-cover ring-1 ring-border"
-              unoptimized
-            />
-            <div className="min-w-0">
-              <p className="text-lg font-semibold flex items-center gap-2">
-                <span className="truncate">{displayName}</span>
-                <UserBadges size="sm" isAdmin={participant.is_admin} isVerified={participant.is_verified} />
-              </p>
-              <p className="text-sm opacity-70">@{participant.username}</p>
-              <p className="text-xs text-emerald-500">Modo demostración: adjunta imágenes, audio o video libremente.</p>
-            </div>
-          </header>
-
-          <DirectConversation initialMessages={messages} viewerId={me.id} recipient={participant} />
-        </main>
-      </div>
+      <ConversationLayout
+        inbox={inbox}
+        participant={participant}
+        messages={getDemoConversation(me.id, demoTarget.id)}
+        viewerId={me.id}
+        helperText="Modo demostración: adjunta imágenes, audio o video libremente."
+      />
     );
   }
 
@@ -105,7 +175,7 @@ export default async function ConversationPage({ params }: ConversationParams) {
      FROM Users
      WHERE username=? AND visible=1
      LIMIT 1`,
-    [slug],
+    [username],
   );
   const target = rows[0];
   if (!target) {
@@ -121,20 +191,6 @@ export default async function ConversationPage({ params }: ConversationParams) {
 
   if (target.id === me.id) {
     redirect("/mensajes");
-  }
-
-  if (!isDatabaseConfigured()) {
-    return (
-      <div className="min-h-dvh">
-        <Navbar />
-        <main className="mx-auto max-w-3xl px-4 py-8 space-y-3">
-          <h1 className="text-xl font-semibold">Mensajes directos</h1>
-          <p className="text-sm opacity-70">
-            Para usar el chat necesitas configurar la base de datos. Una vez lista podrás enviar mensajes a otros usuarios.
-          </p>
-        </main>
-      </div>
-    );
   }
 
   await ensureMessageTables();
@@ -159,11 +215,7 @@ export default async function ConversationPage({ params }: ConversationParams) {
             <div>
               <p className="text-lg font-semibold flex items-center gap-2">
                 {target.nickname || target.username}
-                <UserBadges
-                  size="sm"
-                  isAdmin={Boolean(target.is_admin)}
-                  isVerified={Boolean(target.is_verified)}
-                />
+                <UserBadges size="sm" isAdmin={Boolean(target.is_admin)} isVerified={Boolean(target.is_verified)} />
               </p>
               <p className="text-sm opacity-70">@{target.username}</p>
             </div>
@@ -188,45 +240,13 @@ export default async function ConversationPage({ params }: ConversationParams) {
     allowsAnyone: allowsThirdParty,
   };
 
-  const messages = await fetchConversationMessages(me.id, participant.id, 100);
-  const avatar = participant.avatar_url?.trim() || "/demo-reddit.png";
-  const displayName = participant.nickname || participant.username;
-
   return (
-    <div className="min-h-dvh bg-background text-foreground">
-      <Navbar />
-      <main className="mx-auto max-w-3xl space-y-6 px-4 py-6">
-        <header className="flex items-center gap-3 rounded-xl border border-border bg-surface p-4">
-          <Image
-            src={avatar}
-            alt={displayName}
-            width={64}
-            height={64}
-            className="size-16 rounded-full object-cover ring-1 ring-border"
-            unoptimized
-          />
-          <div className="min-w-0">
-            <p className="text-lg font-semibold flex items-center gap-2">
-              <span className="truncate">{displayName}</span>
-              <UserBadges
-                size="sm"
-                isAdmin={participant.is_admin}
-                isVerified={participant.is_verified}
-              />
-            </p>
-            <p className="text-sm opacity-70">@{participant.username}</p>
-            {participant.allowsAnyone && (
-              <p className="text-xs text-emerald-500">Acepta mensajes de cualquier usuario</p>
-            )}
-          </div>
-        </header>
-
-        <DirectConversation
-          initialMessages={messages}
-          viewerId={me.id}
-          recipient={participant}
-        />
-      </main>
-    </div>
+    <ConversationLayout
+      inbox={inbox}
+      participant={participant}
+      messages={await fetchConversationMessages(me.id, participant.id, 100)}
+      viewerId={me.id}
+      helperText={participant.allowsAnyone ? "Acepta mensajes de cualquier usuario" : undefined}
+    />
   );
 }

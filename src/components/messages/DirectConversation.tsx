@@ -162,12 +162,12 @@ export default function DirectConversation({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-3 rounded-3xl border border-border/80 bg-gradient-to-b from-surface via-surface to-brand/5 p-4 shadow-sm">
+    <div className="flex h-full min-h-0 flex-col gap-3">
+      <div className="flex min-h-0 flex-1 flex-col rounded-3xl border border-border/80 bg-gradient-to-b from-surface via-surface to-brand/5 p-4 shadow-sm">
         {messages.length === 0 && (
           <p className="text-sm opacity-70">{strings.comments.none || "Aún no hay mensajes. Inicia la conversación."}</p>
         )}
-        <ul className="space-y-4">
+        <ul className="mt-2 min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
           {messages.map((msg) => {
             const isMine = msg.senderId === viewerId;
             const bubbleClasses = isMine
@@ -252,7 +252,7 @@ export default function DirectConversation({
         <div ref={endRef} />
       </div>
 
-      <form onSubmit={sendMessage} className="space-y-3 rounded-3xl border border-border bg-surface p-4 shadow-sm">
+      <form onSubmit={sendMessage} className="shrink-0 space-y-3 rounded-3xl border border-border bg-surface p-4 shadow-sm">
         {replyingTo && (
           <div className="flex items-start justify-between rounded-xl border border-brand/30 bg-brand/10 px-3 py-2 text-xs">
             <div>
