@@ -141,28 +141,9 @@ export async function GET(req: Request) {
   const sensitiveSelect = hasSensitiveColumn ? "p.is_sensitive" : "0";
 
   try {
-    const [rows] = await db.query<PostRow[]>(
+    const [idRows] = await db.query<Array<RowDataPacket & { id: number }>>(
       `
-      SELECT
-        p.id,
-        p.user                                       AS user,
-        u.username, u.nickname, u.avatar_url, u.is_admin, u.is_verified,
-        p.description, p.created_at, p.reply_scope,
-        (SELECT f.route FROM Files f WHERE f.postid=p.id ORDER BY f.id ASC LIMIT 1) AS mediaUrl,
-        (SELECT COUNT(*) FROM Like_Posts lp WHERE lp.post=p.id) AS likes,
-        (SELECT COUNT(*) FROM Comments  c  WHERE c.post=p.id) AS comments,
-        (SELECT COUNT(*) FROM Reposts   r  WHERE r.post_id=p.id) AS reposts,
-        EXISTS(SELECT 1 FROM Polls pl WHERE pl.post_id=p.id)     AS hasPoll,
-        CASE WHEN ? IS NULL THEN 0 ELSE EXISTS(
-          SELECT 1 FROM Like_Posts x WHERE x.post=p.id AND x.user=?
-        ) END AS likedByMe,
-        CASE WHEN ? IS NULL THEN 0 ELSE EXISTS(
-          SELECT 1 FROM Reposts y WHERE y.post_id=p.id AND y.user_id=?
-        ) END AS repostedByMe,
-        ${communityIdSelect} AS community_id,
-        ${communitySlugSelect} AS community_slug,
-        ${communityNameSelect} AS community_name,
-        ${sensitiveSelect} AS is_sensitive
+      SELECT p.id
       FROM Posts p
       ${joins.join(" ")}
       JOIN Users u ON u.id = p.user
@@ -171,7 +152,93 @@ export async function GET(req: Request) {
       ORDER BY ${shouldPrioritizeFollowed ? "CASE WHEN ff.follower IS NULL THEN 1 ELSE 0 END, p.id DESC" : "p.id DESC"}
       LIMIT ?
       `,
-      [meId, meId, meId, meId, ...joinParams, ...whereParams, limit + 1]
+      [...joinParams, ...whereParams, limit + 1],
+    );
+
+    const orderedIds = idRows.map((row) => Number(row.id)).filter((id) => Number.isFinite(id));
+    if (!orderedIds.length) {
+      return new NextResponse(JSON.stringify({ items: [], nextCursor: null }), {
+        headers: { "Cache-Control": "no-store", "Content-Type": "application/json" },
+      });
+    }
+
+    const placeholders = orderedIds.map(() => "?").join(", ");
+    const orderByField = orderedIds.map(() => "?").join(", ");
+    const [rows] = await db.query<PostRow[]>(
+      `
+      SELECT
+        p.id,
+        p.user AS user,
+        u.username,
+        u.nickname,
+        u.avatar_url,
+        u.is_admin,
+        u.is_verified,
+        p.description,
+        p.created_at,
+        p.reply_scope,
+        firstFile.route AS mediaUrl,
+        COALESCE(likeCount.likes, 0) AS likes,
+        COALESCE(commentCount.comments, 0) AS comments,
+        COALESCE(repostCount.reposts, 0) AS reposts,
+        CASE WHEN pollCount.post_id IS NULL THEN 0 ELSE 1 END AS hasPoll,
+        CASE WHEN ? IS NULL THEN 0 WHEN myLike.post IS NULL THEN 0 ELSE 1 END AS likedByMe,
+        CASE WHEN ? IS NULL THEN 0 WHEN myRepost.post_id IS NULL THEN 0 ELSE 1 END AS repostedByMe,
+        ${communityIdSelect} AS community_id,
+        ${communitySlugSelect} AS community_slug,
+        ${communityNameSelect} AS community_name,
+        ${sensitiveSelect} AS is_sensitive
+      FROM Posts p
+      JOIN Users u ON u.id = p.user
+      ${communityJoin}
+      LEFT JOIN (
+        SELECT f.postid, MIN(f.id) AS first_file_id
+        FROM Files f
+        WHERE f.postid IN (${placeholders})
+        GROUP BY f.postid
+      ) fileRef ON fileRef.postid = p.id
+      LEFT JOIN Files firstFile ON firstFile.id = fileRef.first_file_id
+      LEFT JOIN (
+        SELECT lp.post, COUNT(*) AS likes
+        FROM Like_Posts lp
+        WHERE lp.post IN (${placeholders})
+        GROUP BY lp.post
+      ) likeCount ON likeCount.post = p.id
+      LEFT JOIN (
+        SELECT c.post, COUNT(*) AS comments
+        FROM Comments c
+        WHERE c.post IN (${placeholders})
+        GROUP BY c.post
+      ) commentCount ON commentCount.post = p.id
+      LEFT JOIN (
+        SELECT r.post_id, COUNT(*) AS reposts
+        FROM Reposts r
+        WHERE r.post_id IN (${placeholders})
+        GROUP BY r.post_id
+      ) repostCount ON repostCount.post_id = p.id
+      LEFT JOIN (
+        SELECT DISTINCT pl.post_id
+        FROM Polls pl
+        WHERE pl.post_id IN (${placeholders})
+      ) pollCount ON pollCount.post_id = p.id
+      LEFT JOIN Like_Posts myLike ON myLike.post = p.id AND myLike.user = ?
+      LEFT JOIN Reposts myRepost ON myRepost.post_id = p.id AND myRepost.user_id = ?
+      WHERE p.id IN (${placeholders})
+      ORDER BY FIELD(p.id, ${orderByField})
+      `,
+      [
+        meId,
+        meId,
+        ...orderedIds,
+        ...orderedIds,
+        ...orderedIds,
+        ...orderedIds,
+        ...orderedIds,
+        meId,
+        meId,
+        ...orderedIds,
+        ...orderedIds,
+      ],
     );
 
     const list = rows;
