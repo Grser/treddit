@@ -173,7 +173,7 @@ export async function GET(req: NextRequest) {
   res.cookies.set("treddit_token", token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: isProd, // en localhost debe ser false
+    secure: isProd, // en entornos locales debe ser false
     path: "/",
     maxAge: 60 * 60 * 24 * 7,
   });
