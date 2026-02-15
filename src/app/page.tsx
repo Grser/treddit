@@ -8,6 +8,7 @@ import AuthBanner from "@/components/AuthBanner";
 import { getSessionUser } from "@/lib/auth";
 import { getRequestBaseUrl } from "@/lib/requestBaseUrl";
 import Feed from "@/components/Feed";
+import StoriesNotesBar from "@/components/StoriesNotesBar";
 import type { Post as PostCardType } from "@/components/PostCard";
 
 type FeedResponse = { items: PostCardType[] };
@@ -129,6 +130,11 @@ export default async function Page() {
 
         <main className="space-y-4">
           {!canInteract && <AuthBanner />}
+          <StoriesNotesBar
+            canInteract={canInteract}
+            me={session}
+            users={discovery.recommendedUsers}
+          />
           <Composer enabled={canInteract} />
 
           <Feed canInteract={!!canInteract} initialItems={items} />

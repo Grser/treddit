@@ -145,6 +145,11 @@ export async function getRedirectUri(baseUrl: string) {
     console.error("Invalid GOOGLE_REDIRECT_URI", explicitRedirect);
   }
 
+  const normalizedBase = normalizeOrigin(baseUrl);
+  if (normalizedBase && !isLocalOrigin(normalizedBase)) {
+    return new URL("/api/auth/google/callback", normalizedBase).toString();
+  }
+
   try {
     const headersList = await headers();
     const forwardedHost = headersList.get("x-forwarded-host")?.split(",")[0]?.trim();
@@ -164,7 +169,7 @@ export async function getRedirectUri(baseUrl: string) {
     console.error("Unable to read request headers for redirect URI", err);
   }
 
-  return new URL("/api/auth/google/callback", baseUrl).toString();
+  return new URL("/api/auth/google/callback", normalizedBase ?? "http://localhost:3000").toString();
 }
 
 export function rememberOrigin(res: NextResponse, origin: string) {
