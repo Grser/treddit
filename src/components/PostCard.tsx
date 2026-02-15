@@ -8,6 +8,7 @@ import UserBadges from "./UserBadges";
 import MentionUserLink from "./MentionUserLink";
 
 import { useLocale } from "@/contexts/LocaleContext";
+import { useState } from "react";
 
 export type Post = {
   id: number;
@@ -32,6 +33,7 @@ export type Post = {
   is_admin?: boolean;
   is_verified?: boolean;
   community?: { id: number; slug: string; name: string } | null;
+  is_sensitive?: boolean;
 };
 
 export default function PostCard({
@@ -49,6 +51,7 @@ export default function PostCard({
   const displayName = post.nickname?.trim() || post.username;
   const pinnedLabel = strings.profilePage?.pinnedBadge || strings.postCard.pinned;
   const community = post.community;
+  const [showSensitive, setShowSensitive] = useState(!post.is_sensitive);
 
   return (
     <article className="bg-surface text-foreground rounded-xl border border-border p-4">
@@ -138,20 +141,36 @@ export default function PostCard({
         </div>
       </div>
 
-      {post.description && (
+      {post.description && showSensitive && (
         <p className="text-sm mb-2 whitespace-pre-wrap break-words">{renderDescription(post.description)}</p>
       )}
 
-      {post.mediaUrl && (
+      {post.is_sensitive && !showSensitive && (
+        <button
+          type="button"
+          onClick={() => setShowSensitive(true)}
+          className="mb-2 w-full rounded-lg border border-border bg-muted/40 px-4 py-6 text-left"
+        >
+          <p className="text-sm font-semibold">Contenido sensible</p>
+          <p className="mt-1 text-xs opacity-70">Este post puede incluir material delicado. Presiona para mostrarlo.</p>
+        </button>
+      )}
+
+      {post.mediaUrl && showSensitive && (
         <div className="mb-2 overflow-hidden rounded-lg ring-1 ring-border">
-          <Image
-            src={post.mediaUrl}
-            alt=""
-            width={1200}
-            height={675}
-            sizes="(min-width: 768px) 600px, 100vw"
-            className="h-auto w-full object-cover"
-          />
+          {isAnimatedImage(post.mediaUrl) ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={post.mediaUrl} alt="" className="h-auto w-full object-cover" loading="lazy" />
+          ) : (
+            <Image
+              src={post.mediaUrl}
+              alt=""
+              width={1200}
+              height={675}
+              sizes="(min-width: 768px) 600px, 100vw"
+              className="h-auto w-full object-cover"
+            />
+          )}
         </div>
       )}
 
@@ -177,6 +196,11 @@ export default function PostCard({
   );
 }
 
+
+function isAnimatedImage(url: string) {
+  const normalized = url.toLowerCase();
+  return normalized.includes(".gif") || normalized.includes("format=gif") || normalized.includes("type=sticker") || normalized.includes("type=gif");
+}
 function renderDescription(text: string) {
   const parts = text.split(/([#@][\p{L}\p{N}_]+)/gu);
   return parts.map((part, index) => {

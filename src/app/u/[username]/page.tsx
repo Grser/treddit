@@ -9,6 +9,7 @@ import type { Post as PostCardType } from "@/components/PostCard";
 import { canSendDirectMessage } from "@/lib/messages";
 import { getDemoFeed, resolveDemoUserByUsername } from "@/lib/demoStore";
 import { getPostsCommunityColumn } from "@/lib/communityColumns";
+import { getPostsSensitiveColumn } from "@/lib/postSensitivity";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +45,7 @@ type PinnedPostRow = RowDataPacket & {
   created_at: Date | string;
   reply_scope: number | null;
   mediaUrl: string | null;
+  is_sensitive: number | boolean | null;
   likes: number;
   comments: number;
   reposts: number;
@@ -157,11 +159,13 @@ export default async function UserPage({
   let pinnedPost: PostCardType | null = null;
   if (user.pinned_post_id) {
     const communityColumn = await getPostsCommunityColumn();
+    const sensitiveColumn = await getPostsSensitiveColumn();
     const hasCommunityColumn = Boolean(communityColumn);
     const communityIdSelect = hasCommunityColumn && communityColumn ? `p.${communityColumn}` : "NULL";
     const communityJoin = hasCommunityColumn && communityColumn ? `LEFT JOIN Communities c ON c.id = p.${communityColumn}` : "";
     const communitySlugSelect = hasCommunityColumn ? "c.slug" : "NULL";
     const communityNameSelect = hasCommunityColumn ? "c.name" : "NULL";
+    const sensitiveSelect = sensitiveColumn ? "p.is_sensitive" : "0";
     const [pinnedRows] = await db.query<PinnedPostRow[]>(
       `
       SELECT
@@ -188,7 +192,8 @@ export default async function UserPage({
         ) END AS repostedByMe,
         ${communityIdSelect} AS community_id,
         ${communitySlugSelect} AS community_slug,
-        ${communityNameSelect} AS community_name
+        ${communityNameSelect} AS community_name,
+        ${sensitiveSelect} AS is_sensitive
       FROM Posts p
       JOIN Users u ON u.id = p.user
       ${communityJoin}
@@ -212,6 +217,7 @@ export default async function UserPage({
         created_at: new Date(row.created_at).toISOString(),
         reply_scope: ([0, 1, 2].includes(Number(row.reply_scope ?? 0)) ? Number(row.reply_scope ?? 0) : 0) as 0 | 1 | 2,
         mediaUrl: row.mediaUrl ? String(row.mediaUrl) : null,
+        is_sensitive: Boolean(row.is_sensitive),
         likes: Number(row.likes) || 0,
         comments: Number(row.comments) || 0,
         reposts: Number(row.reposts) || 0,

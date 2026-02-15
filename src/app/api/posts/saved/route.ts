@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 
 import { getSessionUser } from "@/lib/auth";
+import { getPostsSensitiveColumn } from "@/lib/postSensitivity";
 import { db, isDatabaseConfigured } from "@/lib/db";
 import { getDemoFeed } from "@/lib/demoStore";
 import { getPostsCommunityColumn } from "@/lib/communityColumns";
@@ -28,6 +29,7 @@ type SavedPostRow = {
   community_id: number | null;
   community_slug: string | null;
   community_name: string | null;
+  is_sensitive: number | boolean | null;
 };
 
 export async function GET(req: Request) {
@@ -56,11 +58,14 @@ export async function GET(req: Request) {
 
   const placeholders = ids.map(() => "?").join(",");
   const communityColumn = await getPostsCommunityColumn();
+  const sensitiveColumn = await getPostsSensitiveColumn();
   const hasCommunityColumn = Boolean(communityColumn);
+  const hasSensitiveColumn = Boolean(sensitiveColumn);
   const communityIdSelect = hasCommunityColumn && communityColumn ? `p.${communityColumn}` : "NULL";
   const communityJoin = hasCommunityColumn && communityColumn ? `LEFT JOIN Communities c ON c.id = p.${communityColumn}` : "";
   const communitySlugSelect = hasCommunityColumn ? "c.slug" : "NULL";
   const communityNameSelect = hasCommunityColumn ? "c.name" : "NULL";
+  const sensitiveSelect = hasSensitiveColumn ? "p.is_sensitive" : "0";
 
   try {
     const [rows] = await db.query<SavedPostRow[]>(
@@ -83,7 +88,8 @@ export async function GET(req: Request) {
         ) END AS repostedByMe,
         ${communityIdSelect} AS community_id,
         ${communitySlugSelect} AS community_slug,
-        ${communityNameSelect} AS community_name
+        ${communityNameSelect} AS community_name,
+        ${sensitiveSelect} AS is_sensitive
       FROM Posts p
       JOIN Users u ON u.id = p.user
       ${communityJoin}
@@ -103,6 +109,7 @@ export async function GET(req: Request) {
       repostedByMe: Boolean(row.repostedByMe),
       hasPoll: Boolean(row.hasPoll),
       reply_scope: Number(row.reply_scope ?? 0),
+      is_sensitive: Boolean(row.is_sensitive),
       isOwner: meId ? Number(row.user) === meId : false,
       isAdminViewer: Boolean(me?.is_admin),
       community:

@@ -227,6 +227,7 @@ export function createDemoPost(user: SessionUser, payload: {
   mediaUrl: string | null;
   poll: null;
   communityId: number | null;
+  isSensitive?: boolean;
 }): { id: number } {
   const store = ensureStore();
   const author = normalizeSessionUser(user);
@@ -253,6 +254,7 @@ export function createDemoPost(user: SessionUser, payload: {
     is_admin: author.is_admin,
     is_verified: author.is_verified,
     community: null,
+    is_sensitive: Boolean(payload.isSensitive),
   };
 
   if (tags.length) {

@@ -6,11 +6,15 @@ import { useRouter } from "next/navigation";
 import { useLocale } from "@/contexts/LocaleContext";
 
 type Tab = "post" | "media" | "poll";
+type MediaKind = "media" | "gif" | "sticker";
 
 type ComposerErrorKey = "needContent" | "uploadFailed" | "createFailed" | "pollInvalid" | "mediaEmpty" | null;
 
 type CommunityOption = { id: number; name: string; slug: string };
 type MentionUser = { id: number; username: string; nickname: string | null };
+
+const GIF_STORAGE_KEY = "treddit_saved_gifs";
+const STICKER_STORAGE_KEY = "treddit_saved_stickers";
 
 export default function Composer({ enabled }: { enabled: boolean }) {
   const router = useRouter();
@@ -20,6 +24,10 @@ export default function Composer({ enabled }: { enabled: boolean }) {
   const [tab, setTab] = useState<Tab>("post");
   const [text, setText] = useState("");
   const [mediaUrl, setMediaUrl] = useState("");
+  const [mediaKind, setMediaKind] = useState<MediaKind>("media");
+  const [savedGifs, setSavedGifs] = useState<string[]>([]);
+  const [savedStickers, setSavedStickers] = useState<string[]>([]);
+  const [isSensitive, setIsSensitive] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [errorKey, setErrorKey] = useState<ComposerErrorKey>(null);
@@ -46,6 +54,14 @@ export default function Composer({ enabled }: { enabled: boolean }) {
     setErrorKey(null);
     setServerError(null);
   }
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const gifs = window.localStorage.getItem(GIF_STORAGE_KEY);
+    const stickers = window.localStorage.getItem(STICKER_STORAGE_KEY);
+    setSavedGifs(gifs ? JSON.parse(gifs) : []);
+    setSavedStickers(stickers ? JSON.parse(stickers) : []);
+  }, []);
 
   useEffect(() => {
     if (!enabled) {
@@ -141,6 +157,26 @@ export default function Composer({ enabled }: { enabled: boolean }) {
     clearError();
   }
 
+  function persistCollection(key: string, values: string[]) {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(key, JSON.stringify(values.slice(0, 24)));
+  }
+
+  function saveCurrentMedia() {
+    const normalized = mediaUrl.trim();
+    if (!normalized) return;
+    if (mediaKind === "gif") {
+      const next = [normalized, ...savedGifs.filter((value) => value !== normalized)].slice(0, 24);
+      setSavedGifs(next);
+      persistCollection(GIF_STORAGE_KEY, next);
+    }
+    if (mediaKind === "sticker") {
+      const next = [normalized, ...savedStickers.filter((value) => value !== normalized)].slice(0, 24);
+      setSavedStickers(next);
+      persistCollection(STICKER_STORAGE_KEY, next);
+    }
+  }
+
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     if (!enabled) return;
     const file = e.target.files?.[0];
@@ -184,6 +220,7 @@ export default function Composer({ enabled }: { enabled: boolean }) {
     mediaUrl: string | null;
     poll: PollPayload;
     communityId: number | null;
+    isSensitive: boolean;
   };
 
   async function submit() {
@@ -194,6 +231,7 @@ export default function Composer({ enabled }: { enabled: boolean }) {
       mediaUrl: null,
       poll: null,
       communityId: communityId > 0 ? communityId : null,
+      isSensitive,
     };
 
     if (tab === "media") {
@@ -238,6 +276,7 @@ export default function Composer({ enabled }: { enabled: boolean }) {
         setOptions(["", ""]);
         setDays(1);
         setTab("post");
+        setIsSensitive(false);
         clearError();
         router.refresh();
       } else {
@@ -252,6 +291,8 @@ export default function Composer({ enabled }: { enabled: boolean }) {
       setErrorKey("createFailed");
     }
   }
+
+  const selectedPack = mediaKind === "gif" ? savedGifs : savedStickers;
 
   return (
     <div className="border border-border bg-surface rounded-xl p-4">
@@ -300,10 +341,15 @@ export default function Composer({ enabled }: { enabled: boolean }) {
 
       {tab === "media" && (
         <div className="mt-3 space-y-2">
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <button type="button" className={`rounded-full border px-3 py-1 ${mediaKind === "media" ? "bg-brand text-white border-transparent" : "border-border"}`} onClick={() => setMediaKind("media")}>Foto/Video</button>
+            <button type="button" className={`rounded-full border px-3 py-1 ${mediaKind === "gif" ? "bg-brand text-white border-transparent" : "border-border"}`} onClick={() => setMediaKind("gif")}>GIF</button>
+            <button type="button" className={`rounded-full border px-3 py-1 ${mediaKind === "sticker" ? "bg-brand text-white border-transparent" : "border-border"}`} onClick={() => setMediaKind("sticker")}>Sticker</button>
+          </div>
           <div className="flex items-center gap-2">
             <input
               type="url"
-              placeholder={t.mediaPlaceholder}
+              placeholder={mediaKind === "media" ? t.mediaPlaceholder : mediaKind === "gif" ? "URL del GIF" : "URL del sticker"}
               className="flex-1 h-10 px-3 rounded-md bg-input text-sm outline-none ring-1 ring-border focus:ring-2"
               disabled={!enabled}
               value={mediaUrl}
@@ -315,12 +361,31 @@ export default function Composer({ enabled }: { enabled: boolean }) {
             <input
               ref={fileRef}
               type="file"
-              accept="image/*,video/*"
+              accept={mediaKind === "media" ? "image/*,video/*" : mediaKind === "gif" ? "image/gif,image/webp" : "image/png,image/webp,image/gif"}
               disabled={!enabled || uploading}
               onChange={handleFile}
               className="block text-sm"
             />
           </div>
+          {(mediaKind === "gif" || mediaKind === "sticker") && (
+            <>
+              <div className="flex items-center gap-2">
+                <button type="button" className="h-8 rounded-full border border-border px-3 text-xs" onClick={saveCurrentMedia}>
+                  Guardar en mi pack
+                </button>
+                <span className="text-xs opacity-70">Como WhatsApp: reutiliza tus {mediaKind === "gif" ? "GIFs" : "stickers"} en próximos posts.</span>
+              </div>
+              {selectedPack.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {selectedPack.map((item) => (
+                    <button key={item} type="button" className="rounded-full border border-border px-3 py-1 text-xs" onClick={() => setMediaUrl(item)}>
+                      Usar guardado
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
           {mediaUrl && (
             <p className="text-xs opacity-70">
               {t.attachLabel}: {mediaUrl}
@@ -388,6 +453,14 @@ export default function Composer({ enabled }: { enabled: boolean }) {
           </div>
         </div>
       )}
+
+      <div className="mt-3 text-sm">
+        <label className="mb-1 block font-medium">Contenido sensible</label>
+        <label className="inline-flex items-center gap-2 text-xs opacity-80">
+          <input type="checkbox" checked={isSensitive} onChange={(e) => setIsSensitive(e.target.checked)} />
+          Ocultar como en X/Twitter y mostrar aviso antes de ver la publicación.
+        </label>
+      </div>
 
       <div className="mt-3 text-sm">
         <label className="mb-1 block font-medium">{t.communityLabel}</label>
