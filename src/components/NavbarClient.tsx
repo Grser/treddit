@@ -27,8 +27,9 @@ export default function NavbarClient({ session }: { session: SessionUser | null 
         setUnreadMessages(0);
       }
     }
+    if (!session?.id) return;
     load();
-    const interval = setInterval(load, 60_000);
+    const interval = setInterval(load, 15_000);
     return () => {
       active = false;
       clearInterval(interval);

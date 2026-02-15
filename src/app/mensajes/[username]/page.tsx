@@ -2,7 +2,6 @@ import type { RowDataPacket } from "mysql2";
 
 import Image from "next/image";
 import Link from "next/link";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import Navbar from "@/components/Navbar";
@@ -126,11 +125,7 @@ function ConversationLayout({
 export default async function ConversationPage({ params }: ConversationParams) {
   const { username } = await params;
   const me = await requireUser();
-  const cookieStore = await cookies();
-  const lastSeenValue = cookieStore.get("messages_last_seen")?.value;
-  const lastSeen = lastSeenValue ? Number(lastSeenValue) : 0;
-  const normalizedLastSeen = Number.isFinite(lastSeen) && lastSeen > 0 ? lastSeen : 0;
-  const inbox = await loadInbox(me.id, normalizedLastSeen);
+  const inbox = await loadInbox(me.id);
 
   if (!isDatabaseConfigured()) {
     const demoTarget = resolveDemoUserByUsername(username);

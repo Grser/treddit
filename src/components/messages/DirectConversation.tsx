@@ -17,6 +17,13 @@ export type ConversationParticipant = {
   is_verified?: boolean;
 };
 
+const QUICK_EMOJIS = ["😀", "😂", "🔥", "❤️", "👏", "😮", "🙏", "🎉"];
+
+const QUICK_MEDIA: Array<{ label: string; url: string; type: "gif" | "sticker" }> = [
+  { label: "GIF hype", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExYzU2b2M0OW53cm9zNnN3eXF5ODNnM2ZwMjk3bWQ2bWF5bnRxd3FuNSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/l0MYt5jPR6QX5pnqM/giphy.gif", type: "gif" },
+  { label: "Sticker cool", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExd2F2dzQ4aGdhMnA2M2V5cnRrb3g4eW9vMGl5eGVvMWFzZm9oOWQwZCZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/3oriO0OEd9QIDdllqo/giphy.gif", type: "sticker" },
+];
+
 function mergeById(current: DirectMessageEntry[], incoming: DirectMessageEntry[]) {
   const map = new Map<number, DirectMessageEntry>();
   [...current, ...incoming].forEach((item) => map.set(item.id, item));
@@ -36,7 +43,7 @@ export default function DirectConversation({
   const [messages, setMessages] = useState<DirectMessageEntry[]>(initialMessages);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
-  const endRef = useRef<HTMLDivElement | null>(null);
+  const scrollRef = useRef<HTMLUListElement | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<DirectMessageAttachment[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -45,8 +52,26 @@ export default function DirectConversation({
   const latestIdRef = useRef(initialMessages[initialMessages.length - 1]?.id ?? 0);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
+    setMessages(initialMessages);
+    latestIdRef.current = initialMessages[initialMessages.length - 1]?.id ?? 0;
+    const container = scrollRef.current;
+    if (!container) return;
+    requestAnimationFrame(() => {
+      container.scrollTop = container.scrollHeight;
+    });
+  }, [initialMessages, recipient.id]);
+
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+    const distanceToBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+    const shouldStickBottom = distanceToBottom < 120;
     latestIdRef.current = messages[messages.length - 1]?.id ?? 0;
+    if (shouldStickBottom) {
+      requestAnimationFrame(() => {
+        container.scrollTop = container.scrollHeight;
+      });
+    }
   }, [messages]);
 
   useEffect(() => {
@@ -65,12 +90,28 @@ export default function DirectConversation({
         // silent polling failure
       }
     };
-    const id = setInterval(poll, 2200);
+    const id = setInterval(poll, 1500);
     return () => {
       mounted = false;
       clearInterval(id);
     };
   }, [recipient.id]);
+
+  useEffect(() => {
+    const markRead = async () => {
+      try {
+        await fetch("/api/messages/read", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ recipientId: recipient.id }),
+        });
+        window.dispatchEvent(new CustomEvent("treddit:messages-read"));
+      } catch {
+        // noop
+      }
+    };
+    markRead();
+  }, [messages, recipient.id]);
 
   const canSend = useMemo(
     () => !sending && !uploading && (text.trim().length > 0 || attachments.length > 0),
@@ -78,14 +119,20 @@ export default function DirectConversation({
   );
 
   function selectLatestMessageFromSender(message: DirectMessageEntry) {
-    const latestFromSender = [...messages]
-      .reverse()
-      .find((entry) => entry.senderId === message.senderId);
+    const latestFromSender = [...messages].reverse().find((entry) => entry.senderId === message.senderId);
     setReplyingTo(latestFromSender ?? message);
   }
 
   function removeAttachment(url: string) {
     setAttachments((prev) => prev.filter((item) => item.url !== url));
+  }
+
+  function addEmoji(emoji: string) {
+    setText((prev) => `${prev}${prev && !prev.endsWith(" ") ? " " : ""}${emoji}`);
+  }
+
+  function addQuickMedia(item: (typeof QUICK_MEDIA)[number]) {
+    setAttachments((prev) => [...prev, { url: item.url, type: "image", name: item.label }]);
   }
 
   async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
@@ -174,7 +221,7 @@ export default function DirectConversation({
         {messages.length === 0 && (
           <p className="text-sm opacity-70">{strings.comments.none || "Aún no hay mensajes. Inicia la conversación."}</p>
         )}
-        <ul className="mt-2 min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
+        <ul ref={scrollRef} className="mt-2 min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
           {messages.map((msg) => {
             const isMine = msg.senderId === viewerId;
             const bubbleClasses = isMine
@@ -256,7 +303,6 @@ export default function DirectConversation({
             );
           })}
         </ul>
-        <div ref={endRef} />
       </div>
 
       <form onSubmit={sendMessage} className="shrink-0 space-y-3 rounded-3xl border border-border bg-surface p-4 shadow-sm">
@@ -278,6 +324,30 @@ export default function DirectConversation({
           placeholder={strings.comments.replyPlaceholder || "Escribe tu mensaje"}
           disabled={sending || uploading}
         />
+        <div className="flex flex-wrap items-center gap-2">
+          {QUICK_EMOJIS.map((emoji) => (
+            <button
+              key={emoji}
+              type="button"
+              onClick={() => addEmoji(emoji)}
+              className="rounded-full border border-border px-2 py-1 text-sm hover:bg-muted"
+              disabled={sending || uploading}
+            >
+              {emoji}
+            </button>
+          ))}
+          {QUICK_MEDIA.map((item) => (
+            <button
+              key={item.label}
+              type="button"
+              onClick={() => addQuickMedia(item)}
+              className="rounded-full border border-border px-2 py-1 text-xs hover:bg-muted"
+              disabled={sending || uploading}
+            >
+              + {item.type}
+            </button>
+          ))}
+        </div>
         {error && <p className="text-sm text-red-500">{error}</p>}
         {attachments.length > 0 && (
           <div className="flex flex-wrap gap-2 text-xs">

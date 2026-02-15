@@ -15,9 +15,9 @@ export type InboxEntry = {
   unreadCount: number;
 };
 
-export async function loadInbox(userId: number, lastSeen: number): Promise<InboxEntry[]> {
+export async function loadInbox(userId: number): Promise<InboxEntry[]> {
   if (!isDatabaseConfigured()) {
-    return getDemoInbox(userId, lastSeen || undefined).map((entry) => ({
+    return getDemoInbox(userId).map((entry) => ({
       userId: entry.userId,
       username: entry.username,
       nickname: entry.nickname,
@@ -31,7 +31,7 @@ export async function loadInbox(userId: number, lastSeen: number): Promise<Inbox
     }));
   }
 
-  const rows = await fetchConversationSummaries(userId, { limit: 40, lastSeen });
+  const rows = await fetchConversationSummaries(userId, { limit: 40 });
   return rows.map((row) => ({
     userId: row.userId,
     username: row.username,
