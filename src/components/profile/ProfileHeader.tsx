@@ -50,11 +50,11 @@ export default function ProfileHeader({
   return (
     <section className="bg-surface mt-4 sm:mt-6">
       {/* Banner */}
-      <div className="relative h-44 w-full overflow-hidden bg-muted sm:h-56 md:h-64">
+      <div className="relative h-52 w-full overflow-hidden bg-muted sm:h-64 md:h-72">
         {user.banner_url ? (
           <Image
             src={user.banner_url}
-            className="object-cover object-center scale-[1.01]"
+            className="object-contain object-center"
             alt=""
             fill
             sizes="100vw"
