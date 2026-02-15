@@ -8,7 +8,7 @@ import { db, isDatabaseConfigured } from "@/lib/db";
 
 type NotificationRow = RowDataPacket & {
   id: string;
-  type: "follow" | "like" | "repost" | "ad";
+  type: "follow" | "like" | "repost" | "ad" | "mention";
   created_at: string;
   username: string | null;
   nickname: string | null;
@@ -61,10 +61,27 @@ export async function GET() {
         OR LOWER(COALESCE(p.description, '')) LIKE '%#sponsored%'
       )
 
+    UNION ALL
+
+    SELECT CONCAT('mp-', p.id) AS id, 'mention' AS type, p.created_at, u.username, u.nickname, p.id AS post_id, p.description AS text
+    FROM Posts p
+    JOIN Users u ON u.id = p.user
+    WHERE p.user <> ?
+      AND LOWER(COALESCE(p.description, '')) LIKE CONCAT('%@', LOWER(?), '%')
+
+    UNION ALL
+
+    SELECT CONCAT('mc-', c.id) AS id, 'mention' AS type, c.created_at, u.username, u.nickname, c.post AS post_id, c.text AS text
+    FROM Comments c
+    JOIN Users u ON u.id = c.user
+    WHERE c.user <> ?
+      AND c.visible = 1
+      AND LOWER(COALESCE(c.text, '')) LIKE CONCAT('%@', LOWER(?), '%')
+
     ORDER BY created_at DESC
     LIMIT 20
     `,
-    [me.id, me.id, me.id, me.id, me.id],
+    [me.id, me.id, me.id, me.id, me.id, me.id, me.username, me.id, me.username],
   );
 
   return NextResponse.json({ items: rows }, { headers: { "Cache-Control": "no-store" } });

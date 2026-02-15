@@ -63,7 +63,6 @@ export default function ProfileHeader({
         ) : (
           <div className="absolute inset-0 bg-gradient-to-r from-brand/40 via-brand/20 to-transparent" aria-hidden="true" />
         )}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" aria-hidden="true" />
         <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-end gap-3 sm:bottom-5 sm:left-6 sm:translate-x-0">
           <div className="relative size-20 overflow-hidden rounded-full border-4 border-surface bg-surface shadow-lg sm:size-24 md:size-28">
             <Image
