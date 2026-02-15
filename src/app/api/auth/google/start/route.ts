@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 export async function GET(req: NextRequest) {
   const origin = getBaseUrl(req); // p.ej. https://mi-dominio.com
   const clientId = process.env.GOOGLE_CLIENT_ID!;
-  const redirectUri = await getRedirectUri(origin);
+  const redirectUri = await getRedirectUri(origin, req);
 
   // state anti-CSRF
   const state = randomBytes(16).toString("hex");
