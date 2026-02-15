@@ -31,21 +31,18 @@ type CommunityListResponse = {
   }[];
 };
 
+function withCookieHeader(cookieHeader?: string) {
+  if (!cookieHeader) return undefined;
+  return { Cookie: cookieHeader };
+}
+
 async function getFeed(base: string, cookieHeader?: string): Promise<FeedResponse> {
-  const headers: Record<string, string> = {};
-  if (cookieHeader) {
-    headers["Cookie"] = cookieHeader;
-  }
-  const res = await fetch(`${base}/api/posts`, { cache: "no-store", headers });
+  const res = await fetch(`${base}/api/posts`, { cache: "no-store", headers: withCookieHeader(cookieHeader) });
   if (!res.ok) return { items: [] };
   return (await res.json()) as FeedResponse;
 }
 async function getDiscovery(base: string, cookieHeader?: string): Promise<DiscoveryResponse> {
-  const headers: Record<string, string> = {};
-  if (cookieHeader) {
-    headers["Cookie"] = cookieHeader;
-  }
-  const res = await fetch(`${base}/api/discovery`, { cache: "no-store", headers });
+  const res = await fetch(`${base}/api/discovery`, { cache: "no-store", headers: withCookieHeader(cookieHeader) });
   if (!res.ok)
     return { recommendedUsers: [], trendingTags: [] } satisfies DiscoveryResponse;
   return (await res.json()) as DiscoveryResponse;
@@ -56,12 +53,8 @@ async function getCommunities(
   cookieHeader?: string,
   useMine = false,
 ): Promise<CommunityListResponse> {
-  const headers: Record<string, string> = {};
-  if (cookieHeader) {
-    headers["Cookie"] = cookieHeader;
-  }
   const path = useMine ? "/api/communities/mine" : "/api/communities/popular";
-  const res = await fetch(`${base}${path}`, { cache: "no-store", headers });
+  const res = await fetch(`${base}${path}`, { cache: "no-store", headers: withCookieHeader(cookieHeader) });
   if (!res.ok) return { items: [] };
   return (await res.json()) as CommunityListResponse;
 }
@@ -70,10 +63,14 @@ export default async function Page() {
   const base = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
   const cookieStore = await cookies();
   const cookieHeader = cookieStore.getAll().map((item) => `${item.name}=${item.value}`).join("; ") || undefined;
-  const session = await getSessionUser();
+  const sessionPromise = getSessionUser();
+  const feedPromise = getFeed(base, cookieHeader);
+  const discoveryPromise = getDiscovery(base, cookieHeader);
+
+  const session = await sessionPromise;
   const [{ items }, discovery, communities] = await Promise.all([
-    getFeed(base, cookieHeader),
-    getDiscovery(base, cookieHeader),
+    feedPromise,
+    discoveryPromise,
     getCommunities(base, cookieHeader, Boolean(session)),
   ]);
 
@@ -81,7 +78,7 @@ export default async function Page() {
 
   return (
     <div className="min-h-dvh">
-      <Navbar />
+      <Navbar session={session} />
       <div className="mx-auto max-w-7xl px-3 sm:px-4 grid grid-cols-1 md:grid-cols-[16rem_1fr] lg:grid-cols-[16rem_1fr_20rem] gap-4 py-4">
         <SidebarLeft communities={communities.items} />
 
