@@ -48,13 +48,13 @@ export default function ProfileHeader({
   const followerLabel = useMemo(() => Math.max(0, followers), [followers]);
 
   return (
-    <section className="mt-4 sm:mt-6">
+    <section className="mt-0">
       {/* Banner */}
       <div className="relative h-52 w-full overflow-hidden bg-muted sm:h-64 md:h-72">
         {user.banner_url ? (
           <Image
             src={user.banner_url}
-            className="object-contain object-center"
+            className="object-cover object-center"
             alt=""
             fill
             sizes="100vw"

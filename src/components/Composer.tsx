@@ -92,6 +92,11 @@ export default function Composer({ enabled }: { enabled: boolean }) {
   }, [enabled, t.communityLoadFailed]);
 
   useEffect(() => {
+    const match = text.match(/(?:^|\s)@([\p{L}\p{N}_]{1,32})$/u);
+    setMentionQuery(match ? match[1] : "");
+  }, [text]);
+
+  useEffect(() => {
     if (!enabled || !mentionQuery.trim()) {
       setMentionResults([]);
       setMentionsLoading(false);
@@ -130,11 +135,7 @@ export default function Composer({ enabled }: { enabled: boolean }) {
   }, [enabled, mentionQuery]);
 
   function insertMention(username: string) {
-    const mention = `@${username}`;
-    setText((prev) => {
-      const needsSpace = prev.length > 0 && !prev.endsWith(" ") && !prev.endsWith("\n");
-      return `${prev}${needsSpace ? " " : ""}${mention} `;
-    });
+    setText((prev) => prev.replace(/(?:^|\s)@[\p{L}\p{N}_]{1,32}$/u, (full) => `${full[0] === " " ? " " : ""}@${username} `));
     setMentionQuery("");
     setMentionResults([]);
     clearError();
@@ -279,32 +280,21 @@ export default function Composer({ enabled }: { enabled: boolean }) {
               setText(e.target.value);
             }}
           />
-          <div className="mt-2">
-            <label className="mb-1 block text-xs opacity-80">Etiquetar personas (@usuario)</label>
-            <input
-              type="text"
-              value={mentionQuery}
-              disabled={!enabled}
-              onChange={(e) => setMentionQuery(e.target.value.replace(/^@+/, ""))}
-              placeholder="Buscar usuario para mencionar"
-              className="h-9 w-full rounded-md bg-input px-3 text-sm outline-none ring-1 ring-border focus:ring-2"
-            />
-            {(mentionsLoading || mentionResults.length > 0) && (
-              <div className="mt-2 flex flex-wrap gap-2">
-                {mentionsLoading && <span className="text-xs opacity-60">Buscando personas…</span>}
-                {mentionResults.map((user) => (
-                  <button
-                    key={user.id}
-                    type="button"
-                    onClick={() => insertMention(user.username)}
-                    className="rounded-full border border-border px-3 py-1 text-xs hover:bg-muted/60"
-                  >
-                    {user.nickname || user.username} <span className="opacity-70">@{user.username}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          {(mentionsLoading || mentionResults.length > 0) && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {mentionsLoading && <span className="text-xs opacity-60">Buscando personas…</span>}
+              {mentionResults.map((user) => (
+                <button
+                  key={user.id}
+                  type="button"
+                  onClick={() => insertMention(user.username)}
+                  className="rounded-full border border-border px-3 py-1 text-xs hover:bg-muted/60"
+                >
+                  {user.nickname || user.username} <span className="opacity-70">@{user.username}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </>
       )}
 
