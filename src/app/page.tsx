@@ -31,18 +31,41 @@ type CommunityListResponse = {
   }[];
 };
 
+type RequestStrategy = {
+  includeCookies?: boolean;
+  revalidateSeconds?: number;
+};
+
 function withCookieHeader(cookieHeader?: string) {
   if (!cookieHeader) return undefined;
   return { Cookie: cookieHeader };
 }
 
-async function getFeed(base: string, cookieHeader?: string): Promise<FeedResponse> {
-  const res = await fetch(`${base}/api/posts`, { cache: "no-store", headers: withCookieHeader(cookieHeader) });
+async function getFeed(
+  base: string,
+  cookieHeader?: string,
+  strategy: RequestStrategy = {},
+): Promise<FeedResponse> {
+  const { includeCookies = true, revalidateSeconds } = strategy;
+  const res = await fetch(`${base}/api/posts`, {
+    cache: revalidateSeconds ? "force-cache" : "no-store",
+    ...(revalidateSeconds ? { next: { revalidate: revalidateSeconds } } : {}),
+    headers: includeCookies ? withCookieHeader(cookieHeader) : undefined,
+  });
   if (!res.ok) return { items: [] };
   return (await res.json()) as FeedResponse;
 }
-async function getDiscovery(base: string, cookieHeader?: string): Promise<DiscoveryResponse> {
-  const res = await fetch(`${base}/api/discovery`, { cache: "no-store", headers: withCookieHeader(cookieHeader) });
+async function getDiscovery(
+  base: string,
+  cookieHeader?: string,
+  strategy: RequestStrategy = {},
+): Promise<DiscoveryResponse> {
+  const { includeCookies = true, revalidateSeconds } = strategy;
+  const res = await fetch(`${base}/api/discovery`, {
+    cache: revalidateSeconds ? "force-cache" : "no-store",
+    ...(revalidateSeconds ? { next: { revalidate: revalidateSeconds } } : {}),
+    headers: includeCookies ? withCookieHeader(cookieHeader) : undefined,
+  });
   if (!res.ok)
     return { recommendedUsers: [], trendingTags: [] } satisfies DiscoveryResponse;
   return (await res.json()) as DiscoveryResponse;
@@ -52,9 +75,15 @@ async function getCommunities(
   base: string,
   cookieHeader?: string,
   useMine = false,
+  strategy: RequestStrategy = {},
 ): Promise<CommunityListResponse> {
+  const { includeCookies = true, revalidateSeconds } = strategy;
   const path = useMine ? "/api/communities/mine" : "/api/communities/popular";
-  const res = await fetch(`${base}${path}`, { cache: "no-store", headers: withCookieHeader(cookieHeader) });
+  const res = await fetch(`${base}${path}`, {
+    cache: revalidateSeconds ? "force-cache" : "no-store",
+    ...(revalidateSeconds ? { next: { revalidate: revalidateSeconds } } : {}),
+    headers: includeCookies ? withCookieHeader(cookieHeader) : undefined,
+  });
   if (!res.ok) return { items: [] };
   return (await res.json()) as CommunityListResponse;
 }
@@ -62,17 +91,32 @@ async function getCommunities(
 export default async function Page() {
   const base = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
   const cookieStore = await cookies();
+  const hasSessionCookie = cookieStore.has("treddit_token");
   const cookieHeader = cookieStore.getAll().map((item) => `${item.name}=${item.value}`).join("; ") || undefined;
   const sessionPromise = getSessionUser();
-  const feedPromise = getFeed(base, cookieHeader);
-  const discoveryPromise = getDiscovery(base, cookieHeader);
+  const feedPromise = getFeed(base, cookieHeader, {
+    includeCookies: hasSessionCookie,
+    revalidateSeconds: hasSessionCookie ? undefined : 20,
+  });
+  const discoveryPromise = getDiscovery(base, cookieHeader, {
+    includeCookies: hasSessionCookie,
+    revalidateSeconds: hasSessionCookie ? undefined : 30,
+  });
+  const communitiesPromise = getCommunities(base, cookieHeader, hasSessionCookie, {
+    includeCookies: hasSessionCookie,
+    revalidateSeconds: hasSessionCookie ? undefined : 60,
+  });
 
-  const session = await sessionPromise;
-  const [{ items }, discovery, communities] = await Promise.all([
+  const [session, { items }, discovery, initialCommunities] = await Promise.all([
+    sessionPromise,
     feedPromise,
     discoveryPromise,
-    getCommunities(base, cookieHeader, Boolean(session)),
+    communitiesPromise,
   ]);
+
+  const communities = !session && hasSessionCookie
+    ? await getCommunities(base, cookieHeader, false, { includeCookies: false, revalidateSeconds: 60 })
+    : initialCommunities;
 
   const canInteract = Boolean(session);
 
