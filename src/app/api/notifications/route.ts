@@ -27,14 +27,14 @@ export async function GET() {
 
   const [rows] = await db.query<NotificationRow[]>(
     `
-    SELECT CONCAT('f-', f.id) AS id, 'follow' AS type, f.created_at, u.username, u.nickname, NULL AS post_id, NULL AS text
+    SELECT CONCAT('f-', f.follower, '-', f.followed) AS id, 'follow' AS type, f.created_at, u.username, u.nickname, NULL AS post_id, NULL AS text
     FROM Follows f
     JOIN Users u ON u.id = f.follower
     WHERE f.followed = ?
 
     UNION ALL
 
-    SELECT CONCAT('l-', lp.id) AS id, 'like' AS type, lp.created_at, u.username, u.nickname, lp.post AS post_id, p.description AS text
+    SELECT CONCAT('l-', lp.id) AS id, 'like' AS type, lp.date AS created_at, u.username, u.nickname, lp.post AS post_id, p.description AS text
     FROM Like_Posts lp
     JOIN Posts p ON p.id = lp.post
     JOIN Users u ON u.id = lp.user
@@ -42,7 +42,7 @@ export async function GET() {
 
     UNION ALL
 
-    SELECT CONCAT('r-', r.id) AS id, 'repost' AS type, r.created_at, u.username, u.nickname, r.post_id AS post_id, p.description AS text
+    SELECT CONCAT('r-', r.user_id, '-', r.post_id) AS id, 'repost' AS type, r.created_at, u.username, u.nickname, r.post_id AS post_id, p.description AS text
     FROM Reposts r
     JOIN Posts p ON p.id = r.post_id
     JOIN Users u ON u.id = r.user_id
