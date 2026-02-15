@@ -5,6 +5,7 @@ import PostActions from "./PostActions";
 import PostPoll from "./PostPoll";
 import PostMenu from "./PostMenu";
 import UserBadges from "./UserBadges";
+import MentionUserLink from "./MentionUserLink";
 
 import { useLocale } from "@/contexts/LocaleContext";
 
@@ -197,13 +198,7 @@ function renderDescription(text: string) {
     if (/^@[\p{L}\p{N}_]+$/u.test(part)) {
       const username = part.slice(1);
       return (
-        <a
-          key={`mention-${index}-${part}`}
-          href={`/u/${encodeURIComponent(username)}`}
-          className="text-sky-500 font-semibold hover:underline"
-        >
-          {part}
-        </a>
+        <MentionUserLink key={`mention-${index}-${part}`} username={username} text={part} />
       );
     }
 
