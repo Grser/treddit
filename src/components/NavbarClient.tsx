@@ -11,7 +11,24 @@ import UserBadges from "./UserBadges";
 export default function NavbarClient({ session }: { session: SessionUser | null }) {
   const { strings } = useLocale();
   const avatar = session?.avatar_url?.trim() || "/demo-reddit.png";
+  const [isDarkMode, setIsDarkMode] = useState(true);
   const [unreadMessages, setUnreadMessages] = useState(0);
+
+  useEffect(() => {
+    const savedTheme = window.localStorage.getItem("treddit-theme");
+    const shouldUseDark =
+      savedTheme === "dark" ||
+      (savedTheme !== "light" && document.documentElement.classList.contains("dark"));
+    document.documentElement.classList.toggle("dark", shouldUseDark);
+    setIsDarkMode(shouldUseDark);
+  }, []);
+
+  function toggleTheme() {
+    const next = !isDarkMode;
+    setIsDarkMode(next);
+    document.documentElement.classList.toggle("dark", next);
+    window.localStorage.setItem("treddit-theme", next ? "dark" : "light");
+  }
 
   useEffect(() => {
     let active = true;
@@ -76,6 +93,15 @@ export default function NavbarClient({ session }: { session: SessionUser | null 
           </form>
 
           <nav className="ml-auto flex items-center gap-1 sm:gap-2">
+            <button
+              type="button"
+              title={isDarkMode ? strings.navbar.themeToLight : strings.navbar.themeToDark}
+              aria-label={strings.navbar.themeLabel}
+              className="inline-grid place-items-center size-9 rounded-full hover:bg-muted/60 ring-1 ring-transparent hover:ring-border transition"
+              onClick={toggleTheme}
+            >
+              {isDarkMode ? <SunIcon /> : <MoonIcon />}
+            </button>
             <LanguageMenu />
             <IconLink href="/anuncios" title={strings.navbar.ads}>
               <AdIcon />
@@ -143,17 +169,23 @@ export default function NavbarClient({ session }: { session: SessionUser | null 
                 </Link>
 
                 <form method="POST" action="/api/auth/logout">
-                  <button className="h-9 px-3 rounded-full border border-border text-sm">
+                  <button className="inline-flex h-9 items-center justify-center px-3 rounded-full border border-border text-sm">
                     {strings.navbar.logout}
                   </button>
                 </form>
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <Link href="/auth/login" className="h-9 px-3 rounded-full border border-border text-sm">
+                <Link
+                  href="/auth/login"
+                  className="inline-flex h-9 items-center justify-center px-3 rounded-full border border-border text-sm"
+                >
                   {strings.navbar.login}
                 </Link>
-                <Link href="/auth/registrar" className="h-9 px-3 rounded-full bg-brand text-white text-sm">
+                <Link
+                  href="/auth/registrar"
+                  className="inline-flex h-9 items-center justify-center px-3 rounded-full bg-brand text-white text-sm"
+                >
                   {strings.navbar.register}
                 </Link>
               </div>
@@ -162,6 +194,23 @@ export default function NavbarClient({ session }: { session: SessionUser | null 
         </div>
       </div>
     </header>
+  );
+}
+
+function SunIcon() {
+  return (
+    <svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+    </svg>
+  );
+}
+
+function MoonIcon() {
+  return (
+    <svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3c-.06.3-.09.61-.09.93A7.5 7.5 0 0 0 20.07 13c.32 0 .63-.03.93-.09z" />
+    </svg>
   );
 }
 
