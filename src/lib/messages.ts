@@ -108,6 +108,16 @@ type FollowRelationRow = RowDataPacket & {
   followsMe: number;
 };
 
+type DirectMessageAccessRow = FollowRelationRow & {
+  allowFromAnyone: number;
+};
+
+export type DirectMessageAccess = {
+  canMessage: boolean;
+  allowsAnyone: boolean;
+  mutualFollow: boolean;
+};
+
 type ConversationRow = RowDataPacket & {
   id: number;
   sender_id: number;
@@ -176,21 +186,33 @@ export async function setAllowMessagesFromAnyone(userId: number, allow: boolean)
   );
 }
 
-export async function canSendDirectMessage(senderId: number, recipientId: number): Promise<boolean> {
-  if (!isDatabaseConfigured()) return true;
+export async function getDirectMessageAccess(senderId: number, recipientId: number): Promise<DirectMessageAccess> {
+  if (!isDatabaseConfigured()) {
+    return { canMessage: true, allowsAnyone: true, mutualFollow: true };
+  }
   await ensureMessageTables();
-  const [rows] = await db.query<FollowRelationRow[]>(
+  const [rows] = await db.query<DirectMessageAccessRow[]>(
     `
     SELECT
       EXISTS(SELECT 1 FROM Follows WHERE follower=? AND followed=?) AS iFollow,
-      EXISTS(SELECT 1 FROM Follows WHERE follower=? AND followed=?) AS followsMe
+      EXISTS(SELECT 1 FROM Follows WHERE follower=? AND followed=?) AS followsMe,
+      COALESCE((SELECT allow_from_anyone FROM Direct_Message_Preferences WHERE user_id=? LIMIT 1), 0) AS allowFromAnyone
     `,
-    [senderId, recipientId, recipientId, senderId],
+    [senderId, recipientId, recipientId, senderId, recipientId],
   );
-  const relation = rows[0] || { iFollow: 0, followsMe: 0 };
-  const mutual = Boolean(relation.iFollow) && Boolean(relation.followsMe);
-  if (mutual) return true;
-  return getAllowMessagesFromAnyone(recipientId);
+  const relation = rows[0] || { iFollow: 0, followsMe: 0, allowFromAnyone: 0 };
+  const mutualFollow = Boolean(relation.iFollow) && Boolean(relation.followsMe);
+  const allowsAnyone = Boolean(relation.allowFromAnyone);
+  return {
+    canMessage: mutualFollow || allowsAnyone,
+    allowsAnyone,
+    mutualFollow,
+  };
+}
+
+export async function canSendDirectMessage(senderId: number, recipientId: number): Promise<boolean> {
+  const access = await getDirectMessageAccess(senderId, recipientId);
+  return access.canMessage;
 }
 
 export async function fetchConversationMessages(
