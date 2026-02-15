@@ -46,7 +46,7 @@ export default function PostCard({
   canInteract: boolean;
   pinned?: boolean;
 }) {
-  const { strings } = useLocale();
+  const { locale, strings } = useLocale();
   const avatar = post.avatar_url?.trim() || "/demo-reddit.png";
   const repostedByMe = Boolean(post.repostedByMe);
   const displayName = post.nickname?.trim() || post.username;
@@ -54,6 +54,11 @@ export default function PostCard({
   const community = post.community;
   const canViewSensitive = Boolean(post.can_view_sensitive);
   const [showSensitive, setShowSensitive] = useState(!post.is_sensitive);
+  const createdAtLabel = new Intl.DateTimeFormat(locale, {
+    dateStyle: "short",
+    timeStyle: "medium",
+    timeZone: "UTC",
+  }).format(new Date(post.created_at));
 
   return (
     <article className="bg-surface text-foreground rounded-xl border border-border p-4">
@@ -104,7 +109,7 @@ export default function PostCard({
               </p>
               <p className="text-xs opacity-60">
                 <a href={`/p/${post.id}`} className="hover:underline">
-                  {new Date(post.created_at).toLocaleString()}
+                  {createdAtLabel}
                 </a>
                 {community && (
                   <>
