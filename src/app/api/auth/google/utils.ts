@@ -106,7 +106,6 @@ export function getBaseUrl(req: Request | NextRequest) {
 
   const withNext = req as MaybeNextRequest;
   const nextOrigin = normalizeOrigin(withNext.nextUrl?.origin ?? null);
-  if (nextOrigin && (!normalizedConfigured || isLocalOrigin(normalizedConfigured))) return nextOrigin;
 
   if (normalizedConfigured && !isLocalOrigin(normalizedConfigured)) {
     return normalizedConfigured;
@@ -131,6 +130,8 @@ export function getBaseUrl(req: Request | NextRequest) {
   const hostHeader = req.headers.get("host")?.trim();
   const hostOrigin = buildOrigin(hostHeader ?? "", forwardedProto, req);
   if (hostOrigin) return hostOrigin;
+
+  if (nextOrigin) return nextOrigin;
 
   return normalizeOrigin(req.url) ?? "https://treddit.com";
 }
