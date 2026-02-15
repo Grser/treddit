@@ -18,9 +18,10 @@ type HeaderNotification = {
   text: string | null;
 };
 
-export default function NavbarClient({ session }: { session: SessionUser | null }) {
+export default function NavbarClient({ session }: { session?: SessionUser | null }) {
   const { strings } = useLocale();
-  const avatar = session?.avatar_url?.trim() || "/demo-reddit.png";
+  const [resolvedSession, setResolvedSession] = useState<SessionUser | null | undefined>(session);
+  const avatar = resolvedSession?.avatar_url?.trim() || "/demo-reddit.png";
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [notifications, setNotifications] = useState<HeaderNotification[]>([]);
@@ -45,6 +46,38 @@ export default function NavbarClient({ session }: { session: SessionUser | null 
   }
 
   useEffect(() => {
+    setResolvedSession(session);
+  }, [session]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function resolveSession() {
+      try {
+        const res = await fetch("/api/auth/me", { cache: "no-store" });
+        if (!res.ok) {
+          if (!active) return;
+          setResolvedSession(null);
+          return;
+        }
+        const payload = (await res.json().catch(() => ({}))) as { user?: SessionUser | null };
+        if (!active) return;
+        setResolvedSession(payload.user ?? null);
+      } catch {
+        if (!active) return;
+        setResolvedSession(null);
+      }
+    }
+
+    if (session !== undefined) return;
+    void resolveSession();
+
+    return () => {
+      active = false;
+    };
+  }, [session]);
+
+  useEffect(() => {
     let active = true;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
@@ -61,7 +94,7 @@ export default function NavbarClient({ session }: { session: SessionUser | null 
       }
     }
 
-    if (!session?.id) return;
+    if (!resolvedSession?.id) return;
 
     timeoutId = setTimeout(load, 500);
     const interval = setInterval(load, 15_000);
@@ -70,7 +103,7 @@ export default function NavbarClient({ session }: { session: SessionUser | null 
       if (timeoutId) clearTimeout(timeoutId);
       clearInterval(interval);
     };
-  }, [session?.id]);
+  }, [resolvedSession?.id]);
 
   useEffect(() => {
     function handleRead() {
@@ -98,7 +131,7 @@ export default function NavbarClient({ session }: { session: SessionUser | null 
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
     async function loadNotifications() {
-      if (!session?.id) return;
+      if (!resolvedSession?.id) return;
       try {
         const res = await fetch("/api/notifications", { cache: "no-store" });
         if (!res.ok) return;
@@ -113,7 +146,7 @@ export default function NavbarClient({ session }: { session: SessionUser | null 
       }
     }
 
-    if (!session?.id) return;
+    if (!resolvedSession?.id) return;
 
     timeoutId = setTimeout(loadNotifications, 800);
     const interval = setInterval(loadNotifications, 20_000);
@@ -122,7 +155,7 @@ export default function NavbarClient({ session }: { session: SessionUser | null 
       if (timeoutId) clearTimeout(timeoutId);
       clearInterval(interval);
     };
-  }, [session?.id]);
+  }, [resolvedSession?.id]);
 
   async function markNotificationsAsRead() {
     setNotificationUnreadCount(0);
@@ -188,7 +221,7 @@ export default function NavbarClient({ session }: { session: SessionUser | null 
             </IconLink>
             <div className="hidden sm:block h-6 w-px bg-border mx-1" />
 
-            {session ? (
+            {resolvedSession ? (
               <Link
                 href="/crear"
                 className="hidden sm:inline-flex items-center gap-2 h-9 px-3 rounded-full bg-brand text-white text-sm font-medium hover:brightness-110"
@@ -257,9 +290,9 @@ export default function NavbarClient({ session }: { session: SessionUser | null 
               )}
             </div>
 
-            {session ? (
+            {resolvedSession ? (
               <div className="flex items-center gap-3">
-                {session.is_admin && (
+                {resolvedSession.is_admin && (
                   <Link
                     href="/admin"
                     className="hidden lg:inline-flex h-9 items-center rounded-full border border-border px-3 text-sm hover:bg-muted/60"
@@ -270,17 +303,17 @@ export default function NavbarClient({ session }: { session: SessionUser | null 
 
                 <div className="hidden sm:flex flex-col items-end leading-tight">
                   <span className="text-sm opacity-80">
-                    {strings.navbar.userGreeting(session.username)}
+                    {strings.navbar.userGreeting(resolvedSession.username)}
                   </span>
                   <UserBadges
                     size="sm"
-                    isAdmin={session.is_admin}
-                    isVerified={session.is_verified}
+                    isAdmin={resolvedSession.is_admin}
+                    isVerified={resolvedSession.is_verified}
                     labels={strings.badges}
                   />
                 </div>
 
-                <Link href={`/u/${session.username}`} className="inline-flex">
+                <Link href={`/u/${resolvedSession.username}`} className="inline-flex">
                   <Image
                     alt="Usuario"
                     src={avatar}
