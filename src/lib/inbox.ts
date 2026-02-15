@@ -1,7 +1,7 @@
 import { getCompactTime } from "@/lib/time";
 import { isDatabaseConfigured } from "@/lib/db";
 import { getDemoInbox } from "@/lib/demoStore";
-import { fetchConversationSummaries } from "@/lib/messages";
+import { fetchConversationStarters, fetchConversationSummaries } from "@/lib/messages";
 
 export type InboxEntry = {
   userId: number;
@@ -14,6 +14,7 @@ export type InboxEntry = {
   lastSenderId: number;
   createdAt: string;
   unreadCount: number;
+  isStarter?: boolean;
 };
 
 export async function loadInbox(userId: number): Promise<InboxEntry[]> {
@@ -32,8 +33,12 @@ export async function loadInbox(userId: number): Promise<InboxEntry[]> {
     }));
   }
 
-  const rows = await fetchConversationSummaries(userId, { limit: 25 });
-  return rows.map((row) => ({
+  const [rows, starters] = await Promise.all([
+    fetchConversationSummaries(userId, { limit: 25 }),
+    fetchConversationStarters(userId, { limit: 25 }),
+  ]);
+
+  const conversations = rows.map((row) => ({
     userId: row.userId,
     username: row.username,
     nickname: row.nickname,
@@ -45,6 +50,25 @@ export async function loadInbox(userId: number): Promise<InboxEntry[]> {
     createdAt: row.createdAt,
     unreadCount: row.unreadCount,
   }));
+
+  const existing = new Set(conversations.map((entry) => entry.userId));
+  const starterEntries = starters
+    .filter((row) => !existing.has(row.userId))
+    .map((row) => ({
+      userId: row.userId,
+      username: row.username,
+      nickname: row.nickname,
+      avatar_url: row.avatar_url,
+      is_admin: row.is_admin,
+      is_verified: row.is_verified,
+      lastMessage: "Inicia una conversación",
+      lastSenderId: 0,
+      createdAt: row.createdAt,
+      unreadCount: 0,
+      isStarter: true,
+    }));
+
+  return [...conversations, ...starterEntries];
 }
 
 export { getCompactTime };

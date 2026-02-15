@@ -118,7 +118,7 @@ export function getBaseUrl(req: Request | NextRequest) {
   const hostOrigin = buildOrigin(hostHeader ?? "", forwardedProto, req);
   if (hostOrigin) return hostOrigin;
 
-  return normalizeOrigin(req.url) ?? "http://localhost:3000";
+  return normalizeOrigin(req.url) ?? "https://treddit.com";
 }
 
 export async function getRedirectUri(baseUrl: string) {
