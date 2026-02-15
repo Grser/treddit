@@ -5,6 +5,7 @@ import { db, isDatabaseConfigured } from "@/lib/db";
 type UsersAgeColumns = {
   birthDate: boolean;
   ageVerified: boolean;
+  countryOfOrigin: boolean;
 };
 
 let cachedUsersColumns: UsersAgeColumns | undefined;
@@ -25,7 +26,7 @@ function isDuplicateSchemaError(error: unknown) {
 
 export async function ensureUsersAgeColumns() {
   if (!isDatabaseConfigured()) {
-    cachedUsersColumns = { birthDate: true, ageVerified: true };
+    cachedUsersColumns = { birthDate: true, ageVerified: true, countryOfOrigin: true };
     return cachedUsersColumns;
   }
 
@@ -61,7 +62,21 @@ export async function ensureUsersAgeColumns() {
     }
   }
 
-  cachedUsersColumns = { birthDate, ageVerified };
+  let countryOfOrigin = await hasUsersColumn("country_of_origin").catch(() => false);
+  if (!countryOfOrigin) {
+    try {
+      await db.execute("ALTER TABLE Users ADD COLUMN country_of_origin VARCHAR(120) NULL");
+      countryOfOrigin = true;
+    } catch (error) {
+      if (!isDuplicateSchemaError(error)) {
+        console.warn("No se pudo crear Users.country_of_origin", error);
+      } else {
+        countryOfOrigin = true;
+      }
+    }
+  }
+
+  cachedUsersColumns = { birthDate, ageVerified, countryOfOrigin };
   return cachedUsersColumns;
 }
 
@@ -81,6 +96,8 @@ export async function ensureAgeVerificationRequestsTable() {
         id INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
         user_id INT(10) UNSIGNED NOT NULL,
         birth_date DATE NULL,
+        country_of_origin VARCHAR(120) NULL,
+        id_document_url TEXT NULL,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (id),
         UNIQUE KEY uq_age_request_user (user_id),
@@ -88,6 +105,16 @@ export async function ensureAgeVerificationRequestsTable() {
         CONSTRAINT fk_age_requests_user FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE ON UPDATE CASCADE
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
+    await db.execute("ALTER TABLE Age_Verification_Requests ADD COLUMN country_of_origin VARCHAR(120) NULL").catch((error) => {
+      if (!isDuplicateSchemaError(error)) {
+        throw error;
+      }
+    });
+    await db.execute("ALTER TABLE Age_Verification_Requests ADD COLUMN id_document_url TEXT NULL").catch((error) => {
+      if (!isDuplicateSchemaError(error)) {
+        throw error;
+      }
+    });
     ageRequestsTableReady = true;
   } catch (error) {
     console.warn("No se pudo asegurar la tabla Age_Verification_Requests", error);
@@ -95,4 +122,13 @@ export async function ensureAgeVerificationRequestsTable() {
   }
 
   return ageRequestsTableReady;
+}
+
+export async function isUserAgeVerified(userId: number): Promise<boolean> {
+  if (!userId || !Number.isFinite(userId)) {
+    return false;
+  }
+  await ensureUsersAgeColumns();
+  const [rows] = await db.query<RowDataPacket[]>("SELECT is_age_verified FROM Users WHERE id=? LIMIT 1", [userId]);
+  return Boolean(rows[0]?.is_age_verified);
 }

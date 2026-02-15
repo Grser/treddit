@@ -7,6 +7,7 @@ import { getPostsSensitiveColumn } from "@/lib/postSensitivity";
 import { db, isDatabaseConfigured } from "@/lib/db";
 import { getDemoFeed } from "@/lib/demoStore";
 import { getPostsCommunityColumn } from "@/lib/communityColumns";
+import { isUserAgeVerified } from "@/lib/ageVerification";
 
 type SavedPostRow = {
   id: number;
@@ -35,6 +36,7 @@ type SavedPostRow = {
 export async function GET(req: Request) {
   const me = await getSessionUser();
   const meId = me?.id ?? null;
+  const viewerAgeVerified = meId && isDatabaseConfigured() ? await isUserAgeVerified(meId) : false;
   const url = new URL(req.url);
 
   const ids = (url.searchParams.get("ids") || "")
@@ -110,6 +112,7 @@ export async function GET(req: Request) {
       hasPoll: Boolean(row.hasPoll),
       reply_scope: Number(row.reply_scope ?? 0),
       is_sensitive: Boolean(row.is_sensitive),
+      can_view_sensitive: viewerAgeVerified,
       isOwner: meId ? Number(row.user) === meId : false,
       isAdminViewer: Boolean(me?.is_admin),
       community:

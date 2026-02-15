@@ -10,6 +10,7 @@ import { canSendDirectMessage } from "@/lib/messages";
 import { getDemoFeed, resolveDemoUserByUsername } from "@/lib/demoStore";
 import { getPostsCommunityColumn } from "@/lib/communityColumns";
 import { getPostsSensitiveColumn } from "@/lib/postSensitivity";
+import { isUserAgeVerified } from "@/lib/ageVerification";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,8 @@ type UserRow = RowDataPacket & {
   is_admin: number;
   is_verified: number;
   pinned_post_id: number | null;
+  country_of_origin: string | null;
+  is_age_verified: number;
 };
 
 type CountRow = RowDataPacket & { posts?: number; followers?: number; following?: number };
@@ -91,6 +94,8 @@ export default async function UserPage({
             location: "Internet",
             website: "https://treddit.app",
             created_at: new Date().toISOString(),
+            country_of_origin: null,
+            is_age_verified: false,
             is_admin: demoUser.is_admin,
             is_verified: demoUser.is_verified,
           }}
@@ -112,7 +117,7 @@ export default async function UserPage({
 
   const [rows] = await db.query<UserRow[]>(
     `SELECT id, username, nickname, avatar_url, banner_url, description, location, website,
-            show_likes, show_bookmarks, created_at, is_admin, is_verified, pinned_post_id
+            show_likes, show_bookmarks, created_at, is_admin, is_verified, pinned_post_id, country_of_origin, is_age_verified
      FROM Users WHERE username=? AND visible=1 LIMIT 1`,
     [username]
   );
@@ -134,6 +139,8 @@ export default async function UserPage({
     is_admin: Boolean(userRow.is_admin),
     is_verified: Boolean(userRow.is_verified),
     pinned_post_id: userRow.pinned_post_id ? Number(userRow.pinned_post_id) : null,
+    country_of_origin: userRow.country_of_origin ? String(userRow.country_of_origin) : null,
+    is_age_verified: Boolean(userRow.is_age_verified),
   };
 
   const [postCountResult, followingResult, followerResult, followStatusResult, canMessageResult] = await Promise.all([
@@ -155,6 +162,8 @@ export default async function UserPage({
   const isFollowing = Boolean(followStatusResult[0][0]?.isFollowing);
   const canMessage = Boolean(canMessageResult);
   const messageHref = canMessage ? `/mensajes/${user.username}` : null;
+
+  const viewerAgeVerified = me?.id ? await isUserAgeVerified(me.id) : false;
 
   let pinnedPost: PostCardType | null = null;
   if (user.pinned_post_id) {
@@ -218,6 +227,7 @@ export default async function UserPage({
         reply_scope: ([0, 1, 2].includes(Number(row.reply_scope ?? 0)) ? Number(row.reply_scope ?? 0) : 0) as 0 | 1 | 2,
         mediaUrl: row.mediaUrl ? String(row.mediaUrl) : null,
         is_sensitive: Boolean(row.is_sensitive),
+        can_view_sensitive: viewerAgeVerified,
         likes: Number(row.likes) || 0,
         comments: Number(row.comments) || 0,
         reposts: Number(row.reposts) || 0,
@@ -253,6 +263,8 @@ export default async function UserPage({
           location: user.location,
           website: user.website,
           created_at: user.created_at,
+          country_of_origin: user.country_of_origin,
+          is_age_verified: user.is_age_verified,
           is_admin: user.is_admin,
           is_verified: user.is_verified,
         }}

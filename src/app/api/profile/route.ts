@@ -1,9 +1,14 @@
 export const runtime = "nodejs";
 import { NextResponse } from "next/server";
+import type { RowDataPacket } from "mysql2";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { setAllowMessagesFromAnyone } from "@/lib/messages";
 import { ensureAgeVerificationRequestsTable, ensureUsersAgeColumns } from "@/lib/ageVerification";
+
+type ProfileStatusRow = RowDataPacket & {
+  is_age_verified: number;
+};
 
 export async function POST(req: Request) {
   const me = await requireUser();
@@ -15,6 +20,8 @@ export async function POST(req: Request) {
   const location = String(form.get("location") || "").trim();
   const website = String(form.get("website") || "").trim();
   const birthDateRaw = String(form.get("birth_date") || "").trim();
+  const countryOfOriginRaw = String(form.get("country_of_origin") || "").trim();
+  const idDocumentUrlRaw = String(form.get("id_document_url") || "").trim();
   const show_likes = form.get("show_likes") ? 1 : 0;
   const show_bookmarks = form.get("show_bookmarks") ? 1 : 0;
   const allowMessagesFromAnyone = Boolean(form.get("allow_messages_anyone"));
@@ -23,22 +30,34 @@ export async function POST(req: Request) {
   await Promise.all([ensureUsersAgeColumns(), ensureAgeVerificationRequestsTable()]);
 
   const birthDate = /^\d{4}-\d{2}-\d{2}$/.test(birthDateRaw) ? birthDateRaw : null;
+  const countryOfOrigin = countryOfOriginRaw.slice(0, 120) || null;
+  const idDocumentUrl = idDocumentUrlRaw || null;
 
   await db.execute(
-    "UPDATE Users SET nickname=?, description=?, avatar_url=?, banner_url=?, location=?, website=?, show_likes=?, show_bookmarks=?, birth_date=? WHERE id=?",
-    [nickname, description, avatar_url || null, banner_url || null, location || null, website || null, show_likes, show_bookmarks, birthDate, me.id]
+    "UPDATE Users SET nickname=?, description=?, avatar_url=?, banner_url=?, location=?, website=?, show_likes=?, show_bookmarks=?, birth_date=?, country_of_origin=? WHERE id=?",
+    [nickname, description, avatar_url || null, banner_url || null, location || null, website || null, show_likes, show_bookmarks, birthDate, countryOfOrigin, me.id]
   );
 
-  if (wantsAgeVerification) {
+  const [statusRows] = await db.query<ProfileStatusRow[]>("SELECT is_age_verified FROM Users WHERE id=? LIMIT 1", [me.id]);
+  const alreadyAgeVerified = Boolean(statusRows[0]?.is_age_verified);
+
+  if (!alreadyAgeVerified && wantsAgeVerification) {
+    if (!birthDate || !countryOfOrigin || !idDocumentUrl) {
+      return NextResponse.json(
+        { error: "Para verificar edad debes indicar fecha de nacimiento, país de origen y foto de tu documento." },
+        { status: 400 },
+      );
+    }
+
     await db.execute(
-      `INSERT INTO Age_Verification_Requests (user_id, birth_date)
-       VALUES (?, ?)
-       ON DUPLICATE KEY UPDATE birth_date=VALUES(birth_date), created_at=CURRENT_TIMESTAMP`,
-      [me.id, birthDate],
+      `INSERT INTO Age_Verification_Requests (user_id, birth_date, country_of_origin, id_document_url)
+       VALUES (?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE birth_date=VALUES(birth_date), country_of_origin=VALUES(country_of_origin), id_document_url=VALUES(id_document_url), created_at=CURRENT_TIMESTAMP`,
+      [me.id, birthDate, countryOfOrigin, idDocumentUrl],
     ).catch((error) => {
       console.error("Failed to upsert age verification request", error);
     });
-  } else {
+  } else if (!alreadyAgeVerified && !wantsAgeVerification) {
     await db.execute("DELETE FROM Age_Verification_Requests WHERE user_id=?", [me.id]).catch(() => {});
   }
 
@@ -48,5 +67,5 @@ export async function POST(req: Request) {
     console.error("Failed to update message preferences", error);
   }
 
-  return NextResponse.redirect(new URL(`/u/${me.username}`, process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"));
+  return NextResponse.redirect(new URL(`/u/${me.username}`, req.url));
 }

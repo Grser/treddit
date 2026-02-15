@@ -8,6 +8,7 @@ import { getSessionUser, requireUser } from "@/lib/auth";
 import { createDemoPost, getDemoFeed } from "@/lib/demoStore";
 import { ensurePostsCommunityColumn, getPostsCommunityColumn } from "@/lib/communityColumns";
 import { ensurePostsSensitiveColumn, getPostsSensitiveColumn } from "@/lib/postSensitivity";
+import { isUserAgeVerified } from "@/lib/ageVerification";
 
 type PostRow = {
   id: number;
@@ -90,6 +91,7 @@ export async function GET(req: Request) {
   }
 
   const meId = me?.id ?? null;
+  const viewerAgeVerified = meId && isDatabaseConfigured() ? await isUserAgeVerified(meId) : false;
 
   const shouldPrioritizeFollowed = Boolean(
     meId && !userId && !likesOf && !wantsCommunityFilter && !usernameFilter && !normalizedTag,
@@ -184,6 +186,7 @@ export async function GET(req: Request) {
       hasPoll: Boolean(row.hasPoll),
       reply_scope: Number(row.reply_scope ?? 0),
       is_sensitive: Boolean(row.is_sensitive),
+      can_view_sensitive: viewerAgeVerified,
       isOwner: meId ? Number(row.user) === meId : false,
       isAdminViewer: Boolean(me?.is_admin),
       community:
