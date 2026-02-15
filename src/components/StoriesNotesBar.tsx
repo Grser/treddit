@@ -19,14 +19,6 @@ type Props = {
   } | null;
 };
 
-const NOTE_ROTATION = [
-  "Disponible ahora ✨",
-  "Subiendo contenido nuevo",
-  "Hoy ando activo por aquí",
-  "¿Quién para comentar?",
-  "Modo creativo encendido 🎨",
-];
-
 export default function StoriesNotesBar({ canInteract, users, me }: Props) {
   const withMe = me
     ? [{ id: me.id, username: me.username, nickname: "Tu historia", avatar_url: me.avatar_url ?? null }, ...users]
@@ -39,14 +31,13 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
       <div className="mb-3 flex items-center justify-between">
         <div>
           <h2 className="font-semibold">Historias</h2>
-          <p className="text-xs opacity-70">Notas y stories estilo Instagram</p>
+          <p className="text-xs opacity-70">Publicaciones rápidas de la comunidad</p>
         </div>
         {!canInteract && <span className="text-xs text-brand">Inicia sesión para publicar</span>}
       </div>
 
       <div className="flex gap-3 overflow-x-auto pb-1">
-        {uniqueUsers.map((user, index) => {
-          const note = NOTE_ROTATION[index % NOTE_ROTATION.length];
+        {uniqueUsers.map((user) => {
           const isMe = me?.id === user.id;
           return (
             <a
@@ -67,7 +58,6 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
                 </div>
               </div>
               <p className="truncate text-xs font-medium">{isMe ? "Tu story" : user.username}</p>
-              <p className="line-clamp-2 text-[10px] leading-tight opacity-70">{isMe ? "Comparte una nota…" : note}</p>
             </a>
           );
         })}

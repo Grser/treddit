@@ -8,6 +8,7 @@ import UserBadges from "@/components/UserBadges";
 import DirectConversation from "@/components/messages/DirectConversation";
 import type { ConversationParticipant } from "@/components/messages/DirectConversation";
 import InboxList from "@/components/messages/InboxList";
+import NotesBar from "@/components/messages/NotesBar";
 
 import { requireUser } from "@/lib/auth";
 import { db, isDatabaseConfigured } from "@/lib/db";
@@ -54,7 +55,9 @@ function ConversationLayout({
   return (
     <div className="min-h-dvh bg-background text-foreground">
       <Navbar />
-      <main className="mx-auto w-full max-w-6xl px-4 py-6">
+      <main className="mx-auto w-full max-w-6xl px-4 py-6 space-y-4">
+        <NotesBar entries={inbox} />
+
         <div className="grid h-[calc(100dvh-7.75rem)] min-h-[560px] overflow-hidden rounded-3xl border border-border/80 bg-surface shadow-xl lg:grid-cols-[360px_minmax(0,1fr)]">
           <aside className="hidden border-r border-border/80 lg:block">
             <InboxList
