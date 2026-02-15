@@ -77,6 +77,12 @@ function isLocalOrigin(value: string | null) {
   }
 }
 
+function isLocalHost(host: string | null) {
+  if (!host) return false;
+  const hostname = host.split(":")[0]?.trim().toLowerCase();
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+}
+
 function buildOrigin(host: string, proto: string | null | undefined, req: Request) {
   if (!host) return null;
   const forwardedPort = req.headers.get("x-forwarded-port")?.split(",")[0]?.trim();
@@ -112,28 +118,33 @@ export function getBaseUrl(req: Request | NextRequest) {
   }
 
   const forwardedHeaderOrigin = getForwardedFromForwardedHeader(req);
-  if (forwardedHeaderOrigin) return forwardedHeaderOrigin;
+  if (forwardedHeaderOrigin && !isLocalOrigin(forwardedHeaderOrigin)) return forwardedHeaderOrigin;
 
   const forwardedHost = getForwardedHost(req);
   const forwardedProto = getForwardedProto(req);
   const forwardedOrigin = buildOrigin(forwardedHost ?? "", forwardedProto, req);
-  if (forwardedOrigin && (!normalizedConfigured || isLocalOrigin(normalizedConfigured))) return forwardedOrigin;
+  if (forwardedOrigin && !isLocalOrigin(forwardedOrigin) && (!normalizedConfigured || isLocalOrigin(normalizedConfigured))) {
+    return forwardedOrigin;
+  }
 
   if (normalizedConfigured) return normalizedConfigured;
 
   const headerOrigin = normalizeOrigin(req.headers.get("origin"));
-  if (headerOrigin) return headerOrigin;
+  if (headerOrigin && !isLocalOrigin(headerOrigin)) return headerOrigin;
 
   const refererOrigin = normalizeOrigin(req.headers.get("referer"));
-  if (refererOrigin) return refererOrigin;
+  if (refererOrigin && !isLocalOrigin(refererOrigin)) return refererOrigin;
 
   const hostHeader = req.headers.get("host")?.trim();
   const hostOrigin = buildOrigin(hostHeader ?? "", forwardedProto, req);
-  if (hostOrigin) return hostOrigin;
+  if (hostOrigin && !isLocalOrigin(hostOrigin)) return hostOrigin;
 
-  if (nextOrigin) return nextOrigin;
+  if (nextOrigin && !isLocalOrigin(nextOrigin)) return nextOrigin;
 
-  return normalizeOrigin(req.url) ?? "https://treddit.com";
+  const requestOrigin = normalizeOrigin(req.url);
+  if (requestOrigin && !isLocalOrigin(requestOrigin)) return requestOrigin;
+
+  return "https://treddit.com";
 }
 
 export async function getRedirectUri(baseUrl: string, req?: Request) {
@@ -155,7 +166,7 @@ export async function getRedirectUri(baseUrl: string, req?: Request) {
     const headersList = await headers();
     const forwardedHost = headersList.get("x-forwarded-host")?.split(",")[0]?.trim();
     const host = forwardedHost || headersList.get("host")?.trim();
-    if (host) {
+    if (host && !isLocalHost(host)) {
       const forwardedProto = headersList
         .get("x-forwarded-proto")
         ?.split(",")[0]
@@ -164,14 +175,19 @@ export async function getRedirectUri(baseUrl: string, req?: Request) {
         forwardedProto || (baseUrl.startsWith("https") ? "https" : "http");
       const candidate = `${protocol}://${host}/api/auth/google/callback`;
       const normalized = normalizeOrigin(candidate);
-      if (normalized) return candidate;
+      if (normalized && !isLocalOrigin(normalized)) return candidate;
     }
   } catch (err) {
     console.error("Unable to read request headers for redirect URI", err);
   }
 
   const requestOrigin = req ? normalizeOrigin(req.url) : null;
-  const safeBase = normalizedBase || requestOrigin || process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+  const envBase = normalizeOrigin(process.env.NEXT_PUBLIC_BASE_URL || null);
+  const safeBase =
+    (normalizedBase && !isLocalOrigin(normalizedBase) ? normalizedBase : null) ||
+    (requestOrigin && !isLocalOrigin(requestOrigin) ? requestOrigin : null) ||
+    (envBase && !isLocalOrigin(envBase) ? envBase : null) ||
+    "https://treddit.com";
   return new URL("/api/auth/google/callback", safeBase).toString();
 }
 

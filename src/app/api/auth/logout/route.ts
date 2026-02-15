@@ -6,7 +6,7 @@ export async function POST() {
   const isProd = process.env.NODE_ENV === "production";
   const baseUrl = await getRequestBaseUrl();
 
-  // Evita usar req.url cuando proviene de un host interno (p. ej. localhost detrás de proxy)
+  // Evita usar req.url cuando proviene de un host interno detrás de proxy
   const redirectUrl = new URL("/", `${baseUrl}/`);
 
   const res = NextResponse.redirect(redirectUrl, 303);

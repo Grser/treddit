@@ -14,7 +14,7 @@ pnpm dev
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open the URL shown by the development server in your browser to see the result.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
@@ -38,7 +38,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## Configuración de redirección para login con Google
 
-Si después de autenticar con Google te redirige a `http://localhost:3000`, define explícitamente estas variables de entorno:
+Si después de autenticar con Google te redirige a un dominio incorrecto, define explícitamente estas variables de entorno:
 
 ```
 # URL base pública de tu app (prioridad para OAuth)
@@ -61,7 +61,7 @@ Prioridad usada por el backend:
 3. `NEXT_PUBLIC_BASE_URL`.
 4. Detección automática por headers/proxy.
 
-Si no encuentra nada válido, cae en `http://localhost:3000`.
+Si no encuentra nada válido, cae en `https://treddit.com`.
 
 ## Configuración de correo para recuperación de contraseña
 

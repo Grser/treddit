@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
   const cookieOptions = {
     httpOnly: true,
     sameSite: "lax" as const,
-    secure: isProd, // en localhost debe ser false
+    secure: isProd, // en entornos locales debe ser false
     path: "/",
     maxAge: 300,
   };
