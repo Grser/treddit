@@ -9,7 +9,7 @@ import { db, isDatabaseConfigured } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 type FollowEvent = {
-  id: number;
+  id: string;
   created_at: string;
   username: string;
   nickname: string | null;
@@ -29,7 +29,7 @@ type PostEvent = {
 };
 
 type RepostEvent = {
-  id: number;
+  id: string;
   created_at: string;
   post_id: number;
   description: string | null;
@@ -258,7 +258,7 @@ export default async function NotificationsPage() {
 async function loadFollowers(userId: number): Promise<FollowEvent[]> {
   const [rows] = await db.query(
     `
-    SELECT f.id, f.created_at, u.username, u.nickname, u.avatar_url, u.is_admin, u.is_verified
+    SELECT CONCAT(f.follower, '-', f.followed) AS id, f.created_at, u.username, u.nickname, u.avatar_url, u.is_admin, u.is_verified
     FROM Follows f
     JOIN Users u ON u.id = f.follower
     WHERE f.followed = ?
@@ -290,7 +290,7 @@ async function loadFollowedPosts(userId: number): Promise<PostEvent[]> {
 async function loadRepostsOnMyPosts(userId: number): Promise<RepostEvent[]> {
   const [rows] = await db.query(
     `
-    SELECT r.id, r.created_at, r.post_id, p.description,
+    SELECT CONCAT(r.user_id, '-', r.post_id) AS id, r.created_at, r.post_id, p.description,
            u.username, u.nickname, u.is_admin, u.is_verified
     FROM Reposts r
     JOIN Posts p ON p.id = r.post_id
