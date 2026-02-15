@@ -19,6 +19,7 @@ type AdminUserRow = RowDataPacket & {
   is_age_verified: number;
   visible: number;
   birth_date: string | null;
+  country_of_origin: string | null;
 };
 
 type AgeRequestRow = RowDataPacket & {
@@ -27,6 +28,8 @@ type AgeRequestRow = RowDataPacket & {
   username: string;
   nickname: string | null;
   birth_date: string | null;
+  country_of_origin: string | null;
+  id_document_url: string | null;
   requested_at: string;
 };
 
@@ -40,6 +43,7 @@ type AdminUser = {
   isAgeVerified: boolean;
   visible: boolean;
   birthDate: string | null;
+  countryOfOrigin: string | null;
 };
 
 export default async function AdminUsers({ searchParams }: PageProps) {
@@ -49,10 +53,10 @@ export default async function AdminUsers({ searchParams }: PageProps) {
   const passwordUpdated = params.password === "updated";
   const passwordError = params.password === "error";
   const [rows] = await db.query<AdminUserRow[]>(
-    "SELECT id, username, nickname, email, is_admin, is_verified, is_age_verified, visible, birth_date, created_at FROM Users ORDER BY created_at DESC LIMIT 200"
+    "SELECT id, username, nickname, email, is_admin, is_verified, is_age_verified, visible, birth_date, country_of_origin, created_at FROM Users ORDER BY created_at DESC LIMIT 200"
   );
   const [ageRows] = await db.query<AgeRequestRow[]>(`
-    SELECT avr.id AS request_id, avr.user_id, u.username, u.nickname, avr.birth_date, avr.created_at AS requested_at
+    SELECT avr.id AS request_id, avr.user_id, u.username, u.nickname, avr.birth_date, avr.country_of_origin, avr.id_document_url, avr.created_at AS requested_at
     FROM Age_Verification_Requests avr
     JOIN Users u ON u.id = avr.user_id
     ORDER BY avr.created_at DESC
@@ -68,6 +72,7 @@ export default async function AdminUsers({ searchParams }: PageProps) {
     isAgeVerified: Boolean(row.is_age_verified),
     visible: Boolean(row.visible),
     birthDate: row.birth_date ? String(row.birth_date).slice(0, 10) : null,
+    countryOfOrigin: row.country_of_origin ? String(row.country_of_origin) : null,
   }));
   return (
     <div>
@@ -84,6 +89,8 @@ export default async function AdminUsers({ searchParams }: PageProps) {
                   <tr className="border-b border-border text-left">
                     <th className="py-2 pr-4">Usuario</th>
                     <th className="py-2 pr-4">Fecha de nacimiento</th>
+                    <th className="py-2 pr-4">País</th>
+                    <th className="py-2 pr-4">Documento</th>
                     <th className="py-2 pr-4">Solicitada</th>
                     <th className="py-2 pr-4">Acciones</th>
                   </tr>
@@ -96,6 +103,8 @@ export default async function AdminUsers({ searchParams }: PageProps) {
                         {request.nickname && <div className="text-xs opacity-70">{request.nickname}</div>}
                       </td>
                       <td className="py-2 pr-4">{request.birth_date ? String(request.birth_date).slice(0, 10) : "Sin fecha"}</td>
+                      <td className="py-2 pr-4">{request.country_of_origin || "Sin país"}</td>
+                      <td className="py-2 pr-4">{request.id_document_url ? <a href={request.id_document_url} target="_blank" rel="noreferrer" className="underline">Ver documento</a> : "Sin documento"}</td>
                       <td className="py-2 pr-4">{new Date(request.requested_at).toLocaleString()}</td>
                       <td className="space-x-3 whitespace-nowrap py-2 pr-4">
                         <form action={`/api/admin/users/${request.user_id}`} method="post" className="inline">
@@ -135,6 +144,7 @@ export default async function AdminUsers({ searchParams }: PageProps) {
                   <th className="py-2 pr-4">Usuario</th>
                   <th className="py-2 pr-4">Email</th>
                   <th className="py-2 pr-4">Edad</th>
+                  <th className="py-2 pr-4">País</th>
                   <th className="py-2 pr-4">Admin</th>
                   <th className="py-2 pr-4">Verificado</th>
                   <th className="py-2 pr-4">Visible</th>

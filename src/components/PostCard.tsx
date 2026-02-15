@@ -34,6 +34,7 @@ export type Post = {
   is_verified?: boolean;
   community?: { id: number; slug: string; name: string } | null;
   is_sensitive?: boolean;
+  can_view_sensitive?: boolean;
 };
 
 export default function PostCard({
@@ -51,6 +52,7 @@ export default function PostCard({
   const displayName = post.nickname?.trim() || post.username;
   const pinnedLabel = strings.profilePage?.pinnedBadge || strings.postCard.pinned;
   const community = post.community;
+  const canViewSensitive = Boolean(post.can_view_sensitive);
   const [showSensitive, setShowSensitive] = useState(!post.is_sensitive);
 
   return (
@@ -145,7 +147,7 @@ export default function PostCard({
         <p className="text-sm mb-2 whitespace-pre-wrap break-words">{renderDescription(post.description)}</p>
       )}
 
-      {post.is_sensitive && !showSensitive && (
+      {post.is_sensitive && !showSensitive && canViewSensitive && (
         <button
           type="button"
           onClick={() => setShowSensitive(true)}
@@ -154,6 +156,13 @@ export default function PostCard({
           <p className="text-sm font-semibold">Contenido sensible</p>
           <p className="mt-1 text-xs opacity-70">Este post puede incluir material delicado. Presiona para mostrarlo.</p>
         </button>
+      )}
+
+      {post.is_sensitive && !showSensitive && !canViewSensitive && (
+        <div className="mb-2 w-full rounded-lg border border-border bg-muted/40 px-4 py-6 text-left">
+          <p className="text-sm font-semibold">Contenido sensible bloqueado</p>
+          <p className="mt-1 text-xs opacity-70">Debes verificar tu edad para poder mostrar este contenido.</p>
+        </div>
       )}
 
       {post.mediaUrl && showSensitive && (

@@ -3,8 +3,6 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-
 export async function POST(req: Request) {
   const admin = await requireAdmin();
   const form = await req.formData();
@@ -33,6 +31,6 @@ export async function POST(req: Request) {
 
   await db.execute("INSERT INTO Posts (user, description, created_at) VALUES (?, ?, NOW())", [admin.id, payload]);
 
-  const redirectUrl = new URL("/admin/anuncios?created=1", BASE_URL);
+  const redirectUrl = new URL("/admin/anuncios?created=1", req.url);
   return NextResponse.redirect(redirectUrl);
 }

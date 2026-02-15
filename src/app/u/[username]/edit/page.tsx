@@ -17,8 +17,10 @@ type ProfileRow = RowDataPacket & {
   show_likes: number;
   show_bookmarks: number;
   birth_date: string | null;
+  country_of_origin: string | null;
   is_age_verified: number;
   has_age_request: number;
+  id_document_url: string | null;
 };
 
 export default async function EditProfilePage({ params }: { params: Promise<{ username: string }> }) {
@@ -32,7 +34,9 @@ export default async function EditProfilePage({ params }: { params: Promise<{ us
     db.query<ProfileRow[]>(
       `SELECT u.nickname, u.avatar_url, u.banner_url, u.description, u.location, u.website,
               u.show_likes, u.show_bookmarks, u.birth_date, u.is_age_verified,
+              u.country_of_origin,
               EXISTS(SELECT 1 FROM Age_Verification_Requests avr WHERE avr.user_id = u.id) AS has_age_request
+              ,(SELECT avr.id_document_url FROM Age_Verification_Requests avr WHERE avr.user_id = u.id LIMIT 1) AS id_document_url
        FROM Users u
        WHERE u.id=?
        LIMIT 1`,
@@ -52,6 +56,8 @@ export default async function EditProfilePage({ params }: { params: Promise<{ us
     birth_date: null,
     is_age_verified: 0,
     has_age_request: 0,
+    country_of_origin: "",
+    id_document_url: null,
   };
 
   return (
@@ -98,9 +104,21 @@ export default async function EditProfilePage({ params }: { params: Promise<{ us
             <span className="text-sm">Fecha de nacimiento</span>
             <input name="birth_date" type="date" defaultValue={u.birth_date ? String(u.birth_date).slice(0, 10) : ""} className="w-full bg-input rounded-md h-10 px-3 ring-1 ring-border outline-none" />
           </label>
+          <label className="block">
+            <span className="text-sm">País de origen</span>
+            <input name="country_of_origin" defaultValue={u.country_of_origin || ""} className="w-full bg-input rounded-md h-10 px-3 ring-1 ring-border outline-none" placeholder="Ej. México" />
+          </label>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-4">
+          <ImagePickerField
+            name="id_document_url"
+            label="Foto de DNI/Carnet/Pasaporte"
+            initialUrl={u.id_document_url}
+          />
           <div className="rounded-md border border-border bg-muted/30 p-3 text-xs">
             <p className="font-semibold">Verificación de edad</p>
             <p className="mt-1 opacity-75">Estado: {u.is_age_verified ? "Verificada" : u.has_age_request ? "Solicitud enviada" : "Sin verificar"}</p>
+            <p className="mt-1 opacity-75">Para solicitarla debes subir foto de tu documento y país de origen.</p>
             <label className="mt-2 inline-flex items-center gap-2">
               <input type="checkbox" name="request_age_verification" defaultChecked={Boolean(u.has_age_request)} disabled={Boolean(u.is_age_verified)} />
               Enviar solicitud al panel de admin

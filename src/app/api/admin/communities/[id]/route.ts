@@ -27,5 +27,5 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: "Operación no soportada" }, { status: 400 });
   }
 
-  return NextResponse.redirect(new URL("/admin/communities", process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"));
+  return NextResponse.redirect(new URL("/admin/communities", req.url));
 }

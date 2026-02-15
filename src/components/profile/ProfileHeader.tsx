@@ -21,6 +21,8 @@ type ProfileUser = {
   created_at: string | Date;
   is_admin?: boolean;
   is_verified?: boolean;
+  country_of_origin?: string | null;
+  is_age_verified?: boolean;
 };
 
 type ProfileStats = { posts: number; followers: number; following: number };
@@ -120,6 +122,8 @@ export default function ProfileHeader({
 
         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm opacity-80">
           {user.location && <span>{user.location}</span>}
+          {user.country_of_origin && <span>País: {user.country_of_origin}</span>}
+          <span>Edad: {user.is_age_verified ? "Verificada" : "Sin verificar"}</span>
           {user.website && (
             <a className="hover:underline" href={user.website} target="_blank" rel="noreferrer">
               {user.website}

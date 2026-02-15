@@ -11,7 +11,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const id = Number(userId);
   const form = await req.formData();
   const op = String(form.get("op") || "");
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000/";
+  const baseUrl = new URL("/", req.url);
   await Promise.all([ensureUsersAgeColumns(), ensureAgeVerificationRequestsTable()]);
 
   switch (op) {
