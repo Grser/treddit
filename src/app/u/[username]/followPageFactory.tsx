@@ -98,7 +98,7 @@ export default function createFollowPage(kind: FollowPageKind) {
               {suggestions.map((entry) => {
                 const avatar = entry.avatar_url?.trim() || "/demo-reddit.png";
                 return (
-                  <li key={entry.id} className="flex items-center gap-3 rounded-xl border border-border bg-surface p-4">
+                  <li key={entry.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-surface p-4">
                     <Image
                       src={avatar}
                       alt={entry.nickname || entry.username}
@@ -107,7 +107,7 @@ export default function createFollowPage(kind: FollowPageKind) {
                       className="size-12 rounded-full object-cover ring-1 ring-border"
                       unoptimized
                     />
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-0 flex-1 pr-2">
                       <div className="flex flex-wrap items-center gap-2">
                         <Link href={`/u/${entry.username}`} className="font-semibold hover:underline">
                           {entry.nickname || entry.username}
@@ -182,7 +182,7 @@ export default function createFollowPage(kind: FollowPageKind) {
       <div className="min-h-dvh bg-background text-foreground">
         <Navbar />
         <main className="mx-auto max-w-3xl space-y-6 px-4 py-8">
-          <header className="flex items-center gap-3 rounded-xl border border-border bg-surface p-4">
+          <header className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-surface p-4">
             <Image
               src={avatar}
               alt={profile.nickname || profile.username}
@@ -207,7 +207,7 @@ export default function createFollowPage(kind: FollowPageKind) {
                 const avatarUrl = entry.avatar_url?.trim() || "/demo-reddit.png";
                 const canShowButton = viewer && viewer.id !== entry.id;
                 return (
-                  <li key={entry.id} className="flex items-center gap-3 rounded-xl border border-border bg-surface p-4">
+                  <li key={entry.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-surface p-4">
                     <Image
                       src={avatarUrl}
                       alt={entry.nickname || entry.username}
@@ -216,7 +216,7 @@ export default function createFollowPage(kind: FollowPageKind) {
                       className="size-12 rounded-full object-cover ring-1 ring-border"
                       unoptimized
                     />
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-0 flex-1 pr-2">
                       <div className="flex flex-wrap items-center gap-2">
                         <Link href={`/u/${entry.username}`} className="font-semibold hover:underline">
                           {entry.nickname || entry.username}

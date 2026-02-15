@@ -5,6 +5,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { getSessionUser } from "@/lib/auth";
 import { db, isDatabaseConfigured } from "@/lib/db";
+import NotificationSettingsPanel from "@/components/notifications/NotificationSettingsPanel";
+import { getNotificationPreferences } from "@/lib/notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -57,10 +59,18 @@ export default async function NotificationsPage() {
   const me = await getSessionUser();
 
   const databaseReady = isDatabaseConfigured();
-  const follows: FollowEvent[] = me && databaseReady ? await loadFollowers(me.id) : [];
-  const posts: PostEvent[] = me && databaseReady ? await loadFollowedPosts(me.id) : [];
-  const reposts: RepostEvent[] = me && databaseReady ? await loadRepostsOnMyPosts(me.id) : [];
-  const likes: LikeGroupEvent[] = me && databaseReady ? await loadLikesOnMyPosts(me.id) : [];
+  const preferences = me && databaseReady
+    ? await getNotificationPreferences(me.id)
+    : { follows: true, likes: true, reposts: true, mentions: true, ads: true, lastSeenAt: null, clearedBefore: null };
+
+  const [follows, posts, reposts, likes]: [FollowEvent[], PostEvent[], RepostEvent[], LikeGroupEvent[]] = me && databaseReady
+    ? await Promise.all([
+        preferences.follows ? loadFollowers(me.id, preferences.clearedBefore) : Promise.resolve([]),
+        preferences.ads ? loadFollowedPosts(me.id, preferences.clearedBefore) : Promise.resolve([]),
+        preferences.reposts ? loadRepostsOnMyPosts(me.id, preferences.clearedBefore) : Promise.resolve([]),
+        preferences.likes ? loadLikesOnMyPosts(me.id, preferences.clearedBefore) : Promise.resolve([]),
+      ])
+    : [[], [], [], []];
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
@@ -94,6 +104,19 @@ export default async function NotificationsPage() {
           <div className="rounded-xl border border-border bg-surface p-6 text-sm opacity-70">
             Configura la base de datos para habilitar notificaciones en tiempo real de seguidores, anuncios y actividad de tus publicaciones.
           </div>
+        )}
+
+
+        {me && databaseReady && (
+          <NotificationSettingsPanel
+            initial={{
+              follows: preferences.follows,
+              likes: preferences.likes,
+              reposts: preferences.reposts,
+              mentions: preferences.mentions,
+              ads: preferences.ads,
+            }}
+          />
         )}
 
         {me && databaseReady && follows.length === 0 && posts.length === 0 && reposts.length === 0 && likes.length === 0 && (
@@ -255,39 +278,41 @@ export default async function NotificationsPage() {
   );
 }
 
-async function loadFollowers(userId: number): Promise<FollowEvent[]> {
+async function loadFollowers(userId: number, clearedBefore: string | null): Promise<FollowEvent[]> {
   const [rows] = await db.query(
     `
     SELECT CONCAT(f.follower, '-', f.followed) AS id, f.created_at, u.username, u.nickname, u.avatar_url, u.is_admin, u.is_verified
     FROM Follows f
     JOIN Users u ON u.id = f.follower
     WHERE f.followed = ?
+      AND (? IS NULL OR f.created_at >= ?)
     ORDER BY f.created_at DESC
     LIMIT 40
     `,
-    [userId]
+    [userId, clearedBefore, clearedBefore]
   );
 
   return rows as FollowEvent[];
 }
 
-async function loadFollowedPosts(userId: number): Promise<PostEvent[]> {
+async function loadFollowedPosts(userId: number, clearedBefore: string | null): Promise<PostEvent[]> {
   const [rows] = await db.query(
     `
     SELECT p.id, p.created_at, p.description, u.username, u.nickname, u.is_admin, u.is_verified
     FROM Posts p
     JOIN Users u ON u.id = p.user
     WHERE p.user IN (SELECT followed FROM Follows WHERE follower = ?)
+      AND (? IS NULL OR p.created_at >= ?)
     ORDER BY p.created_at DESC
     LIMIT 40
     `,
-    [userId]
+    [userId, clearedBefore, clearedBefore]
   );
 
   return rows as PostEvent[];
 }
 
-async function loadRepostsOnMyPosts(userId: number): Promise<RepostEvent[]> {
+async function loadRepostsOnMyPosts(userId: number, clearedBefore: string | null): Promise<RepostEvent[]> {
   const [rows] = await db.query(
     `
     SELECT CONCAT(r.user_id, '-', r.post_id) AS id, r.created_at, r.post_id, p.description,
@@ -296,16 +321,17 @@ async function loadRepostsOnMyPosts(userId: number): Promise<RepostEvent[]> {
     JOIN Posts p ON p.id = r.post_id
     JOIN Users u ON u.id = r.user_id
     WHERE p.user = ? AND r.user_id <> ?
+      AND (? IS NULL OR r.created_at >= ?)
     ORDER BY r.created_at DESC
     LIMIT 40
     `,
-    [userId, userId]
+    [userId, userId, clearedBefore, clearedBefore]
   );
 
   return rows as RepostEvent[];
 }
 
-async function loadLikesOnMyPosts(userId: number): Promise<LikeGroupEvent[]> {
+async function loadLikesOnMyPosts(userId: number, clearedBefore: string | null): Promise<LikeGroupEvent[]> {
   type LikeRow = {
     postId: number;
     postDescription: string | null;
@@ -331,10 +357,11 @@ async function loadLikesOnMyPosts(userId: number): Promise<LikeGroupEvent[]> {
     JOIN Posts p ON p.id = lp.post
     JOIN Users u ON u.id = lp.user
     WHERE p.user = ? AND lp.user <> ?
+      AND (? IS NULL OR lp.date >= ?)
     ORDER BY lp.date DESC
     LIMIT 300
     `,
-    [userId, userId]
+    [userId, userId, clearedBefore, clearedBefore]
   );
 
   const byPost = new Map<number, LikeGroupEvent>();

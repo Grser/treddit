@@ -134,37 +134,25 @@ export default async function UserPage({
     pinned_post_id: userRow.pinned_post_id ? Number(userRow.pinned_post_id) : null,
   };
 
-  // Contadores rápidos
-  const [postCountRows] = await db.query<CountRow[]>("SELECT COUNT(*) AS posts FROM Posts WHERE user=?", [user.id]);
-  const posts = Number(postCountRows[0]?.posts ?? 0);
-  const [followingRows] = await db.query<CountRow[]>(
-    "SELECT COUNT(*) AS following FROM Follows WHERE follower=?",
-    [user.id],
-  );
-  const following = Number(followingRows[0]?.following ?? 0);
-  const [followerRows] = await db.query<CountRow[]>(
-    "SELECT COUNT(*) AS followers FROM Follows WHERE followed=?",
-    [user.id],
-  );
-  const followers = Number(followerRows[0]?.followers ?? 0);
+  const [postCountResult, followingResult, followerResult, followStatusResult, canMessageResult] = await Promise.all([
+    db.query<CountRow[]>("SELECT COUNT(*) AS posts FROM Posts WHERE user=?", [user.id]),
+    db.query<CountRow[]>("SELECT COUNT(*) AS following FROM Follows WHERE follower=?", [user.id]),
+    db.query<CountRow[]>("SELECT COUNT(*) AS followers FROM Follows WHERE followed=?", [user.id]),
+    me
+      ? db.query<FollowStatusRow[]>(
+          "SELECT EXISTS(SELECT 1 FROM Follows WHERE follower=? AND followed=?) AS isFollowing",
+          [me.id, user.id],
+        )
+      : Promise.resolve([[{ isFollowing: 0 } as FollowStatusRow], []] as const),
+    me && me.id !== user.id ? canSendDirectMessage(me.id, user.id) : Promise.resolve(false),
+  ]);
 
-  let isFollowing = false;
-  if (me) {
-    const [followStatusRows] = await db.query<FollowStatusRow[]>(
-      "SELECT EXISTS(SELECT 1 FROM Follows WHERE follower=? AND followed=?) AS isFollowing",
-      [me.id, user.id],
-    );
-    isFollowing = Boolean(followStatusRows[0]?.isFollowing);
-  }
-
-  let canMessage = false;
-  let messageHref: string | null = null;
-  if (me && me.id !== user.id) {
-    canMessage = await canSendDirectMessage(me.id, user.id);
-    if (canMessage) {
-      messageHref = `/mensajes/${user.username}`;
-    }
-  }
+  const posts = Number(postCountResult[0][0]?.posts ?? 0);
+  const following = Number(followingResult[0][0]?.following ?? 0);
+  const followers = Number(followerResult[0][0]?.followers ?? 0);
+  const isFollowing = Boolean(followStatusResult[0][0]?.isFollowing);
+  const canMessage = Boolean(canMessageResult);
+  const messageHref = canMessage ? `/mensajes/${user.username}` : null;
 
   let pinnedPost: PostCardType | null = null;
   if (user.pinned_post_id) {

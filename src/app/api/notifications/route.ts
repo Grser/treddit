@@ -5,6 +5,12 @@ import { NextResponse } from "next/server";
 
 import { getSessionUser } from "@/lib/auth";
 import { db, isDatabaseConfigured } from "@/lib/db";
+import {
+  clearNotifications,
+  getNotificationPreferences,
+  markNotificationsRead,
+  saveNotificationPreferences,
+} from "@/lib/notifications";
 
 type NotificationRow = RowDataPacket & {
   id: string;
@@ -25,12 +31,13 @@ export async function GET() {
     return NextResponse.json({ items: [] }, { headers: { "Cache-Control": "no-store" } });
   }
 
+  const preferences = await getNotificationPreferences(me.id);
   const [rows] = await db.query<NotificationRow[]>(
     `
     SELECT CONCAT('f-', f.follower, '-', f.followed) AS id, 'follow' AS type, f.created_at, u.username, u.nickname, NULL AS post_id, NULL AS text
     FROM Follows f
     JOIN Users u ON u.id = f.follower
-    WHERE f.followed = ?
+    WHERE f.followed = ? AND ? = 1
 
     UNION ALL
 
@@ -38,7 +45,7 @@ export async function GET() {
     FROM Like_Posts lp
     JOIN Posts p ON p.id = lp.post
     JOIN Users u ON u.id = lp.user
-    WHERE p.user = ?
+    WHERE p.user = ? AND ? = 1
 
     UNION ALL
 
@@ -46,7 +53,7 @@ export async function GET() {
     FROM Reposts r
     JOIN Posts p ON p.id = r.post_id
     JOIN Users u ON u.id = r.user_id
-    WHERE p.user = ?
+    WHERE p.user = ? AND ? = 1
 
     UNION ALL
 
@@ -54,6 +61,7 @@ export async function GET() {
     FROM Posts p
     JOIN Users u ON u.id = p.user
     WHERE p.user <> ?
+      AND ? = 1
       AND p.user IN (SELECT followed FROM Follows WHERE follower = ?)
       AND (
         LOWER(COALESCE(p.description, '')) LIKE '%#ad%'
@@ -67,6 +75,7 @@ export async function GET() {
     FROM Posts p
     JOIN Users u ON u.id = p.user
     WHERE p.user <> ?
+      AND ? = 1
       AND LOWER(COALESCE(p.description, '')) LIKE CONCAT('%@', LOWER(?), '%')
 
     UNION ALL
@@ -76,13 +85,74 @@ export async function GET() {
     JOIN Users u ON u.id = c.user
     WHERE c.user <> ?
       AND c.visible = 1
+      AND ? = 1
       AND LOWER(COALESCE(c.text, '')) LIKE CONCAT('%@', LOWER(?), '%')
 
+    HAVING (? IS NULL OR created_at >= ?)
     ORDER BY created_at DESC
     LIMIT 20
     `,
-    [me.id, me.id, me.id, me.id, me.id, me.id, me.username, me.id, me.username],
+    [
+      me.id,
+      preferences.follows ? 1 : 0,
+      me.id,
+      preferences.likes ? 1 : 0,
+      me.id,
+      preferences.reposts ? 1 : 0,
+      me.id,
+      preferences.ads ? 1 : 0,
+      me.id,
+      me.id,
+      preferences.mentions ? 1 : 0,
+      me.username,
+      me.id,
+      preferences.mentions ? 1 : 0,
+      me.username,
+      preferences.clearedBefore,
+      preferences.clearedBefore,
+    ],
   );
 
-  return NextResponse.json({ items: rows }, { headers: { "Cache-Control": "no-store" } });
+  const unreadCount = rows.reduce((acc, item) => {
+    if (!preferences.lastSeenAt) return acc + 1;
+    return new Date(item.created_at).getTime() > new Date(preferences.lastSeenAt).getTime() ? acc + 1 : acc;
+  }, 0);
+
+  return NextResponse.json({ items: rows, unreadCount, preferences }, { headers: { "Cache-Control": "no-store" } });
+}
+
+export async function POST(request: Request) {
+  const me = await getSessionUser();
+  if (!me || !isDatabaseConfigured()) {
+    return NextResponse.json({ ok: false }, { status: 401, headers: { "Cache-Control": "no-store" } });
+  }
+
+  const body = (await request.json().catch(() => ({}))) as {
+    action?: string;
+    preferences?: { follows?: boolean; likes?: boolean; reposts?: boolean; mentions?: boolean; ads?: boolean };
+  };
+
+  if (body.action === "mark-read") {
+    await markNotificationsRead(me.id);
+    return NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
+  }
+
+  if (body.action === "clear") {
+    await clearNotifications(me.id);
+    return NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
+  }
+
+  if (body.action === "preferences") {
+    const prefs = body.preferences || {};
+    await saveNotificationPreferences(me.id, {
+      follows: Boolean(prefs.follows),
+      likes: Boolean(prefs.likes),
+      reposts: Boolean(prefs.reposts),
+      mentions: Boolean(prefs.mentions),
+      ads: Boolean(prefs.ads),
+    });
+    return NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
+  }
+
+  return NextResponse.json({ ok: false, message: "Unsupported action" }, { status: 400 });
 }

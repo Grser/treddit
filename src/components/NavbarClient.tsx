@@ -24,6 +24,7 @@ export default function NavbarClient({ session }: { session: SessionUser | null 
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [notifications, setNotifications] = useState<HeaderNotification[]>([]);
+  const [notificationUnreadCount, setNotificationUnreadCount] = useState(0);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const notificationBox = useRef<HTMLDivElement>(null);
 
@@ -101,12 +102,14 @@ export default function NavbarClient({ session }: { session: SessionUser | null 
       try {
         const res = await fetch("/api/notifications", { cache: "no-store" });
         if (!res.ok) return;
-        const payload = (await res.json().catch(() => ({}))) as { items?: HeaderNotification[] };
+        const payload = (await res.json().catch(() => ({}))) as { items?: HeaderNotification[]; unreadCount?: number };
         if (!active) return;
         setNotifications(Array.isArray(payload.items) ? payload.items : []);
+        setNotificationUnreadCount(Math.max(0, Number(payload.unreadCount) || 0));
       } catch {
         if (!active) return;
         setNotifications([]);
+        setNotificationUnreadCount(0);
       }
     }
 
@@ -120,6 +123,19 @@ export default function NavbarClient({ session }: { session: SessionUser | null 
       clearInterval(interval);
     };
   }, [session?.id]);
+
+  async function markNotificationsAsRead() {
+    setNotificationUnreadCount(0);
+    try {
+      await fetch("/api/notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "mark-read" }),
+      });
+    } catch {
+      // noop
+    }
+  }
 
 
   return (
@@ -195,12 +211,18 @@ export default function NavbarClient({ session }: { session: SessionUser | null 
               <button
                 type="button"
                 title={strings.navbar.notifications}
-                onClick={() => setNotificationsOpen((v) => !v)}
+                onClick={() => {
+                  const next = !notificationsOpen;
+                  setNotificationsOpen(next);
+                  if (next) {
+                    void markNotificationsAsRead();
+                  }
+                }}
                 className="relative inline-grid place-items-center size-9 rounded-full hover:bg-muted/60 ring-1 ring-transparent hover:ring-border transition"
               >
-                {notifications.length > 0 && (
+                {notificationUnreadCount > 0 && (
                   <span className="absolute -top-1 -right-1 inline-flex min-h-[1.25rem] min-w-[1.25rem] items-center justify-center rounded-full bg-brand px-1 text-xs font-semibold text-white">
-                    {notifications.length > 9 ? "9+" : notifications.length}
+                    {notificationUnreadCount > 9 ? "9+" : notificationUnreadCount}
                   </span>
                 )}
                 <BellIcon />
