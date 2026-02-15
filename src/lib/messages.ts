@@ -60,6 +60,18 @@ export async function ensureMessageTables() {
       CONSTRAINT fk_dm_reply FOREIGN KEY (reply_to_message_id) REFERENCES Direct_Messages(id) ON DELETE SET NULL
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `);
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS Direct_Message_Read_State (
+      user_id INT UNSIGNED NOT NULL,
+      other_user_id INT UNSIGNED NOT NULL,
+      last_read_message_id INT NOT NULL DEFAULT 0,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (user_id, other_user_id),
+      INDEX idx_dmrs_other (other_user_id),
+      CONSTRAINT fk_dmrs_user FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
+      CONSTRAINT fk_dmrs_other_user FOREIGN KEY (other_user_id) REFERENCES Users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
   const [attachmentsColumn] = await db.query<RowDataPacket[]>(
     "SHOW COLUMNS FROM Direct_Messages LIKE 'attachments_json'",
   );
@@ -275,15 +287,13 @@ function parseAttachments(raw: string | null): DirectMessageAttachment[] {
 
 export async function fetchConversationSummaries(
   userId: number,
-  options: { limit?: number; lastSeen?: number } = {},
+  options: { limit?: number } = {},
 ): Promise<ConversationSummary[]> {
   if (!isDatabaseConfigured()) {
     return [];
   }
   await ensureMessageTables();
   const limit = Math.max(1, Math.min(options.limit ?? 40, 200));
-  const lastSeen = Number.isFinite(options.lastSeen) && (options.lastSeen ?? 0) > 0 ? Number(options.lastSeen) : 0;
-
   const [rows] = await db.query<ConversationSummaryRow[]>(
     `
     SELECT
@@ -299,9 +309,12 @@ export async function fetchConversationSummaries(
       (
         SELECT COUNT(*)
         FROM Direct_Messages unread
+        LEFT JOIN Direct_Message_Read_State dmrs
+          ON dmrs.user_id = ?
+         AND dmrs.other_user_id = other.id
         WHERE unread.sender_id = other.id
           AND unread.recipient_id = ?
-          AND unread.created_at > FROM_UNIXTIME(? / 1000)
+          AND unread.id > COALESCE(dmrs.last_read_message_id, 0)
       ) AS unreadCount
     FROM (
       SELECT MAX(id) AS id
@@ -314,7 +327,7 @@ export async function fetchConversationSummaries(
     ORDER BY dm.created_at DESC
     LIMIT ?
     `,
-    [userId, lastSeen, userId, userId, userId, userId, limit],
+    [userId, userId, userId, userId, userId, userId, limit],
   );
 
   return rows.map((row) => ({
@@ -329,6 +342,37 @@ export async function fetchConversationSummaries(
     createdAt: new Date(row.created_at).toISOString(),
     unreadCount: Number(row.unreadCount ?? 0),
   }));
+}
+
+export async function markConversationRead(userId: number, otherUserId: number) {
+  if (!isDatabaseConfigured()) return;
+  await ensureMessageTables();
+  await db.execute(
+    `INSERT INTO Direct_Message_Read_State (user_id, other_user_id, last_read_message_id, updated_at)
+     SELECT ?, ?, COALESCE(MAX(id), 0), NOW()
+     FROM Direct_Messages
+     WHERE sender_id = ? AND recipient_id = ?
+     ON DUPLICATE KEY UPDATE
+      last_read_message_id = GREATEST(last_read_message_id, VALUES(last_read_message_id)),
+      updated_at = NOW()`,
+    [userId, otherUserId, otherUserId, userId],
+  );
+}
+
+export async function markAllConversationsRead(userId: number) {
+  if (!isDatabaseConfigured()) return;
+  await ensureMessageTables();
+  await db.execute(
+    `INSERT INTO Direct_Message_Read_State (user_id, other_user_id, last_read_message_id, updated_at)
+     SELECT ?, incoming.sender_id, MAX(incoming.id), NOW()
+     FROM Direct_Messages incoming
+     WHERE incoming.recipient_id = ?
+     GROUP BY incoming.sender_id
+     ON DUPLICATE KEY UPDATE
+      last_read_message_id = GREATEST(last_read_message_id, VALUES(last_read_message_id)),
+      updated_at = NOW()`,
+    [userId, userId],
+  );
 }
 
 export async function createDirectMessage(

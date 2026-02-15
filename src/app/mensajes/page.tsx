@@ -1,6 +1,5 @@
 import Image from "next/image";
 import Link from "next/link";
-import { cookies } from "next/headers";
 
 import Navbar from "@/components/Navbar";
 import UserBadges from "@/components/UserBadges";
@@ -13,12 +12,7 @@ export const dynamic = "force-dynamic";
 
 export default async function MessagesPage() {
   const me = await getSessionUser();
-  const cookieStore = await cookies();
-  const lastSeenValue = cookieStore.get("messages_last_seen")?.value;
-  const lastSeen = lastSeenValue ? Number(lastSeenValue) : 0;
-  const normalizedLastSeen = Number.isFinite(lastSeen) && lastSeen > 0 ? lastSeen : 0;
-
-  const entries = me ? await loadInbox(me.id, normalizedLastSeen) : [];
+  const entries = me ? await loadInbox(me.id) : [];
 
   return (
     <div className="min-h-dvh bg-background text-foreground">

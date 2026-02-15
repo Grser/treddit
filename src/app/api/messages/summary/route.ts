@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { getSessionUser, requireUser } from "@/lib/auth";
 import { isDatabaseConfigured } from "@/lib/db";
 import { getDemoInbox, getDemoUnreadCount } from "@/lib/demoStore";
-import { fetchConversationSummaries } from "@/lib/messages";
+import { fetchConversationSummaries, markAllConversationsRead } from "@/lib/messages";
 
 type SummaryResponse = {
   unread: number;
@@ -21,12 +21,11 @@ export async function GET() {
     );
   }
 
-  const cookieStore = await cookies();
-  const lastSeenValue = cookieStore.get("messages_last_seen")?.value;
-  const lastSeenRaw = lastSeenValue ? Number(lastSeenValue) : 0;
-  const lastSeen = Number.isFinite(lastSeenRaw) && lastSeenRaw > 0 ? lastSeenRaw : 0;
-
   if (!isDatabaseConfigured()) {
+    const cookieStore = await cookies();
+    const lastSeenValue = cookieStore.get("messages_last_seen")?.value;
+    const lastSeenRaw = lastSeenValue ? Number(lastSeenValue) : 0;
+    const lastSeen = Number.isFinite(lastSeenRaw) && lastSeenRaw > 0 ? lastSeenRaw : 0;
     const entries = getDemoInbox(me.id, lastSeen || undefined);
     const unread = getDemoUnreadCount(me.id, lastSeen || undefined);
     const latest = entries[0]?.created_at ?? null;
@@ -36,7 +35,7 @@ export async function GET() {
     );
   }
 
-  const summaries = await fetchConversationSummaries(me.id, { limit: 40, lastSeen });
+  const summaries = await fetchConversationSummaries(me.id, { limit: 40 });
   const latestDate = summaries[0]?.createdAt ?? null;
   const unread = summaries.reduce((acc, row) => acc + (Number.isFinite(row.unreadCount) ? row.unreadCount : 0), 0);
 
@@ -51,11 +50,17 @@ export async function POST() {
   if (!me) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }
-  const response = NextResponse.json({ ok: true });
-  response.cookies.set("messages_last_seen", String(Date.now()), {
-    httpOnly: false,
-    sameSite: "lax",
-    path: "/",
-  });
-  return response;
+
+  if (!isDatabaseConfigured()) {
+    const response = NextResponse.json({ ok: true });
+    response.cookies.set("messages_last_seen", String(Date.now()), {
+      httpOnly: false,
+      sameSite: "lax",
+      path: "/",
+    });
+    return response;
+  }
+
+  await markAllConversationsRead(me.id);
+  return NextResponse.json({ ok: true });
 }
