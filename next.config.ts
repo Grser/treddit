@@ -6,6 +6,13 @@ const nextConfig: NextConfig = {
    * not attempt to bundle it for server targets.
    */
   serverExternalPackages: ["nodemailer"],
+  images: {
+    formats: ["image/avif", "image/webp"],
+    remotePatterns: [
+      { protocol: "https", hostname: "**" },
+      { protocol: "http", hostname: "**" },
+    ],
+  },
 };
 
 export default nextConfig;

@@ -97,7 +97,6 @@ export default function SidebarRight({
                   width={40}
                   height={40}
                   className="size-10 rounded-full object-cover bg-muted/40 ring-1 ring-border"
-                  unoptimized
                 />
                 <div className="min-w-0">
                   <p className="font-semibold leading-tight truncate flex items-center gap-1">
