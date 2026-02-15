@@ -81,7 +81,6 @@ export default function PostCard({
             width={36}
             height={36}
             className="size-9 rounded-full object-cover ring-1 ring-border"
-            unoptimized
           />
         </a>
 
@@ -152,7 +151,6 @@ export default function PostCard({
             height={675}
             sizes="(min-width: 768px) 600px, 100vw"
             className="h-auto w-full object-cover"
-            unoptimized
           />
         </div>
       )}

@@ -24,11 +24,55 @@ type DiscoveryUser = {
   is_verified: boolean;
 };
 
+type TrendingTag = { tag: string; count: number; views: number };
+
+const TRENDING_TTL_MS = 30_000;
+const globalForDiscovery = globalThis as unknown as {
+  __tredditTrendingCache?: { expiresAt: number; items: TrendingTag[] };
+};
+
 // extrae hashtags tipo #algo
 function extractHashtags(text?: string | null) {
   if (!text) return [] as string[];
   const tags = text.match(/#[\p{L}\p{N}_]+/gu) || [];
   return tags.map((t) => t.toLowerCase());
+}
+
+async function getTrendingTagsCached(): Promise<TrendingTag[]> {
+  const now = Date.now();
+  const cached = globalForDiscovery.__tredditTrendingCache;
+
+  if (cached && cached.expiresAt > now) {
+    return cached.items;
+  }
+
+  const [posts] = await db.query<(RowDataPacket & { id: number; description: string | null })[]>(
+    `
+    SELECT p.id, p.description
+    FROM Posts p
+    ORDER BY p.created_at DESC
+    LIMIT 200
+    `
+  );
+
+  const freq = new Map<string, number>();
+  posts.forEach((p) => {
+    extractHashtags(p.description ?? undefined).forEach((tag) => {
+      freq.set(tag, (freq.get(tag) || 0) + 1);
+    });
+  });
+
+  const items = [...freq.entries()]
+    .map(([tag, count]) => ({ tag, count, views: count }))
+    .sort((a, b) => b.views - a.views)
+    .slice(0, 5);
+
+  globalForDiscovery.__tredditTrendingCache = {
+    expiresAt: now + TRENDING_TTL_MS,
+    items,
+  };
+
+  return items;
 }
 
 export async function GET() {
@@ -55,8 +99,7 @@ export async function GET() {
     });
   }
 
-  // recomendados: visibles, distintos a mí y que no sigo
-  const [users] = await db.query<DiscoveryUserRow[]>(
+  const usersQuery = db.query<DiscoveryUserRow[]>(
     `
     SELECT u.id, u.username, u.nickname, u.avatar_url, u.is_admin, u.is_verified
     FROM Users u
@@ -69,22 +112,7 @@ export async function GET() {
     me ? [me.id, me.id] : []
   );
 
-  // hashtags desde posts recientes
-  const [posts] = await db.query<(RowDataPacket & { id: number; description: string | null })[]>(
-    `
-    SELECT p.id, p.description
-    FROM Posts p
-    ORDER BY p.created_at DESC
-    LIMIT 200
-    `
-  );
-
-  const freq = new Map<string, number>();
-  posts.forEach((p) => {
-    extractHashtags(p.description ?? undefined).forEach((tag) => {
-      freq.set(tag, (freq.get(tag) || 0) + 1);
-    });
-  });
+  const [[users], trendingTags] = await Promise.all([usersQuery, getTrendingTagsCached()]);
 
   const recommendedUsers: DiscoveryUser[] = users.map((row) => ({
     id: Number(row.id),
@@ -94,11 +122,6 @@ export async function GET() {
     is_admin: Boolean(row.is_admin),
     is_verified: Boolean(row.is_verified),
   }));
-
-  const trendingTags = [...freq.entries()]
-    .map(([tag, count]) => ({ tag, count, views: count }))
-    .sort((a, b) => b.views - a.views)
-    .slice(0, 5);
 
   return NextResponse.json({
     recommendedUsers,
