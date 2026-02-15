@@ -1,4 +1,5 @@
 import type { RowDataPacket } from "mysql2";
+import { cache } from "react";
 
 import jwt, { type SignOptions } from "jsonwebtoken";
 import { cookies } from "next/headers";
@@ -28,7 +29,7 @@ export function signSession(payload: SessionUser) {
   return jwt.sign(normalized, JWT_SECRET, { expiresIn: JWT_EXPIRES });
 }
 
-export async function getSessionUser(): Promise<SessionUser | null> {
+const getCachedSessionUser = cache(async (): Promise<SessionUser | null> => {
   const cookieStore = await cookies();
   const token = cookieStore.get("treddit_token")?.value;
   if (!token) return null;
@@ -45,6 +46,10 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   } catch {
     return null;
   }
+});
+
+export async function getSessionUser(): Promise<SessionUser | null> {
+  return getCachedSessionUser();
 }
 
 /** Verifica cookie y devuelve user o 401 lanzando Response */

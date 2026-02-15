@@ -45,6 +45,8 @@ export default function NavbarClient({ session }: { session: SessionUser | null 
 
   useEffect(() => {
     let active = true;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
     async function load() {
       try {
         const res = await fetch("/api/messages/summary", { cache: "no-store" });
@@ -57,11 +59,14 @@ export default function NavbarClient({ session }: { session: SessionUser | null 
         setUnreadMessages(0);
       }
     }
+
     if (!session?.id) return;
-    load();
+
+    timeoutId = setTimeout(load, 500);
     const interval = setInterval(load, 15_000);
     return () => {
       active = false;
+      if (timeoutId) clearTimeout(timeoutId);
       clearInterval(interval);
     };
   }, [session?.id]);
@@ -75,17 +80,22 @@ export default function NavbarClient({ session }: { session: SessionUser | null 
   }, []);
 
   useEffect(() => {
+    if (!notificationsOpen) return;
+
     function handleClick(event: MouseEvent) {
       if (!notificationBox.current?.contains(event.target as Node)) {
         setNotificationsOpen(false);
       }
     }
+
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
-  }, []);
+  }, [notificationsOpen]);
 
   useEffect(() => {
     let active = true;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
     async function loadNotifications() {
       if (!session?.id) return;
       try {
@@ -99,10 +109,14 @@ export default function NavbarClient({ session }: { session: SessionUser | null 
         setNotifications([]);
       }
     }
-    loadNotifications();
+
+    if (!session?.id) return;
+
+    timeoutId = setTimeout(loadNotifications, 800);
     const interval = setInterval(loadNotifications, 20_000);
     return () => {
       active = false;
+      if (timeoutId) clearTimeout(timeoutId);
       clearInterval(interval);
     };
   }, [session?.id]);
