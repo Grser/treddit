@@ -7,6 +7,7 @@ import PostCard, { Post as PostCardType } from "@/components/PostCard";
 import { useLocale } from "@/contexts/LocaleContext";
 
 import UserRepliesList from "./UserRepliesList";
+import SavedPostsFeed from "./SavedPostsFeed";
 
 type TabId =
   | "posts"
@@ -39,6 +40,7 @@ export default function ProfileTabs({
   const { strings } = useLocale();
   const t = strings.profilePage;
   const canInteract = Boolean(viewerId);
+  const isOwner = viewerId === profileId;
   const [active, setActive] = useState<TabId>("posts");
 
   const tabs = useMemo<TabDescriptor[]>(() => {
@@ -82,16 +84,20 @@ export default function ProfileTabs({
       });
     }
 
-    if (showBookmarks) {
+    if (isOwner || showBookmarks) {
       list.push({
         id: "bookmarks",
         label: t.tabs.bookmarks,
-        content: <p className="text-sm opacity-70">{t.empty.bookmarks}</p>,
+        content: isOwner ? (
+          <SavedPostsFeed canInteract={canInteract} />
+        ) : (
+          <p className="text-sm opacity-70">{t.empty.bookmarks}</p>
+        ),
       });
     }
 
     return list;
-  }, [t, canInteract, profileId, showLikes, showBookmarks, pinnedPost]);
+  }, [t, canInteract, profileId, showLikes, showBookmarks, pinnedPost, isOwner]);
 
   useEffect(() => {
     const hash = window.location.hash.replace("#", "") as TabId;
