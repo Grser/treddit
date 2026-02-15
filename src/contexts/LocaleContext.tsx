@@ -10,6 +10,9 @@ export type LocaleStrings = {
     brand: string;
     searchPlaceholder: string;
     languageLabel: string;
+    themeLabel: string;
+    themeToDark: string;
+    themeToLight: string;
     ads: string;
     messages: string;
     notifications: string;
@@ -242,6 +245,9 @@ const translations: Record<Locale, LocaleStrings> = {
       brand: "Treddit",
       searchPlaceholder: "Buscar en Treddit",
       languageLabel: "Idioma",
+      themeLabel: "Tema",
+      themeToDark: "Activar modo oscuro",
+      themeToLight: "Activar modo claro",
       ads: "Anuncios",
       messages: "Mensajes",
       notifications: "Notificaciones",
@@ -511,6 +517,9 @@ const translations: Record<Locale, LocaleStrings> = {
       brand: "Treddit",
       searchPlaceholder: "Search Treddit",
       languageLabel: "Language",
+      themeLabel: "Theme",
+      themeToDark: "Switch to dark mode",
+      themeToLight: "Switch to light mode",
       ads: "Ads",
       messages: "Messages",
       notifications: "Notifications",
@@ -779,6 +788,9 @@ const translations: Record<Locale, LocaleStrings> = {
       brand: "Treddit",
       searchPlaceholder: "Поиск по Treddit",
       languageLabel: "Язык",
+      themeLabel: "Тема",
+      themeToDark: "Включить тёмную тему",
+      themeToLight: "Включить светлую тему",
       ads: "Реклама",
       messages: "Сообщения",
       notifications: "Уведомления",
@@ -1100,4 +1112,3 @@ export const supportedLocales: { code: Locale; label: string }[] = [
   { code: "en", label: translations.en.localeName },
   { code: "ru", label: translations.ru.localeName },
 ];
-

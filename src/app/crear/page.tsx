@@ -48,10 +48,10 @@ export default async function CrearPage() {
               desde la página principal.
             </p>
             <div className="mt-4 flex gap-2">
-              <a href="/auth/login" className="h-9 rounded-full border border-border px-4 text-sm">
+              <a href="/auth/login" className="inline-flex h-9 items-center justify-center rounded-full border border-border px-4 text-sm">
                 Entrar
               </a>
-              <a href="/auth/registrar" className="h-9 rounded-full bg-brand px-4 text-sm text-white">
+              <a href="/auth/registrar" className="inline-flex h-9 items-center justify-center rounded-full bg-brand px-4 text-sm text-white">
                 Registrarse
               </a>
             </div>
