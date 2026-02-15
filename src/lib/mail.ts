@@ -1,17 +1,40 @@
 import "server-only";
 
+import { access } from "node:fs/promises";
 import type { Transporter } from "nodemailer";
 
 let transporterPromise: Promise<Transporter | null> | null = null;
+let shellAvailabilityPromise: Promise<boolean> | null = null;
 
 function isMissingShellError(error: unknown) {
-  if (!(error instanceof Error)) return false;
-  return /spawn\s+\/bin\/sh\s+ENOENT/i.test(error.message);
+  if (error instanceof Error && /spawn\s+\/bin\/sh\s+ENOENT/i.test(error.message)) {
+    return true;
+  }
+  if (typeof error !== "object" || !error) {
+    return false;
+  }
+  const maybeCode = "code" in error ? error.code : undefined;
+  const maybePath = "path" in error ? error.path : undefined;
+  return maybeCode === "ENOENT" && maybePath === "/bin/sh";
+}
+
+async function hasSystemShell() {
+  if (!shellAvailabilityPromise) {
+    shellAvailabilityPromise = access("/bin/sh")
+      .then(() => true)
+      .catch(() => false);
+  }
+  return shellAvailabilityPromise;
 }
 
 function getTransporter() {
   if (!transporterPromise) {
     transporterPromise = (async () => {
+      if (!(await hasSystemShell())) {
+        console.warn("El entorno no incluye /bin/sh; se omite el envío real de correos.");
+        return null;
+      }
+
       const host = process.env.SMTP_HOST;
       const port = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : undefined;
       if (!host || !port) {
