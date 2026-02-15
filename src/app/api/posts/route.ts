@@ -7,6 +7,7 @@ import { db, isDatabaseConfigured } from "@/lib/db";
 import { getSessionUser, requireUser } from "@/lib/auth";
 import { createDemoPost, getDemoFeed } from "@/lib/demoStore";
 import { ensurePostsCommunityColumn, getPostsCommunityColumn } from "@/lib/communityColumns";
+import { ensurePostsSensitiveColumn, getPostsSensitiveColumn } from "@/lib/postSensitivity";
 
 type PostRow = {
   id: number;
@@ -29,6 +30,7 @@ type PostRow = {
   community_id: number | null;
   community_slug: string | null;
   community_name: string | null;
+  is_sensitive: number | boolean | null;
 };
 
 type CommunityMembershipRow = RowDataPacket & {
@@ -114,7 +116,9 @@ export async function GET(req: Request) {
   }
 
   const communityColumn = await getPostsCommunityColumn();
+  const sensitiveColumn = await getPostsSensitiveColumn();
   const hasCommunityColumn = Boolean(communityColumn);
+  const hasSensitiveColumn = Boolean(sensitiveColumn);
 
   if (wantsCommunityFilter) {
     if (!hasCommunityColumn || !communityColumn) {
@@ -132,6 +136,7 @@ export async function GET(req: Request) {
   const communityJoin = hasCommunityColumn && communityColumn ? `LEFT JOIN Communities c ON c.id = p.${communityColumn}` : "";
   const communitySlugSelect = hasCommunityColumn ? "c.slug" : "NULL";
   const communityNameSelect = hasCommunityColumn ? "c.name" : "NULL";
+  const sensitiveSelect = hasSensitiveColumn ? "p.is_sensitive" : "0";
 
   try {
     const [rows] = await db.query<PostRow[]>(
@@ -154,7 +159,8 @@ export async function GET(req: Request) {
         ) END AS repostedByMe,
         ${communityIdSelect} AS community_id,
         ${communitySlugSelect} AS community_slug,
-        ${communityNameSelect} AS community_name
+        ${communityNameSelect} AS community_name,
+        ${sensitiveSelect} AS is_sensitive
       FROM Posts p
       ${joins.join(" ")}
       JOIN Users u ON u.id = p.user
@@ -177,6 +183,7 @@ export async function GET(req: Request) {
       repostedByMe: Boolean(row.repostedByMe),
       hasPoll: Boolean(row.hasPoll),
       reply_scope: Number(row.reply_scope ?? 0),
+      is_sensitive: Boolean(row.is_sensitive),
       isOwner: meId ? Number(row.user) === meId : false,
       isAdminViewer: Boolean(me?.is_admin),
       community:
@@ -228,10 +235,13 @@ export async function POST(req: Request) {
   const mediaUrl = typeof mediaUrlValue === "string" ? mediaUrlValue.trim() : "";
   const pollPayload = body["poll"];
   const communityValue = body["communityId"];
+  const sensitiveValue = body["isSensitive"];
+  const isSensitive = sensitiveValue === true || sensitiveValue === 1 || sensitiveValue === "1";
   const communityIdRaw = typeof communityValue === "number" ? communityValue : Number(communityValue);
   const normalizedCommunityId = Number.isFinite(communityIdRaw) && communityIdRaw > 0 ? communityIdRaw : null;
 
   let communityColumn = databaseReady ? await getPostsCommunityColumn() : "community_id";
+  let sensitiveColumn = databaseReady ? await getPostsSensitiveColumn() : "is_sensitive";
 
   description = description.slice(0, 2000);
 
@@ -314,6 +324,7 @@ export async function POST(req: Request) {
       mediaUrl: mediaUrl || null,
       poll: null,
       communityId: normalizedCommunityId,
+      isSensitive,
     });
     return NextResponse.json({ ok: true, id }, { status: 201 });
   }
@@ -327,6 +338,15 @@ export async function POST(req: Request) {
       columns.push(communityColumn);
       placeholders.push("?");
       params.push(communityId);
+    }
+
+    if (!sensitiveColumn) {
+      sensitiveColumn = await ensurePostsSensitiveColumn();
+    }
+    if (sensitiveColumn) {
+      columns.push(sensitiveColumn);
+      placeholders.push("?");
+      params.push(isSensitive ? 1 : 0);
     }
 
     const insertSql = `INSERT INTO Posts (${columns.join(", ")}) VALUES (${placeholders.join(", ")})`;
