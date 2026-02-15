@@ -4,6 +4,11 @@ import type { Transporter } from "nodemailer";
 
 let transporterPromise: Promise<Transporter | null> | null = null;
 
+function isMissingShellError(error: unknown) {
+  if (!(error instanceof Error)) return false;
+  return /spawn\s+\/bin\/sh\s+ENOENT/i.test(error.message);
+}
+
 function getTransporter() {
   if (!transporterPromise) {
     transporterPromise = (async () => {
@@ -27,12 +32,23 @@ function getTransporter() {
           host,
           port,
           secure,
+          // Some minimal/distroless environments do not ship a shell.
+          // Keep this strictly on SMTP transport and never shell out.
+          sendmail: false,
+          direct: false,
           auth: user && pass ? { user, pass } : undefined,
         });
 
         await transporter.verify();
         return transporter;
       } catch (error) {
+        if (isMissingShellError(error)) {
+          transporterPromise = null;
+          console.warn(
+            "El entorno no tiene /bin/sh disponible; se desactiva temporalmente el envío de correo.",
+          );
+          return null;
+        }
         transporterPromise = null;
         console.error("No se pudo verificar la conexión SMTP", error);
         throw new Error("No se pudo conectar al servidor SMTP para enviar correos.");
@@ -67,5 +83,13 @@ export async function sendPasswordResetEmail(to: string, code: string) {
     <p>Este código caduca en 15 minutos. Si no solicitaste este cambio, puedes ignorar este correo.</p>
   `;
 
-  await transporter.sendMail({ to, from, subject, text, html });
+  try {
+    await transporter.sendMail({ to, from, subject, text, html });
+  } catch (error) {
+    if (isMissingShellError(error)) {
+      console.warn("No se pudo enviar el correo porque /bin/sh no existe en este entorno.");
+      return;
+    }
+    throw error;
+  }
 }
