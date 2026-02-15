@@ -8,11 +8,24 @@ import type { SessionUser } from "@/lib/auth";
 import { supportedLocales, useLocale } from "@/contexts/LocaleContext";
 import UserBadges from "./UserBadges";
 
+type HeaderNotification = {
+  id: string;
+  type: "follow" | "like" | "repost" | "ad";
+  created_at: string;
+  username: string | null;
+  nickname: string | null;
+  post_id: number | null;
+  text: string | null;
+};
+
 export default function NavbarClient({ session }: { session: SessionUser | null }) {
   const { strings } = useLocale();
   const avatar = session?.avatar_url?.trim() || "/demo-reddit.png";
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [unreadMessages, setUnreadMessages] = useState(0);
+  const [notifications, setNotifications] = useState<HeaderNotification[]>([]);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const notificationBox = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const savedTheme = window.localStorage.getItem("treddit-theme");
@@ -61,6 +74,40 @@ export default function NavbarClient({ session }: { session: SessionUser | null 
     return () => window.removeEventListener("treddit:messages-read", handleRead);
   }, []);
 
+  useEffect(() => {
+    function handleClick(event: MouseEvent) {
+      if (!notificationBox.current?.contains(event.target as Node)) {
+        setNotificationsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    async function loadNotifications() {
+      if (!session?.id) return;
+      try {
+        const res = await fetch("/api/notifications", { cache: "no-store" });
+        if (!res.ok) return;
+        const payload = (await res.json().catch(() => ({}))) as { items?: HeaderNotification[] };
+        if (!active) return;
+        setNotifications(Array.isArray(payload.items) ? payload.items : []);
+      } catch {
+        if (!active) return;
+        setNotifications([]);
+      }
+    }
+    loadNotifications();
+    const interval = setInterval(loadNotifications, 20_000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [session?.id]);
+
+
   return (
     <header className="sticky top-0 z-50 bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80 border-b border-border">
       <div className="mx-auto max-w-7xl px-3 sm:px-4">
@@ -87,7 +134,7 @@ export default function NavbarClient({ session }: { session: SessionUser | null 
                 name="q"
                 type="search"
                 placeholder={strings.navbar.searchPlaceholder}
-                className="w-full h-10 pl-9 pr-4 rounded-full bg-input text-sm placeholder:text-foreground/60 outline-none ring-1 ring-border focus:ring-2 focus:ring-brand/60"
+                className="w-full h-10 pl-10 pr-4 rounded-full border border-border bg-input text-sm placeholder:text-foreground/60 outline-none ring-1 ring-transparent transition focus:border-brand/50 focus:ring-brand/40"
               />
             </label>
           </form>
@@ -130,9 +177,49 @@ export default function NavbarClient({ session }: { session: SessionUser | null 
               </button>
             )}
 
-            <IconLink href="/notificaciones" title={strings.navbar.notifications}>
-              <BellIcon />
-            </IconLink>
+            <div className="relative" ref={notificationBox}>
+              <button
+                type="button"
+                title={strings.navbar.notifications}
+                onClick={() => setNotificationsOpen((v) => !v)}
+                className="relative inline-grid place-items-center size-9 rounded-full hover:bg-muted/60 ring-1 ring-transparent hover:ring-border transition"
+              >
+                {notifications.length > 0 && (
+                  <span className="absolute -top-1 -right-1 inline-flex min-h-[1.25rem] min-w-[1.25rem] items-center justify-center rounded-full bg-brand px-1 text-xs font-semibold text-white">
+                    {notifications.length > 9 ? "9+" : notifications.length}
+                  </span>
+                )}
+                <BellIcon />
+              </button>
+              {notificationsOpen && (
+                <div className="absolute right-0 mt-2 w-[22rem] max-w-[calc(100vw-1rem)] rounded-2xl border border-border bg-surface p-3 shadow-xl">
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-sm font-semibold">Notificaciones</p>
+                    <Link href="/notificaciones" className="text-xs text-blue-400 hover:underline">Ver todo</Link>
+                  </div>
+                  <ul className="max-h-80 space-y-2 overflow-auto">
+                    {notifications.length === 0 ? (
+                      <li className="rounded-xl bg-muted/50 px-3 py-2 text-xs opacity-70">Sin novedades por ahora.</li>
+                    ) : (
+                      notifications.map((item) => (
+                        <li key={item.id} className="rounded-xl border border-border/70 bg-background/70 px-3 py-2 text-xs">
+                          <p className="font-medium">
+                            {item.type === "ad" ? "📣 Nuevo anuncio" : item.type === "follow" ? "👥 Nuevo seguidor" : item.type === "repost" ? "🔁 Repost" : "❤️ Nuevo like"}
+                          </p>
+                          <p className="mt-0.5 opacity-80">
+                            {(item.nickname || item.username || "Treddit")}
+                            {item.text ? ` · ${item.text.slice(0, 80)}` : ""}
+                          </p>
+                          {item.post_id ? (
+                            <Link href={`/p/${item.post_id}`} className="mt-1 inline-flex text-[11px] text-blue-400 hover:underline">Abrir</Link>
+                          ) : null}
+                        </li>
+                      ))
+                    )}
+                  </ul>
+                </div>
+              )}
+            </div>
 
             {session ? (
               <div className="flex items-center gap-3">

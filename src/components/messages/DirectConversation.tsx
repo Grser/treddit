@@ -319,6 +319,15 @@ export default function DirectConversation({
           id="dm-textarea"
           value={text}
           onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              const form = e.currentTarget.form;
+              if (form) {
+                form.requestSubmit();
+              }
+            }
+          }}
           rows={3}
           className="w-full resize-none rounded-2xl bg-input px-4 py-3 text-sm outline-none ring-1 ring-border transition focus:ring-2 focus:ring-brand/40"
           placeholder={strings.comments.replyPlaceholder || "Escribe tu mensaje"}
