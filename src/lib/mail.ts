@@ -6,16 +6,31 @@ import type { Transporter } from "nodemailer";
 let transporterPromise: Promise<Transporter | null> | null = null;
 let shellAvailabilityPromise: Promise<boolean> | null = null;
 
-function isMissingShellError(error: unknown) {
+function isMissingShellError(error: unknown): boolean {
   if (error instanceof Error && /spawn\s+\/bin\/sh\s+ENOENT/i.test(error.message)) {
     return true;
   }
   if (typeof error !== "object" || !error) {
     return false;
   }
+
   const maybeCode = "code" in error ? error.code : undefined;
   const maybePath = "path" in error ? error.path : undefined;
-  return maybeCode === "ENOENT" && maybePath === "/bin/sh";
+  if (maybeCode === "ENOENT" && maybePath === "/bin/sh") {
+    return true;
+  }
+
+  const maybeCause = "cause" in error ? error.cause : undefined;
+  if (maybeCause && isMissingShellError(maybeCause)) {
+    return true;
+  }
+
+  const maybeErrors = "errors" in error ? error.errors : undefined;
+  if (Array.isArray(maybeErrors)) {
+    return maybeErrors.some((entry) => isMissingShellError(entry));
+  }
+
+  return false;
 }
 
 async function hasSystemShell() {

@@ -136,7 +136,7 @@ export function getBaseUrl(req: Request | NextRequest) {
   return normalizeOrigin(req.url) ?? "https://treddit.com";
 }
 
-export async function getRedirectUri(baseUrl: string) {
+export async function getRedirectUri(baseUrl: string, req?: Request) {
   const explicitRedirect =
     process.env.GOOGLE_REDIRECT_URI?.trim() ||
     process.env.GOOGLE_CALLBACK_URL?.trim();
@@ -170,7 +170,9 @@ export async function getRedirectUri(baseUrl: string) {
     console.error("Unable to read request headers for redirect URI", err);
   }
 
-  return new URL("/api/auth/google/callback", normalizedBase ?? "http://localhost:3000").toString();
+  const requestOrigin = req ? normalizeOrigin(req.url) : null;
+  const safeBase = normalizedBase || requestOrigin || process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+  return new URL("/api/auth/google/callback", safeBase).toString();
 }
 
 export function rememberOrigin(res: NextResponse, origin: string) {
