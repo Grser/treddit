@@ -48,7 +48,7 @@ export default function ProfileHeader({
   const followerLabel = useMemo(() => Math.max(0, followers), [followers]);
 
   return (
-    <section className="bg-surface mt-4 sm:mt-6">
+    <section className="mt-4 sm:mt-6">
       {/* Banner */}
       <div className="relative h-52 w-full overflow-hidden bg-muted sm:h-64 md:h-72">
         {user.banner_url ? (
@@ -79,7 +79,7 @@ export default function ProfileHeader({
       </div>
 
       {/* Info */}
-      <div className="border-b border-border px-4 pb-4 pt-16 sm:px-6 sm:pt-20 md:pt-24">
+      <div className="relative z-10 -mt-10 border-b border-border bg-gradient-to-b from-black/70 via-surface/95 to-surface px-4 pb-4 pt-10 sm:-mt-12 sm:px-6 sm:pt-12 md:-mt-14 md:pt-14">
         <div className="flex justify-end gap-2">
           {!isOwner && (
             <>
