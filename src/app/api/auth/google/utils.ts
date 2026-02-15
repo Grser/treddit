@@ -66,6 +66,17 @@ function getForwardedProto(req: Request) {
   return null;
 }
 
+
+function isLocalOrigin(value: string | null) {
+  if (!value) return false;
+  try {
+    const host = new URL(value).hostname;
+    return host === "localhost" || host === "127.0.0.1" || host === "::1";
+  } catch {
+    return false;
+  }
+}
+
 function buildOrigin(host: string, proto: string | null | undefined, req: Request) {
   if (!host) return null;
   const forwardedPort = req.headers.get("x-forwarded-port")?.split(",")[0]?.trim();
@@ -92,13 +103,14 @@ export function getBaseUrl(req: Request | NextRequest) {
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL.trim()}` : "");
 
   const normalizedConfigured = normalizeOrigin(configuredBase || null);
-  if (normalizedConfigured) {
-    return normalizedConfigured;
-  }
 
   const withNext = req as MaybeNextRequest;
   const nextOrigin = normalizeOrigin(withNext.nextUrl?.origin ?? null);
-  if (nextOrigin) return nextOrigin;
+  if (nextOrigin && (!normalizedConfigured || isLocalOrigin(normalizedConfigured))) return nextOrigin;
+
+  if (normalizedConfigured && !isLocalOrigin(normalizedConfigured)) {
+    return normalizedConfigured;
+  }
 
   const forwardedHeaderOrigin = getForwardedFromForwardedHeader(req);
   if (forwardedHeaderOrigin) return forwardedHeaderOrigin;
@@ -106,7 +118,9 @@ export function getBaseUrl(req: Request | NextRequest) {
   const forwardedHost = getForwardedHost(req);
   const forwardedProto = getForwardedProto(req);
   const forwardedOrigin = buildOrigin(forwardedHost ?? "", forwardedProto, req);
-  if (forwardedOrigin) return forwardedOrigin;
+  if (forwardedOrigin && (!normalizedConfigured || isLocalOrigin(normalizedConfigured))) return forwardedOrigin;
+
+  if (normalizedConfigured) return normalizedConfigured;
 
   const headerOrigin = normalizeOrigin(req.headers.get("origin"));
   if (headerOrigin) return headerOrigin;
@@ -133,7 +147,8 @@ export async function getRedirectUri(baseUrl: string) {
 
   try {
     const headersList = await headers();
-    const host = headersList.get("host")?.trim();
+    const forwardedHost = headersList.get("x-forwarded-host")?.split(",")[0]?.trim();
+    const host = forwardedHost || headersList.get("host")?.trim();
     if (host) {
       const forwardedProto = headersList
         .get("x-forwarded-proto")

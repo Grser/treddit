@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { ensureUsersAgeColumns, ensureAgeVerificationRequestsTable } from "@/lib/ageVerification";
 import { getAllowMessagesFromAnyone } from "@/lib/messages";
+import { COUNTRY_OPTIONS } from "@/lib/countries";
 import Navbar from "@/components/Navbar";
 import ImagePickerField from "@/components/profile/ImagePickerField";
 
@@ -27,6 +28,11 @@ function toDateInputValue(raw: Date | string | null | undefined) {
   if (!raw) return "";
   if (raw instanceof Date) return raw.toISOString().slice(0, 10);
   const text = String(raw).trim();
+  const latamMatch = text.match(/^(\d{2})[-\/](\d{2})[-\/](\d{4})$/);
+  if (latamMatch) {
+    const [, day, month, year] = latamMatch;
+    return `${year}-${month}-${day}`;
+  }
   if (/^\d{4}-\d{2}-\d{2}/.test(text)) return text.slice(0, 10);
   const parsed = new Date(text);
   if (Number.isNaN(parsed.getTime())) return "";
@@ -71,6 +77,8 @@ export default async function EditProfilePage({ params }: { params: Promise<{ us
   };
 
   const birthDateValue = toDateInputValue(u.birth_date);
+  const selectedCountry = (u.country_of_origin || "").trim();
+  const hasSelectedCountry = selectedCountry && COUNTRY_OPTIONS.some((country) => country.name === selectedCountry);
   const ageStatus = u.is_age_verified ? "Verificada" : u.has_age_request ? "Solicitud enviada" : "Sin verificar";
 
   return (
@@ -124,7 +132,13 @@ export default async function EditProfilePage({ params }: { params: Promise<{ us
               </label>
               <label className="block">
                 <span className="text-sm">País de origen</span>
-                <input name="country_of_origin" defaultValue={u.country_of_origin || ""} className="mt-1 h-10 w-full rounded-xl bg-input px-3 ring-1 ring-border outline-none focus:ring-2" placeholder="Ej. México" />
+                <select name="country_of_origin" defaultValue={selectedCountry} className="mt-1 h-10 w-full rounded-xl bg-input px-3 ring-1 ring-border outline-none focus:ring-2">
+                  <option value="">Selecciona un país</option>
+                  {!hasSelectedCountry && selectedCountry ? <option value={selectedCountry}>{selectedCountry}</option> : null}
+                  {COUNTRY_OPTIONS.map((country) => (
+                    <option key={country.code} value={country.name}>{country.name}</option>
+                  ))}
+                </select>
               </label>
             </div>
           </section>

@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { setAllowMessagesFromAnyone } from "@/lib/messages";
 import { ensureAgeVerificationRequestsTable, ensureUsersAgeColumns } from "@/lib/ageVerification";
+import { getRequestBaseUrl } from "@/lib/requestBaseUrl";
 
 type ProfileStatusRow = RowDataPacket & {
   is_age_verified: number;
@@ -29,7 +30,7 @@ export async function POST(req: Request) {
 
   await Promise.all([ensureUsersAgeColumns(), ensureAgeVerificationRequestsTable()]);
 
-  const birthDate = /^\d{4}-\d{2}-\d{2}$/.test(birthDateRaw) ? birthDateRaw : null;
+  const birthDate = normalizeBirthDate(birthDateRaw);
   const countryOfOrigin = countryOfOriginRaw.slice(0, 120) || null;
   const idDocumentUrl = idDocumentUrlRaw || null;
 
@@ -67,5 +68,19 @@ export async function POST(req: Request) {
     console.error("Failed to update message preferences", error);
   }
 
-  return NextResponse.redirect(new URL(`/u/${me.username}`, req.url));
+  const requestBaseUrl = await getRequestBaseUrl();
+  return NextResponse.redirect(new URL(`/u/${me.username}`, requestBaseUrl));
 }
+
+function normalizeBirthDate(raw: string) {
+  if (!raw) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+
+  const latamFormat = raw.match(/^(\d{2})[-\/](\d{2})[-\/](\d{4})$/);
+  if (!latamFormat) return null;
+
+  const [, day, month, year] = latamFormat;
+  const normalized = `${year}-${month}-${day}`;
+  return /^\d{4}-\d{2}-\d{2}$/.test(normalized) ? normalized : null;
+}
+
