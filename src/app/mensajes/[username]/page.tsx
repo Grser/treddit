@@ -1,23 +1,21 @@
 import type { RowDataPacket } from "mysql2";
 
 import Image from "next/image";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import Navbar from "@/components/Navbar";
 import UserBadges from "@/components/UserBadges";
 import DirectConversation from "@/components/messages/DirectConversation";
 import type { ConversationParticipant } from "@/components/messages/DirectConversation";
+import InboxList from "@/components/messages/InboxList";
 
 import { requireUser } from "@/lib/auth";
 import { db, isDatabaseConfigured } from "@/lib/db";
 import { getDemoConversation, resolveDemoUserByUsername } from "@/lib/demoStore";
-import { getCompactTime, loadInbox } from "@/lib/inbox";
+import { loadInbox } from "@/lib/inbox";
 import {
-  canSendDirectMessage,
-  ensureMessageTables,
   fetchConversationMessages,
-  getAllowMessagesFromAnyone,
+  getDirectMessageAccess,
 } from "@/lib/messages";
 
 export const dynamic = "force-dynamic";
@@ -59,37 +57,12 @@ function ConversationLayout({
       <main className="mx-auto w-full max-w-6xl px-4 py-6">
         <div className="grid h-[calc(100dvh-7.75rem)] min-h-[560px] overflow-hidden rounded-3xl border border-border/80 bg-surface shadow-xl lg:grid-cols-[360px_minmax(0,1fr)]">
           <aside className="hidden border-r border-border/80 lg:block">
-            <div className="border-b border-border/80 px-4 py-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand/80">Mensajes</p>
-              <h1 className="mt-1 text-2xl font-semibold">Bandeja</h1>
-            </div>
-            <ul className="h-[calc(100dvh-14.5rem)] min-h-[420px] overflow-y-auto">
-              {inbox.map((item) => {
-                const isActive = item.username === participant.username;
-                const avatarSide = item.avatar_url?.trim() || "/demo-reddit.png";
-                const displaySide = item.nickname || item.username;
-                const preview = item.lastMessage?.trim() || "Archivo adjunto";
-                const unread = item.unreadCount > 0;
-                return (
-                  <li key={item.userId}>
-                    <Link
-                      href={`/mensajes/${item.username}`}
-                      className={`flex items-center gap-3 border-b border-border/60 px-4 py-3 transition ${isActive ? "bg-brand/10" : "hover:bg-muted/50"}`}
-                    >
-                      <Image src={avatarSide} alt={displaySide} width={50} height={50} className="size-12 rounded-full object-cover" unoptimized />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 text-sm">
-                          <span className="line-clamp-1 font-semibold">{displaySide}</span>
-                          <span className="ml-auto text-xs opacity-60">{getCompactTime(item.createdAt)}</span>
-                        </div>
-                        <p className={`line-clamp-1 text-sm ${unread ? "font-semibold" : "opacity-70"}`}>{preview}</p>
-                      </div>
-                      {unread && <span className="rounded-full bg-brand px-1.5 py-0.5 text-xs font-semibold text-white">{item.unreadCount > 99 ? "99+" : item.unreadCount}</span>}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
+            <InboxList
+              entries={inbox}
+              currentUserId={viewerId}
+              activeUsername={participant.username}
+              className="h-[calc(100dvh-18rem)] min-h-[360px] overflow-y-auto"
+            />
           </aside>
 
           <section className="flex h-full min-h-0 flex-col">
@@ -123,9 +96,8 @@ function ConversationLayout({
 }
 
 export default async function ConversationPage({ params }: ConversationParams) {
-  const { username } = await params;
-  const me = await requireUser();
-  const inbox = await loadInbox(me.id);
+  const [{ username }, me] = await Promise.all([params, requireUser()]);
+  const inboxPromise = loadInbox(me.id);
 
   if (!isDatabaseConfigured()) {
     const demoTarget = resolveDemoUserByUsername(username);
@@ -156,7 +128,7 @@ export default async function ConversationPage({ params }: ConversationParams) {
 
     return (
       <ConversationLayout
-        inbox={inbox}
+        inbox={await inboxPromise}
         participant={participant}
         messages={getDemoConversation(me.id, demoTarget.id)}
         viewerId={me.id}
@@ -188,12 +160,10 @@ export default async function ConversationPage({ params }: ConversationParams) {
     redirect("/mensajes");
   }
 
-  await ensureMessageTables();
 
-  const allowsThirdParty = await getAllowMessagesFromAnyone(Number(target.id));
-  const canMessage = await canSendDirectMessage(me.id, Number(target.id));
+  const access = await getDirectMessageAccess(me.id, Number(target.id));
 
-  if (!canMessage) {
+  if (!access.canMessage) {
     return (
       <div className="min-h-dvh">
         <Navbar />
@@ -216,7 +186,7 @@ export default async function ConversationPage({ params }: ConversationParams) {
             </div>
           </header>
           <div className="rounded-xl border border-border bg-surface p-6 text-sm opacity-80">
-            {allowsThirdParty
+            {access.allowsAnyone
               ? "Este usuario permite mensajes de terceros, pero debes seguirlo para iniciar una conversación."
               : "Necesitan seguirse mutuamente para habilitar el chat directo."}
           </div>
@@ -232,14 +202,14 @@ export default async function ConversationPage({ params }: ConversationParams) {
     avatar_url: target.avatar_url ? String(target.avatar_url) : null,
     is_admin: Boolean(target.is_admin),
     is_verified: Boolean(target.is_verified),
-    allowsAnyone: allowsThirdParty,
+    allowsAnyone: access.allowsAnyone,
   };
 
   return (
     <ConversationLayout
-      inbox={inbox}
+      inbox={await inboxPromise}
       participant={participant}
-      messages={await fetchConversationMessages(me.id, participant.id, 100)}
+      messages={await fetchConversationMessages(me.id, participant.id, 60)}
       viewerId={me.id}
       helperText={participant.allowsAnyone ? "Acepta mensajes de cualquier usuario" : undefined}
     />

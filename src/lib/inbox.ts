@@ -1,3 +1,4 @@
+import { getCompactTime } from "@/lib/time";
 import { isDatabaseConfigured } from "@/lib/db";
 import { getDemoInbox } from "@/lib/demoStore";
 import { fetchConversationSummaries } from "@/lib/messages";
@@ -31,7 +32,7 @@ export async function loadInbox(userId: number): Promise<InboxEntry[]> {
     }));
   }
 
-  const rows = await fetchConversationSummaries(userId, { limit: 40 });
+  const rows = await fetchConversationSummaries(userId, { limit: 25 });
   return rows.map((row) => ({
     userId: row.userId,
     username: row.username,
@@ -46,16 +47,4 @@ export async function loadInbox(userId: number): Promise<InboxEntry[]> {
   }));
 }
 
-export function getCompactTime(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "ahora";
-  const diffMs = Date.now() - date.getTime();
-  const diffMinutes = Math.floor(diffMs / 60000);
-  if (diffMinutes < 1) return "ahora";
-  if (diffMinutes < 60) return `${diffMinutes} min`;
-  const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) return `${diffHours} h`;
-  const diffDays = Math.floor(diffHours / 24);
-  if (diffDays < 7) return `${diffDays} d`;
-  return date.toLocaleDateString();
-}
+export { getCompactTime };
