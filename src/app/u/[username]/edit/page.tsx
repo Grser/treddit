@@ -22,10 +22,13 @@ export default async function EditProfilePage({ params }: { params: Promise<{ us
   const me = await requireUser();
   if (!me || me.username !== username) return <div className="p-6">No autorizado</div>;
 
-  const [rows] = await db.query<ProfileRow[]>(
-    "SELECT nickname, avatar_url, banner_url, description, location, website, show_likes, show_bookmarks FROM Users WHERE id=? LIMIT 1",
-    [me.id]
-  );
+  const [[rows], allowMessages] = await Promise.all([
+    db.query<ProfileRow[]>(
+      "SELECT nickname, avatar_url, banner_url, description, location, website, show_likes, show_bookmarks FROM Users WHERE id=? LIMIT 1",
+      [me.id],
+    ),
+    getAllowMessagesFromAnyone(me.id),
+  ]);
   const u = rows[0] ?? {
     nickname: "",
     avatar_url: null,
@@ -36,7 +39,6 @@ export default async function EditProfilePage({ params }: { params: Promise<{ us
     show_likes: 0,
     show_bookmarks: 0,
   };
-  const allowMessages = await getAllowMessagesFromAnyone(me.id);
 
   return (
     <div className="min-h-dvh">

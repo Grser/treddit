@@ -50,7 +50,7 @@ export default function ProfileHeader({
   return (
     <section className="mt-0">
       {/* Banner */}
-      <div className="relative h-52 w-full overflow-hidden bg-muted sm:h-64 md:h-72">
+      <div className="relative h-44 w-full overflow-hidden bg-muted sm:h-64 md:h-72">
         {user.banner_url ? (
           <Image
             src={user.banner_url}
@@ -78,7 +78,7 @@ export default function ProfileHeader({
       </div>
 
       {/* Info */}
-      <div className="relative z-10 -mt-10 border-b border-border bg-gradient-to-b from-black/70 via-surface/95 to-surface px-4 pb-4 pt-10 sm:-mt-12 sm:px-6 sm:pt-12 md:-mt-14 md:pt-14">
+      <div className="relative z-10 -mt-8 border-b border-border bg-surface/95 px-4 pb-4 pt-10 sm:-mt-12 sm:px-6 sm:pt-12 md:-mt-14 md:pt-14">
         <div className="flex justify-end gap-2">
           {!isOwner && (
             <>
@@ -118,7 +118,7 @@ export default function ProfileHeader({
         <p className="opacity-70">@{user.username}</p>
         {user.description && <p className="mt-2 whitespace-pre-wrap">{user.description}</p>}
 
-        <div className="mt-2 flex gap-4 text-sm opacity-80">
+        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm opacity-80">
           {user.location && <span>{user.location}</span>}
           {user.website && (
             <a className="hover:underline" href={user.website} target="_blank" rel="noreferrer">
@@ -128,7 +128,7 @@ export default function ProfileHeader({
           <span>Se unió el {new Date(user.created_at).toLocaleDateString()}</span>
         </div>
 
-        <div className="mt-2 flex gap-4 text-sm">
+        <div className="mt-2 flex flex-wrap gap-4 text-sm">
           <Link href={`/u/${user.username}/siguiendo`} className="hover:underline">
             <b>{stats.following}</b> Siguiendo
           </Link>
