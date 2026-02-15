@@ -4,7 +4,7 @@ import UserBadges from "@/components/UserBadges";
 import Image from "next/image";
 import Link from "next/link";
 import { getSessionUser } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { db, isDatabaseConfigured } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -56,10 +56,11 @@ type LikeGroupEvent = {
 export default async function NotificationsPage() {
   const me = await getSessionUser();
 
-  const follows: FollowEvent[] = me ? await loadFollowers(me.id) : [];
-  const posts: PostEvent[] = me ? await loadFollowedPosts(me.id) : [];
-  const reposts: RepostEvent[] = me ? await loadRepostsOnMyPosts(me.id) : [];
-  const likes: LikeGroupEvent[] = me ? await loadLikesOnMyPosts(me.id) : [];
+  const databaseReady = isDatabaseConfigured();
+  const follows: FollowEvent[] = me && databaseReady ? await loadFollowers(me.id) : [];
+  const posts: PostEvent[] = me && databaseReady ? await loadFollowedPosts(me.id) : [];
+  const reposts: RepostEvent[] = me && databaseReady ? await loadRepostsOnMyPosts(me.id) : [];
+  const likes: LikeGroupEvent[] = me && databaseReady ? await loadLikesOnMyPosts(me.id) : [];
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
@@ -88,7 +89,14 @@ export default async function NotificationsPage() {
           </div>
         )}
 
-        {me && follows.length === 0 && posts.length === 0 && reposts.length === 0 && likes.length === 0 && (
+
+        {me && !databaseReady && (
+          <div className="rounded-xl border border-border bg-surface p-6 text-sm opacity-70">
+            Configura la base de datos para habilitar notificaciones en tiempo real de seguidores, anuncios y actividad de tus publicaciones.
+          </div>
+        )}
+
+        {me && databaseReady && follows.length === 0 && posts.length === 0 && reposts.length === 0 && likes.length === 0 && (
           <div className="rounded-xl border border-border bg-surface p-6 text-sm opacity-70">
             No hay novedades por ahora. Sigue a más personas para mantenerte al día.
           </div>

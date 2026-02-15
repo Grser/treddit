@@ -4,7 +4,7 @@ import type { RowDataPacket } from "mysql2";
 import { NextResponse } from "next/server";
 
 import { getSessionUser } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { db, isDatabaseConfigured } from "@/lib/db";
 
 type NotificationRow = RowDataPacket & {
   id: string;
@@ -19,6 +19,9 @@ type NotificationRow = RowDataPacket & {
 export async function GET() {
   const me = await getSessionUser();
   if (!me) {
+    return NextResponse.json({ items: [] }, { headers: { "Cache-Control": "no-store" } });
+  }
+  if (!isDatabaseConfigured()) {
     return NextResponse.json({ items: [] }, { headers: { "Cache-Control": "no-store" } });
   }
 
@@ -50,12 +53,18 @@ export async function GET() {
     SELECT CONCAT('a-', p.id) AS id, 'ad' AS type, p.created_at, u.username, u.nickname, p.id AS post_id, p.description AS text
     FROM Posts p
     JOIN Users u ON u.id = p.user
-    WHERE (p.description LIKE '%#ad%' OR p.description LIKE '%#promocionado%' OR p.description LIKE '%#sponsored%')
+    WHERE p.user <> ?
+      AND p.user IN (SELECT followed FROM Follows WHERE follower = ?)
+      AND (
+        LOWER(COALESCE(p.description, '')) LIKE '%#ad%'
+        OR LOWER(COALESCE(p.description, '')) LIKE '%#promocionado%'
+        OR LOWER(COALESCE(p.description, '')) LIKE '%#sponsored%'
+      )
 
     ORDER BY created_at DESC
     LIMIT 20
     `,
-    [me.id, me.id, me.id],
+    [me.id, me.id, me.id, me.id, me.id],
   );
 
   return NextResponse.json({ items: rows }, { headers: { "Cache-Control": "no-store" } });
