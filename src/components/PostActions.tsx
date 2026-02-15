@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   IconBookmark,
   IconComment,
@@ -36,6 +36,36 @@ export default function PostActions({
 
   const [repostedState, setReposted] = useState(!!reposted);
   const [repostsState, setReposts] = useState(reposts ?? 0);
+  const [savedState, setSavedState] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("treddit:saved-posts");
+      const parsed = raw ? (JSON.parse(raw) as number[]) : [];
+      setSavedState(parsed.includes(postId));
+    } catch {
+      setSavedState(false);
+    }
+  }, [postId]);
+
+  function toggleSaved() {
+    if (!canInteract) return;
+    try {
+      const raw = localStorage.getItem("treddit:saved-posts");
+      const parsed = raw ? (JSON.parse(raw) as number[]) : [];
+      const set = new Set(parsed);
+      if (set.has(postId)) {
+        set.delete(postId);
+        setSavedState(false);
+      } else {
+        set.add(postId);
+        setSavedState(true);
+      }
+      localStorage.setItem("treddit:saved-posts", JSON.stringify([...set]));
+    } catch {
+      setSavedState((prev) => !prev);
+    }
+  }
 
   async function toggleLike() {
     if (!canInteract || busy) return;
@@ -161,7 +191,12 @@ export default function PostActions({
         <span className={`${textBase}`}>{formatCount(views)}</span>
       </div>
 
-      <button className={`${btnBase}`} title={t.saveComingSoon} disabled>
+      <button
+        className={`${btnBase} ${savedState ? "text-amber-400" : "hover:text-amber-400"}`}
+        title={savedState ? "Quitar de guardados" : "Guardar publicación"}
+        disabled={!canInteract}
+        onClick={toggleSaved}
+      >
         <IconBookmark className={`${iconBase}`} />
       </button>
 

@@ -1,0 +1,62 @@
+export const runtime = "nodejs";
+
+import type { RowDataPacket } from "mysql2";
+import { NextResponse } from "next/server";
+
+import { getSessionUser } from "@/lib/auth";
+import { db } from "@/lib/db";
+
+type NotificationRow = RowDataPacket & {
+  id: string;
+  type: "follow" | "like" | "repost" | "ad";
+  created_at: string;
+  username: string | null;
+  nickname: string | null;
+  post_id: number | null;
+  text: string | null;
+};
+
+export async function GET() {
+  const me = await getSessionUser();
+  if (!me) {
+    return NextResponse.json({ items: [] }, { headers: { "Cache-Control": "no-store" } });
+  }
+
+  const [rows] = await db.query<NotificationRow[]>(
+    `
+    SELECT CONCAT('f-', f.id) AS id, 'follow' AS type, f.created_at, u.username, u.nickname, NULL AS post_id, NULL AS text
+    FROM Follows f
+    JOIN Users u ON u.id = f.follower
+    WHERE f.followed = ?
+
+    UNION ALL
+
+    SELECT CONCAT('l-', lp.id) AS id, 'like' AS type, lp.created_at, u.username, u.nickname, lp.post AS post_id, p.description AS text
+    FROM Like_Posts lp
+    JOIN Posts p ON p.id = lp.post
+    JOIN Users u ON u.id = lp.user
+    WHERE p.user = ?
+
+    UNION ALL
+
+    SELECT CONCAT('r-', r.id) AS id, 'repost' AS type, r.created_at, u.username, u.nickname, r.post_id AS post_id, p.description AS text
+    FROM Reposts r
+    JOIN Posts p ON p.id = r.post_id
+    JOIN Users u ON u.id = r.user_id
+    WHERE p.user = ?
+
+    UNION ALL
+
+    SELECT CONCAT('a-', p.id) AS id, 'ad' AS type, p.created_at, u.username, u.nickname, p.id AS post_id, p.description AS text
+    FROM Posts p
+    JOIN Users u ON u.id = p.user
+    WHERE (p.description LIKE '%#ad%' OR p.description LIKE '%#promocionado%' OR p.description LIKE '%#sponsored%')
+
+    ORDER BY created_at DESC
+    LIMIT 20
+    `,
+    [me.id, me.id, me.id],
+  );
+
+  return NextResponse.json({ items: rows }, { headers: { "Cache-Control": "no-store" } });
+}

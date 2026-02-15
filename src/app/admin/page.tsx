@@ -6,11 +6,11 @@ import { db } from "@/lib/db";
 export default async function AdminHome() {
   await requireAdmin();
 
-  const [[{ totalUsers }]] = await db.query("SELECT COUNT(*) AS total FROM Users WHERE visible=1");
-  const [[{ totalPosts }]] = await db.query("SELECT COUNT(*) AS total FROM Posts");
-  const [[{ totalCommunities }]] = await db.query("SELECT COUNT(*) AS total FROM Communities WHERE visible=1");
+  const [[{ totalUsers }]] = await db.query("SELECT COUNT(*) AS totalUsers FROM Users WHERE visible=1");
+  const [[{ totalPosts }]] = await db.query("SELECT COUNT(*) AS totalPosts FROM Posts");
+  const [[{ totalCommunities }]] = await db.query("SELECT COUNT(*) AS totalCommunities FROM Communities WHERE visible=1");
   const [[{ totalModerators }]] = await db.query(
-    "SELECT COUNT(DISTINCT user_id) AS total FROM Community_Members WHERE role <> 'member'",
+    "SELECT COUNT(DISTINCT user_id) AS totalModerators FROM Community_Members WHERE role <> 'member'",
   );
 
   const stats: AdminStats = {

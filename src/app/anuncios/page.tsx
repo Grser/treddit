@@ -20,17 +20,20 @@ export default async function AdsPage() {
     <div className="min-h-dvh bg-background text-foreground">
       <Navbar />
       <main className="mx-auto w-full max-w-4xl space-y-6 px-4 py-8">
-        <header className="space-y-2">
+        <div className="rounded-3xl border border-border bg-gradient-to-br from-surface to-brand/10 p-6 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-brand">Ads Studio</p>
+        <header className="mt-2 space-y-2">
           <h1 className="text-2xl font-semibold">Centro de anuncios</h1>
           <p className="text-sm opacity-70">
             Descubre campañas promocionadas por la comunidad y aprende cómo promocionar tu contenido en Treddit.
           </p>
         </header>
+        </div>
 
         {campaigns.length > 0 ? (
           <ul className="space-y-4">
             {campaigns.map((item) => (
-              <li key={item.id} className="rounded-xl border border-border bg-surface p-4">
+              <li key={item.id} className="rounded-2xl border border-border bg-surface p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow">
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold">{item.nickname || item.username}</p>

@@ -172,6 +172,7 @@ export async function GET(req: Request) {
       likes: Number(row.likes) || 0,
       comments: Number(row.comments) || 0,
       reposts: Number(row.reposts) || 0,
+      views: Math.max(50, (Number(row.likes) || 0) * 12 + (Number(row.comments) || 0) * 8 + (Number(row.reposts) || 0) * 15),
       likedByMe: Boolean(row.likedByMe),
       repostedByMe: Boolean(row.repostedByMe),
       hasPoll: Boolean(row.hasPoll),

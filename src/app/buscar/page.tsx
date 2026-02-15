@@ -35,20 +35,33 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   const like = `%${sanitized}%`;
 
   const normalizedUserQuery = normalizeUserSearchQuery(query);
-  const posts: SearchPost[] = query ? await findPosts(like, query) : [];
-  const users: SearchUser[] = normalizedUserQuery ? await findUsers(normalizedUserQuery) : [];
+  const [posts, users] = await Promise.all([
+    query ? findPosts(like, query) : Promise.resolve([] as SearchPost[]),
+    normalizedUserQuery ? findUsers(normalizedUserQuery) : Promise.resolve([] as SearchUser[]),
+  ]);
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
       <Navbar />
       <PageHero page="search" />
       <main className="mx-auto flex w-full max-w-5xl flex-col gap-10 px-4 py-10">
-        <header className="space-y-3 rounded-3xl border border-border bg-surface p-6 shadow-lg">
+        <header className="space-y-4 rounded-3xl border border-border bg-surface p-6 shadow-lg">
           <div className="flex flex-col gap-2">
             <span className="text-xs uppercase tracking-[0.3em] text-[color:var(--color-brand)]">
               Resultados
             </span>
             <h1 className="text-3xl font-semibold">Buscar</h1>
+            <form action="/buscar" className="max-w-2xl">
+              <label className="relative block">
+                <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm opacity-60">🔎</span>
+                <input
+                  name="q"
+                  defaultValue={query}
+                  placeholder="Buscar en Treddit"
+                  className="h-12 w-full rounded-full border border-border bg-input pl-11 pr-4 text-sm outline-none ring-1 ring-transparent transition focus:border-brand/40 focus:ring-brand/30"
+                />
+              </label>
+            </form>
           </div>
           {query ? (
             <p className="text-sm leading-relaxed text-foreground opacity-80">
