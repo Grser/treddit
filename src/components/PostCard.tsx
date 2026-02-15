@@ -88,16 +88,14 @@ export default function PostCard({
           <div className="flex items-start gap-2">
             <div className="leading-tight flex-1 min-w-0">
               <p className="text-sm font-semibold truncate flex items-center gap-2">
-                <a href={`/u/${post.username}`} className="hover:underline truncate">
-                  {displayName}
-                </a>
+                <MentionUserLink username={post.username} text={displayName} className="hover:underline truncate" />
                 <UserBadges
                   size="sm"
                   isAdmin={post.is_admin}
                   isVerified={post.is_verified}
                   labels={strings.badges}
                 />
-                <span className="opacity-60">@{post.username}</span>
+                <MentionUserLink username={post.username} text={`@${post.username}`} className="opacity-60 hover:underline" />
               </p>
               <p className="text-xs opacity-60">
                 <a href={`/p/${post.id}`} className="hover:underline">
@@ -130,9 +128,11 @@ export default function PostCard({
           {post.replyTo && (
             <p className="text-sm mt-1 opacity-70">
               {strings.postCard.replyingTo}{" "}
-              <a className="text-blue-400 hover:underline" href={`/u/${post.replyTo.username}`}>
-                @{post.replyTo.username}
-              </a>
+              <MentionUserLink
+                username={post.replyTo.username}
+                text={`@${post.replyTo.username}`}
+                className="text-blue-400 hover:underline"
+              />
             </p>
           )}
         </div>

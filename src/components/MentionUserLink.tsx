@@ -18,7 +18,15 @@ type PreviewUser = {
   is_verified?: boolean;
 };
 
-export default function MentionUserLink({ username, text }: { username: string; text: string }) {
+export default function MentionUserLink({
+  username,
+  text,
+  className,
+}: {
+  username: string;
+  text: string;
+  className?: string;
+}) {
   const [open, setOpen] = useState(false);
   const [user, setUser] = useState<PreviewUser | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -55,7 +63,10 @@ export default function MentionUserLink({ username, text }: { username: string; 
 
   return (
     <span className="relative inline-block" onMouseEnter={handleOpen} onMouseLeave={handleClose}>
-      <a href={`/u/${encodeURIComponent(username)}`} className="text-sky-500 font-semibold hover:underline">
+      <a
+        href={`/u/${encodeURIComponent(username)}`}
+        className={className || "text-sky-500 font-semibold hover:underline"}
+      >
         {text}
       </a>
 
