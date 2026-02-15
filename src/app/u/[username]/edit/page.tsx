@@ -16,12 +16,22 @@ type ProfileRow = RowDataPacket & {
   website: string | null;
   show_likes: number;
   show_bookmarks: number;
-  birth_date: string | null;
+  birth_date: Date | string | null;
   country_of_origin: string | null;
   is_age_verified: number;
   has_age_request: number;
   id_document_url: string | null;
 };
+
+function toDateInputValue(raw: Date | string | null | undefined) {
+  if (!raw) return "";
+  if (raw instanceof Date) return raw.toISOString().slice(0, 10);
+  const text = String(raw).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(text)) return text.slice(0, 10);
+  const parsed = new Date(text);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return parsed.toISOString().slice(0, 10);
+}
 
 export default async function EditProfilePage({ params }: { params: Promise<{ username: string }> }) {
   const { username } = await params;
@@ -60,91 +70,115 @@ export default async function EditProfilePage({ params }: { params: Promise<{ us
     id_document_url: null,
   };
 
-  return (
-    <div className="min-h-dvh">
-      <Navbar />
-      <form
-        action="/api/profile"
-        method="post"
-        className="max-w-2xl mx-auto p-4 space-y-4"
-      >
-        <input type="hidden" name="mode" value="update" />
-        <label className="block">
-          <span className="text-sm">Nombre</span>
-          <input name="nickname" defaultValue={u.nickname || ""} className="w-full bg-input rounded-md h-10 px-3 ring-1 ring-border outline-none" />
-        </label>
-        <label className="block">
-          <span className="text-sm">Biografía</span>
-          <textarea name="description" defaultValue={u.description || ""} className="w-full bg-input rounded-md p-3 ring-1 ring-border outline-none" rows={4} />
-        </label>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <ImagePickerField
-            name="avatar_url"
-            label="Avatar"
-            initialUrl={u.avatar_url}
-          />
-          <ImagePickerField
-            name="banner_url"
-            label="Banner"
-            initialUrl={u.banner_url}
-          />
-        </div>
-        <div className="grid sm:grid-cols-2 gap-4">
-          <label className="block">
-            <span className="text-sm">Ubicación</span>
-            <input name="location" defaultValue={u.location || ""} className="w-full bg-input rounded-md h-10 px-3 ring-1 ring-border outline-none" />
-          </label>
-          <label className="block">
-            <span className="text-sm">Sitio web</span>
-            <input name="website" defaultValue={u.website || ""} className="w-full bg-input rounded-md h-10 px-3 ring-1 ring-border outline-none" />
-          </label>
-        </div>
-        <div className="grid sm:grid-cols-2 gap-4">
-          <label className="block">
-            <span className="text-sm">Fecha de nacimiento</span>
-            <input name="birth_date" type="date" defaultValue={u.birth_date ? String(u.birth_date).slice(0, 10) : ""} className="w-full bg-input rounded-md h-10 px-3 ring-1 ring-border outline-none" />
-          </label>
-          <label className="block">
-            <span className="text-sm">País de origen</span>
-            <input name="country_of_origin" defaultValue={u.country_of_origin || ""} className="w-full bg-input rounded-md h-10 px-3 ring-1 ring-border outline-none" placeholder="Ej. México" />
-          </label>
-        </div>
-        <div className="grid sm:grid-cols-2 gap-4">
-          <ImagePickerField
-            name="id_document_url"
-            label="Foto de DNI/Carnet/Pasaporte"
-            initialUrl={u.id_document_url}
-          />
-          <div className="rounded-md border border-border bg-muted/30 p-3 text-xs">
-            <p className="font-semibold">Verificación de edad</p>
-            <p className="mt-1 opacity-75">Estado: {u.is_age_verified ? "Verificada" : u.has_age_request ? "Solicitud enviada" : "Sin verificar"}</p>
-            <p className="mt-1 opacity-75">Para solicitarla debes subir foto de tu documento y país de origen.</p>
-            <label className="mt-2 inline-flex items-center gap-2">
-              <input type="checkbox" name="request_age_verification" defaultChecked={Boolean(u.has_age_request)} disabled={Boolean(u.is_age_verified)} />
-              Enviar solicitud al panel de admin
-            </label>
-          </div>
-        </div>
+  const birthDateValue = toDateInputValue(u.birth_date);
+  const ageStatus = u.is_age_verified ? "Verificada" : u.has_age_request ? "Solicitud enviada" : "Sin verificar";
 
-        <div className="flex flex-wrap gap-6 text-sm">
-          <label className="inline-flex items-center gap-2">
-            <input type="checkbox" name="show_likes" defaultChecked={!!u.show_likes} />
-            Mostrar Me gusta
-          </label>
-          <label className="inline-flex items-center gap-2">
-            <input type="checkbox" name="show_bookmarks" defaultChecked={!!u.show_bookmarks} />
-            Mostrar Guardados
-          </label>
-          <label className="inline-flex items-center gap-2">
-            <input type="checkbox" name="allow_messages_anyone" defaultChecked={allowMessages} />
-            Aceptar mensajes de terceros
-          </label>
-        </div>
-        <div className="flex gap-2">
-          <button className="h-10 px-4 rounded-full bg-brand text-white">Guardar</button>
-          <a href={`/u/${me.username}`} className="h-10 px-4 rounded-full border border-border">Cancelar</a>
-        </div>
-      </form>
+  return (
+    <div className="min-h-dvh bg-background">
+      <Navbar />
+      <main className="mx-auto max-w-4xl px-4 py-8">
+        <header className="mb-6 rounded-3xl border border-border bg-surface p-6 shadow-sm">
+          <h1 className="text-2xl font-semibold">Editar perfil</h1>
+          <p className="mt-2 text-sm opacity-70">Actualiza tu información pública y preferencias de privacidad.</p>
+        </header>
+
+        <form action="/api/profile" method="post" className="space-y-5">
+          <input type="hidden" name="mode" value="update" />
+
+          <section className="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+            <h2 className="mb-4 text-lg font-semibold">Información básica</h2>
+            <div className="space-y-4">
+              <label className="block">
+                <span className="text-sm">Nombre</span>
+                <input name="nickname" defaultValue={u.nickname || ""} className="mt-1 h-10 w-full rounded-xl bg-input px-3 ring-1 ring-border outline-none focus:ring-2" />
+              </label>
+              <label className="block">
+                <span className="text-sm">Biografía</span>
+                <textarea name="description" defaultValue={u.description || ""} className="mt-1 w-full rounded-xl bg-input p-3 ring-1 ring-border outline-none focus:ring-2" rows={4} />
+              </label>
+            </div>
+          </section>
+
+          <section className="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+            <h2 className="mb-4 text-lg font-semibold">Imágenes</h2>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <ImagePickerField name="avatar_url" label="Avatar" initialUrl={u.avatar_url} />
+              <ImagePickerField name="banner_url" label="Banner" initialUrl={u.banner_url} />
+            </div>
+          </section>
+
+          <section className="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+            <h2 className="mb-4 text-lg font-semibold">Datos personales</h2>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block">
+                <span className="text-sm">Ubicación</span>
+                <input name="location" defaultValue={u.location || ""} className="mt-1 h-10 w-full rounded-xl bg-input px-3 ring-1 ring-border outline-none focus:ring-2" />
+              </label>
+              <label className="block">
+                <span className="text-sm">Sitio web</span>
+                <input name="website" defaultValue={u.website || ""} className="mt-1 h-10 w-full rounded-xl bg-input px-3 ring-1 ring-border outline-none focus:ring-2" />
+              </label>
+              <label className="block">
+                <span className="text-sm">Fecha de nacimiento</span>
+                <input name="birth_date" type="date" defaultValue={birthDateValue} className="mt-1 h-10 w-full rounded-xl bg-input px-3 ring-1 ring-border outline-none focus:ring-2" />
+              </label>
+              <label className="block">
+                <span className="text-sm">País de origen</span>
+                <input name="country_of_origin" defaultValue={u.country_of_origin || ""} className="mt-1 h-10 w-full rounded-xl bg-input px-3 ring-1 ring-border outline-none focus:ring-2" placeholder="Ej. México" />
+              </label>
+            </div>
+          </section>
+
+          <section className="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+            <h2 className="mb-4 text-lg font-semibold">Verificación de edad</h2>
+            <p className="text-sm opacity-75">Estado actual: <span className="font-semibold">{ageStatus}</span></p>
+            {!u.is_age_verified ? (
+              <div className="mt-4 grid gap-4 sm:grid-cols-[minmax(0,1fr)_18rem]">
+                <ImagePickerField
+                  name="id_document_url"
+                  label="Foto de DNI/Carnet/Pasaporte"
+                  initialUrl={u.id_document_url}
+                />
+                <div className="rounded-2xl border border-brand/20 bg-brand/5 p-4 text-sm">
+                  <p className="font-semibold">Solicitar verificación</p>
+                  <p className="mt-1 text-xs opacity-75">Sube tu documento y activa la solicitud para revisión de administración.</p>
+                  <label className="mt-3 inline-flex items-center gap-2">
+                    <input type="checkbox" name="request_age_verification" defaultChecked={Boolean(u.has_age_request)} />
+                    Enviar solicitud
+                  </label>
+                </div>
+              </div>
+            ) : (
+              <p className="mt-3 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700">
+                Tu edad ya está verificada. No necesitas enviar más solicitudes.
+              </p>
+            )}
+          </section>
+
+          <section className="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+            <h2 className="mb-4 text-lg font-semibold">Privacidad</h2>
+            <div className="flex flex-wrap gap-6 text-sm">
+              <label className="inline-flex items-center gap-2">
+                <input type="checkbox" name="show_likes" defaultChecked={!!u.show_likes} />
+                Mostrar Me gusta
+              </label>
+              <label className="inline-flex items-center gap-2">
+                <input type="checkbox" name="show_bookmarks" defaultChecked={!!u.show_bookmarks} />
+                Mostrar Guardados
+              </label>
+              <label className="inline-flex items-center gap-2">
+                <input type="checkbox" name="allow_messages_anyone" defaultChecked={allowMessages} />
+                Aceptar mensajes de terceros
+              </label>
+            </div>
+          </section>
+
+          <div className="flex gap-3">
+            <button className="h-10 rounded-full bg-brand px-5 text-white">Guardar cambios</button>
+            <a href={`/u/${me.username}`} className="h-10 rounded-full border border-border px-5 leading-10">Cancelar</a>
+          </div>
+        </form>
+      </main>
     </div>
   );
 }

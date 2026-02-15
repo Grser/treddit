@@ -5,11 +5,11 @@ import Navbar from "@/components/Navbar";
 import Feed from "@/components/Feed";
 import { getSessionUser } from "@/lib/auth";
 import { db, isDatabaseConfigured } from "@/lib/db";
+import { getRequestBaseUrl } from "@/lib/requestBaseUrl";
 import type { Post as PostCardType } from "@/components/PostCard";
 
 export const dynamic = "force-dynamic";
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 
 type CommunityPageProps = {
   params: Promise<{ slug: string }>;
@@ -88,7 +88,8 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
     );
   }
 
-  const data = await loadCommunity(slug, me?.id ?? null);
+  const baseUrl = await getRequestBaseUrl();
+  const data = await loadCommunity(slug, me?.id ?? null, baseUrl);
   if (!data) {
     return (
       <div className="min-h-dvh bg-background text-foreground">
@@ -195,7 +196,7 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
   );
 }
 
-async function loadCommunity(slug: string, viewerId: number | null): Promise<CommunityViewModel | null> {
+async function loadCommunity(slug: string, viewerId: number | null, baseUrl: string): Promise<CommunityViewModel | null> {
   const normalized = slug.toLowerCase();
   const [rows] = await db.query<CommunityRow[]>(
     `
@@ -256,7 +257,7 @@ async function loadCommunity(slug: string, viewerId: number | null): Promise<Com
     role: mod.role ? String(mod.role) : null,
   }));
 
-  const feed = await getCommunityFeed(community.id);
+  const feed = await getCommunityFeed(community.id, baseUrl);
 
   return {
     ...community,
@@ -265,8 +266,8 @@ async function loadCommunity(slug: string, viewerId: number | null): Promise<Com
   };
 }
 
-async function getCommunityFeed(communityId: number): Promise<FeedResponse> {
-  const res = await fetch(`${BASE_URL}/api/posts?communityId=${communityId}&limit=20`, {
+async function getCommunityFeed(communityId: number, baseUrl: string): Promise<FeedResponse> {
+  const res = await fetch(`${baseUrl}/api/posts?communityId=${communityId}&limit=20`, {
     cache: "no-store",
   });
   if (!res.ok) {

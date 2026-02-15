@@ -151,6 +151,15 @@ type ConversationSummaryRow = RowDataPacket & {
   unreadCount: number | null;
 };
 
+type ConversationStarterRow = RowDataPacket & {
+  user_id: number;
+  username: string;
+  nickname: string | null;
+  avatar_url: string | null;
+  is_admin: number;
+  is_verified: number;
+};
+
 export type ConversationSummary = {
   userId: number;
   username: string;
@@ -363,6 +372,59 @@ export async function fetchConversationSummaries(
     lastSenderId: Number(row.sender_id),
     createdAt: new Date(row.created_at).toISOString(),
     unreadCount: Number(row.unreadCount ?? 0),
+  }));
+}
+
+export async function fetchConversationStarters(
+  userId: number,
+  options: { limit?: number } = {},
+): Promise<ConversationSummary[]> {
+  if (!isDatabaseConfigured()) {
+    return [];
+  }
+
+  await ensureMessageTables();
+  const limit = Math.max(1, Math.min(options.limit ?? 20, 100));
+  const [rows] = await db.query<ConversationStarterRow[]>(
+    `
+    SELECT
+      u.id AS user_id,
+      u.username,
+      u.nickname,
+      u.avatar_url,
+      u.is_admin,
+      u.is_verified
+    FROM Follows outgoing
+    JOIN Follows incoming
+      ON incoming.follower = outgoing.followed
+     AND incoming.followed = outgoing.follower
+    JOIN Users u ON u.id = outgoing.followed
+    WHERE outgoing.follower = ?
+      AND u.id <> ?
+      AND NOT EXISTS (
+        SELECT 1
+        FROM Direct_Messages dm
+        WHERE LEAST(dm.sender_id, dm.recipient_id) = LEAST(?, u.id)
+          AND GREATEST(dm.sender_id, dm.recipient_id) = GREATEST(?, u.id)
+      )
+    ORDER BY u.username ASC
+    LIMIT ?
+    `,
+    [userId, userId, userId, userId, limit],
+  );
+
+  const createdAt = new Date(0).toISOString();
+  return rows.map((row) => ({
+    userId: Number(row.user_id),
+    username: String(row.username),
+    nickname: row.nickname ? String(row.nickname) : null,
+    avatar_url: row.avatar_url ? String(row.avatar_url) : null,
+    is_admin: Boolean(row.is_admin),
+    is_verified: Boolean(row.is_verified),
+    lastMessage: "",
+    lastSenderId: 0,
+    createdAt,
+    unreadCount: 0,
   }));
 }
 

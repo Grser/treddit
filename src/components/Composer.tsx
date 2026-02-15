@@ -458,7 +458,7 @@ export default function Composer({ enabled }: { enabled: boolean }) {
         <label className="mb-1 block font-medium">Contenido sensible</label>
         <label className="inline-flex items-center gap-2 text-xs opacity-80">
           <input type="checkbox" checked={isSensitive} onChange={(e) => setIsSensitive(e.target.checked)} />
-          Ocultar como en X/Twitter y mostrar aviso antes de ver la publicación.
+          Contenido sensible
         </label>
       </div>
 

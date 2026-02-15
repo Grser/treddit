@@ -6,6 +6,7 @@ import SidebarRight from "@/components/SidebarRight";
 import Composer from "@/components/Composer";
 import AuthBanner from "@/components/AuthBanner";
 import { getSessionUser } from "@/lib/auth";
+import { getRequestBaseUrl } from "@/lib/requestBaseUrl";
 import Feed from "@/components/Feed";
 import type { Post as PostCardType } from "@/components/PostCard";
 
@@ -89,7 +90,7 @@ async function getCommunities(
 }
 
 export default async function Page() {
-  const base = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+  const base = await getRequestBaseUrl();
   const cookieStore = await cookies();
   const hasSessionCookie = cookieStore.has("treddit_token");
   const cookieHeader = cookieStore.getAll().map((item) => `${item.name}=${item.value}`).join("; ") || undefined;

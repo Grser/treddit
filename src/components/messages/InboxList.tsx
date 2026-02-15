@@ -52,7 +52,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
           {filteredEntries.map((item) => {
             const avatar = item.avatar_url?.trim() || "/demo-reddit.png";
             const displayName = item.nickname || item.username;
-            const preview = item.lastMessage?.trim() || "Archivo adjunto";
+            const preview = item.isStarter ? "Síguense mutuamente · toca para iniciar chat" : item.lastMessage?.trim() || "Archivo adjunto";
             const unread = item.unreadCount > 0;
             const isMine = item.lastSenderId === currentUserId;
             const isActive = activeUsername === item.username;
@@ -75,12 +75,15 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
                     <div className="flex items-center gap-1.5 text-sm">
                       <span className="line-clamp-1 font-semibold">{displayName}</span>
                       <UserBadges size="sm" isAdmin={item.is_admin} isVerified={item.is_verified} />
-                      <span className="ml-auto text-xs opacity-60">{getCompactTime(item.createdAt)}</span>
+                      <span className="ml-auto text-xs opacity-60">{item.isStarter ? "Nuevo" : getCompactTime(item.createdAt)}</span>
                     </div>
                     <p className={`line-clamp-1 text-sm ${unread ? "font-semibold" : "opacity-70"}`}>
-                      {isMine ? "Tú: " : ""}
+                      {item.isStarter ? "" : isMine ? "Tú: " : ""}
                       {preview}
                     </p>
+                    {item.isStarter && (
+                      <p className="text-xs font-medium text-brand/90">Contacto disponible para nuevo chat</p>
+                    )}
                   </div>
                   {unread && (
                     <span className="inline-flex min-w-[1.5rem] items-center justify-center rounded-full bg-brand px-1.5 py-0.5 text-xs font-semibold text-white">
