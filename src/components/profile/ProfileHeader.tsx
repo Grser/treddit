@@ -50,7 +50,7 @@ export default function ProfileHeader({
   return (
     <section className="bg-surface mt-4 sm:mt-6">
       {/* Banner */}
-      <div className="relative h-48 w-full overflow-hidden bg-muted">
+      <div className="relative h-32 w-full overflow-hidden bg-muted sm:h-44 md:h-52">
         {user.banner_url ? (
           <Image
             src={user.banner_url}
@@ -64,8 +64,8 @@ export default function ProfileHeader({
           <div className="absolute inset-0 bg-gradient-to-r from-brand/40 via-brand/20 to-transparent" aria-hidden="true" />
         )}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" aria-hidden="true" />
-        <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-end gap-3 sm:bottom-6 sm:left-6 sm:translate-x-0">
-          <div className="relative size-28 overflow-hidden rounded-full border-4 border-surface bg-surface shadow-lg">
+        <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-end gap-3 sm:bottom-5 sm:left-6 sm:translate-x-0">
+          <div className="relative size-20 overflow-hidden rounded-full border-4 border-surface bg-surface shadow-lg sm:size-24 md:size-28">
             <Image
               src={avatar}
               className="object-cover"
@@ -79,7 +79,7 @@ export default function ProfileHeader({
       </div>
 
       {/* Info */}
-      <div className="border-b border-border px-4 pb-4 pt-24 sm:px-6 sm:pt-28">
+      <div className="border-b border-border px-4 pb-4 pt-16 sm:px-6 sm:pt-20 md:pt-24">
         <div className="flex justify-end gap-2">
           {!isOwner && (
             <>
