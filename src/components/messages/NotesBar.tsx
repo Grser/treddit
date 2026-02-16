@@ -11,7 +11,7 @@ const NOTE_ROTATION = [
   "Disponible ahora ✨",
   "En línea por si quieres hablar",
   "Respondo rápido hoy",
-  "Compartiéndo ideas nuevas",
+  "Compartiendo ideas nuevas",
   "Pasando a saludar 👋",
 ];
 
@@ -65,12 +65,7 @@ export default function NotesBar({ entries, canInteract = true, className }: Pro
   }
 
   return (
-    <section className={`rounded-2xl border border-border bg-surface p-3 sm:p-4 ${className ?? ""}`.trim()}>
-      <div className="mb-3">
-        <h2 className="font-semibold">Notas</h2>
-        <p className="text-xs opacity-70">Estado rápido de tus chats</p>
-      </div>
-
+    <section className={`rounded-2xl border border-border bg-[#050d18] p-3 sm:p-4 ${className ?? ""}`.trim()}>
       <div className="flex gap-3 overflow-x-auto pb-1">
         <button
           type="button"
@@ -81,14 +76,18 @@ export default function NotesBar({ entries, canInteract = true, className }: Pro
             }
             setIsPublishing(true);
           }}
-          className="group min-w-24 max-w-28 shrink-0 text-center"
+          className="group min-w-20 max-w-24 shrink-0 text-center"
           title={canInteract ? "Publicar nota" : "Inicia sesión para publicar notas"}
         >
-          <div className="relative mx-auto mb-1 grid size-14 place-items-center rounded-full ring-2 ring-brand/70 transition group-hover:scale-[1.03]">
-            <div className="grid size-full place-items-center rounded-full bg-muted/40 text-xl font-bold">+</div>
+          <p className="mx-auto mb-1.5 line-clamp-2 min-h-9 rounded-2xl bg-white/14 px-2 py-1 text-[10px] leading-tight text-white/90">
+            Publica una nota rápida
+          </p>
+          <div className="relative mx-auto mb-1 size-[58px] rounded-full bg-gradient-to-tr from-amber-400 via-fuchsia-500 to-violet-500 p-[2px] transition group-hover:scale-[1.03]">
+            <div className="relative grid size-full place-items-center rounded-full bg-surface ring-[3px] ring-[#050d18] text-xl font-bold text-white">
+              +
+            </div>
           </div>
-          <p className="truncate text-xs font-medium">Tu nota</p>
-          <p className="line-clamp-2 text-[10px] leading-tight opacity-70">Publica un estado rápido</p>
+          <p className="truncate text-[12px] font-medium text-white">Tu nota</p>
         </button>
 
         {uniqueEntries.map((entry, index) => {
@@ -97,10 +96,14 @@ export default function NotesBar({ entries, canInteract = true, className }: Pro
             <Link
               key={entry.userId}
               href={`/mensajes/${entry.username}`}
-              className="group min-w-24 max-w-28 shrink-0 text-center"
+              className="group min-w-20 max-w-24 shrink-0 text-center"
               title={`Abrir chat con ${entry.username}`}
             >
-              <div className="relative mx-auto mb-1 size-14 overflow-hidden rounded-full ring-2 ring-border transition group-hover:scale-[1.03]">
+              <p className="mx-auto mb-1.5 line-clamp-2 min-h-9 rounded-2xl bg-white/14 px-2 py-1 text-[10px] leading-tight text-white/90">
+                {note}
+              </p>
+              <div className="relative mx-auto mb-1 size-[58px] rounded-full bg-gradient-to-tr from-amber-400 via-fuchsia-500 to-violet-500 p-[2px] transition group-hover:scale-[1.03]">
+                <div className="relative size-full overflow-hidden rounded-full bg-surface ring-[3px] ring-[#050d18]">
                 <Image
                   src={entry.avatar_url || "/demo-reddit.png"}
                   alt={entry.nickname || entry.username}
@@ -108,17 +111,19 @@ export default function NotesBar({ entries, canInteract = true, className }: Pro
                   sizes="56px"
                   className="object-cover"
                 />
+                </div>
               </div>
-              <p className="truncate text-xs font-medium">{entry.nickname || entry.username}</p>
-              <p className="line-clamp-2 text-[10px] leading-tight opacity-70">{note}</p>
+              <p className="truncate text-[12px] font-medium text-white">{entry.nickname || entry.username}</p>
             </Link>
           );
         })}
 
         {uniqueEntries.length === 0 && (
-          <p className="px-2 py-5 text-sm opacity-70">Aún no tienes notas porque no hay chats activos.</p>
+          <p className="px-2 py-5 text-sm text-white/70">Aún no tienes notas porque no hay chats activos.</p>
         )}
       </div>
+
+      {!canInteract && <p className="mt-2 text-xs text-brand">Inicia sesión para publicar notas.</p>}
 
       {isPublishing && (
         <div className="fixed inset-0 z-[70] grid place-items-center bg-black/60 px-4">
