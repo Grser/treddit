@@ -57,7 +57,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
   const router = useRouter();
   const [isPublishing, setIsPublishing] = useState(false);
   const [storyText, setStoryText] = useState("");
-  const [storyMediaUrl, setStoryMediaUrl] = useState("");
+  const [storyMediaUrls, setStoryMediaUrls] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
@@ -71,8 +71,10 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
   );
   const myStories = useMemo(() => (me ? sortedStories.filter((story) => story.id === me.id) : []), [me, sortedStories]);
   const myStoriesCount = myStories.length;
-  const storyPreviewIsVideo = isVideoUrl(storyMediaUrl);
+  const firstStoryMediaUrl = storyMediaUrls[0] || "";
+  const storyPreviewIsVideo = isVideoUrl(firstStoryMediaUrl);
   const activeStory = viewerIndex !== null ? sortedStories[viewerIndex] : null;
+  const currentViewerIndex = viewerIndex ?? 0;
   const activeStoryViewers = activeStory?.viewers || [];
 
   const otherUsers = useMemo(() => {
@@ -123,23 +125,32 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
     }).catch(() => undefined);
   }, [activeStory, me]);
 
-  async function handleUpload(file?: File | null) {
-    if (!file) return;
-    const form = new FormData();
-    form.append("file", file);
+  async function handleUpload(files: File[]) {
+    if (files.length === 0) return;
 
     setIsUploading(true);
     setPublishError(null);
+    const uploadedUrls: string[] = [];
+
     try {
-      const res = await fetch("/api/upload", { method: "POST", body: form });
-      const data = (await res.json().catch(() => ({}))) as { error?: string; url?: string };
-      if (!res.ok || !data.url) {
-        setPublishError(data.error || "No se pudo subir el archivo.");
-        return;
+      for (const file of files) {
+        const form = new FormData();
+        form.append("file", file);
+
+        const res = await fetch("/api/upload", { method: "POST", body: form });
+        const data = (await res.json().catch(() => ({}))) as { error?: string; url?: string };
+        if (!res.ok || !data.url) {
+          setPublishError(data.error || "No se pudo subir uno de los archivos.");
+          continue;
+        }
+        uploadedUrls.push(data.url);
       }
-      setStoryMediaUrl(data.url);
+
+      if (uploadedUrls.length > 0) {
+        setStoryMediaUrls((prev) => [...new Set([...prev, ...uploadedUrls])].slice(0, 10));
+      }
     } catch {
-      setPublishError("No se pudo subir el archivo.");
+      setPublishError("No se pudieron subir los archivos.");
     } finally {
       setIsUploading(false);
     }
@@ -147,8 +158,8 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
 
   async function publishStory() {
     const normalizedText = storyText.trim();
-    const normalizedMedia = storyMediaUrl.trim();
-    if (!normalizedMedia) {
+    const normalizedMediaUrls = storyMediaUrls.map((url) => url.trim()).filter(Boolean);
+    if (normalizedMediaUrls.length === 0) {
       setPublishError("Sube una foto o video para publicar tu historia.");
       return;
     }
@@ -159,7 +170,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
       const res = await fetch("/api/stories", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: normalizedText, media_url: normalizedMedia }),
+        body: JSON.stringify({ content: normalizedText, media_urls: normalizedMediaUrls }),
       });
 
       const data = (await res.json().catch(() => ({}))) as { error?: string };
@@ -169,7 +180,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
       }
 
       setStoryText("");
-      setStoryMediaUrl("");
+      setStoryMediaUrls([]);
       setIsPublishing(false);
       setIsStoryMenuOpen(false);
       router.refresh();
@@ -219,7 +230,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
               return;
             }
             setIsPublishing(true);
-            setStoryMediaUrl("");
+            setStoryMediaUrls([]);
             setStoryText("");
             setPublishError(null);
             setIsStoryMenuOpen(false);
@@ -305,20 +316,27 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
             <input
               type="file"
               accept="image/*,video/*"
-              onChange={(event) => handleUpload(event.target.files?.[0])}
+              multiple
+              onChange={(event) => {
+                const selectedFiles = event.target.files ? Array.from(event.target.files) : [];
+                void handleUpload(selectedFiles);
+                event.currentTarget.value = "";
+              }}
               className="mt-1 block w-full text-sm text-foreground/80 file:mr-3 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-2 file:text-sm"
               disabled={isUploading || isSaving}
             />
+            <p className="mt-1 text-[11px] opacity-70">Puedes seleccionar varias fotos o videos a la vez (máximo 10).</p>
 
-            {storyMediaUrl && (
+            {firstStoryMediaUrl && (
               <div className="relative mt-3 h-52 w-full overflow-hidden rounded-xl border border-border">
                 {storyPreviewIsVideo ? (
-                  <video src={storyMediaUrl} controls className="h-full w-full object-cover" />
+                  <video src={firstStoryMediaUrl} controls className="h-full w-full object-cover" />
                 ) : (
-                  <Image src={storyMediaUrl} alt="Preview de historia" fill sizes="100vw" className="object-cover" unoptimized />
+                  <Image src={firstStoryMediaUrl} alt="Preview de historia" fill sizes="100vw" className="object-cover" unoptimized />
                 )}
               </div>
             )}
+            {storyMediaUrls.length > 1 && <p className="mt-2 text-xs opacity-80">{storyMediaUrls.length} historias listas para publicar.</p>}
 
             <textarea
               value={storyText}
@@ -374,7 +392,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
                 setViewerIndex((prev) => (prev !== null && prev > 0 ? prev - 1 : prev));
               }}
               className="grid size-10 place-items-center rounded-full border border-white/25 bg-black/40 text-xl text-white disabled:opacity-30"
-              disabled={viewerIndex === 0}
+              disabled={currentViewerIndex === 0}
             >
               ‹
             </button>
@@ -382,8 +400,8 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
             <article className="relative w-full max-w-sm overflow-hidden rounded-2xl border border-white/20 bg-zinc-900">
               <div className="absolute inset-x-0 top-0 z-20 flex gap-1 px-3 pt-2">
                 {sortedStories.map((story, index) => {
-                  const isPast = index < viewerIndex;
-                  const isCurrent = index === viewerIndex;
+                  const isPast = index < currentViewerIndex;
+                  const isCurrent = index === currentViewerIndex;
                   return (
                     <div key={`${story.story_id || story.id}-${story.created_at}-${index}`} className="h-1 flex-1 overflow-hidden rounded-full bg-white/25">
                       <div
@@ -499,7 +517,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
                 setViewerIndex((prev) => (prev !== null && prev < sortedStories.length - 1 ? prev + 1 : prev));
               }}
               className="grid size-10 place-items-center rounded-full border border-white/25 bg-black/40 text-xl text-white disabled:opacity-30"
-              disabled={viewerIndex === sortedStories.length - 1}
+              disabled={currentViewerIndex === sortedStories.length - 1}
             >
               ›
             </button>
