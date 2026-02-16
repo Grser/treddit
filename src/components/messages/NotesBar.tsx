@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
@@ -36,6 +35,8 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
   const [songUrl, setSongUrl] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
+  const [selectedNote, setSelectedNote] = useState<NoteItem | null>(null);
+  const [isActionsOpen, setIsActionsOpen] = useState(false);
 
   const uniqueEntries = useMemo(
     () => notes.filter((entry, index, arr) => arr.findIndex((item) => item.userId === entry.userId) === index).slice(0, 12),
@@ -135,11 +136,15 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
 
         {uniqueEntries.map((entry) => {
           return (
-            <Link
+            <button
               key={entry.userId}
-              href={`/mensajes/${entry.username}`}
+              type="button"
+              onClick={() => {
+                setSelectedNote(entry);
+                setIsActionsOpen(false);
+              }}
               className="group min-w-20 max-w-24 shrink-0 text-center"
-              title={`Abrir chat con ${entry.username}`}
+              title={`Ver nota de ${entry.username}`}
             >
               <p className="mx-auto mb-1.5 line-clamp-2 min-h-9 rounded-2xl bg-white/14 px-2 py-1 text-[10px] leading-tight text-white/90">
                 {entry.content}
@@ -161,7 +166,7 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
                 </div>
               </div>
               <p className="truncate text-[12px] font-medium text-white">{entry.nickname || entry.username}</p>
-            </Link>
+            </button>
           );
         })}
 
@@ -246,6 +251,123 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {selectedNote && (
+        <div className="fixed inset-0 z-[80] grid place-items-center bg-black/65 px-4">
+          <div className="w-full max-w-md rounded-3xl border border-white/10 bg-zinc-900 p-5 text-white shadow-2xl">
+            <div className="flex items-start gap-2">
+              <div>
+                <p className="text-[30px] font-semibold leading-none">{selectedNote.content}</p>
+                {(selectedNote.song_title || selectedNote.song_artist) && (
+                  <p className="mt-1 text-lg font-medium text-fuchsia-200">
+                    ♪ {selectedNote.song_title || "Canción"}
+                    {selectedNote.song_artist ? ` · ${selectedNote.song_artist}` : ""}
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsActionsOpen(true)}
+                className="ml-auto rounded-full px-2 py-1 text-2xl leading-none text-white/90 hover:bg-white/10"
+                aria-label="Opciones de la nota"
+              >
+                ⋯
+              </button>
+            </div>
+
+            <div className="mt-4 flex items-center gap-3">
+              <div className="relative size-20 overflow-hidden rounded-full border border-white/20">
+                <Image
+                  src={selectedNote.avatar_url || "/demo-reddit.png"}
+                  alt={selectedNote.nickname || selectedNote.username}
+                  fill
+                  sizes="80px"
+                  className="object-cover"
+                />
+              </div>
+              <div>
+                <p className="text-base font-semibold">{selectedNote.nickname || selectedNote.username}</p>
+                <p className="text-sm text-white/65">Se ha compartido con seguidores a los que sigues</p>
+              </div>
+            </div>
+
+            {selectedNote.song_url && (
+              <audio key={selectedNote.id} src={selectedNote.song_url} controls autoPlay className="mt-4 w-full" />
+            )}
+
+            <div className="mt-4 space-y-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (!canInteract) {
+                    router.push("/auth/login");
+                    return;
+                  }
+                  const noteToEdit = me?.id === selectedNote.userId ? selectedNote : myNote;
+                  setNoteText(noteToEdit?.content || "");
+                  setSongTitle(noteToEdit?.song_title || "");
+                  setSongArtist(noteToEdit?.song_artist || "");
+                  setSongUrl(noteToEdit?.song_url || "");
+                  setSelectedNote(null);
+                  setIsPublishing(true);
+                }}
+                className="inline-flex h-10 w-full items-center justify-center rounded-xl bg-brand px-4 text-sm font-semibold text-white"
+              >
+                Dejar una nota nueva
+              </button>
+              {me?.id === selectedNote.userId && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await deleteNote();
+                    setSelectedNote(null);
+                  }}
+                  className="inline-flex h-10 w-full items-center justify-center rounded-xl text-sm font-medium text-red-300"
+                >
+                  Eliminar nota
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setSelectedNote(null)}
+                className="inline-flex h-10 w-full items-center justify-center rounded-xl text-sm font-medium text-white/80"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+
+          {isActionsOpen && (
+            <div className="fixed inset-0 z-[81] grid place-items-end bg-black/40 p-4 sm:place-items-center" onClick={() => setIsActionsOpen(false)}>
+              <div
+                className="w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-zinc-900"
+                onClick={(event) => event.stopPropagation()}
+              >
+                {me?.id === selectedNote.userId && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await deleteNote();
+                      setIsActionsOpen(false);
+                      setSelectedNote(null);
+                    }}
+                    className="block h-12 w-full border-b border-white/10 text-center text-sm font-semibold text-red-400"
+                  >
+                    Eliminar
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setIsActionsOpen(false)}
+                  className="block h-12 w-full text-center text-sm text-white/90"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </section>

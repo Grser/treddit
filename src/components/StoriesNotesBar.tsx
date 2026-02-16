@@ -136,7 +136,13 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
           className="group min-w-18 max-w-20 shrink-0 text-center"
           title={canInteract ? "Publicar historia" : "Inicia sesión para publicar historias"}
         >
-          <div className="relative mx-auto mb-1.5 grid size-[64px] place-items-center rounded-full bg-gradient-to-tr from-amber-400 via-fuchsia-500 to-violet-500 p-[2px] transition group-hover:scale-[1.03]">
+          <div
+            className={`relative mx-auto mb-1.5 grid size-[64px] place-items-center rounded-full p-[2px] transition group-hover:scale-[1.03] ${
+              myExistingStory
+                ? "bg-gradient-to-tr from-amber-400 via-fuchsia-500 to-violet-500"
+                : "bg-white/20"
+            }`}
+          >
             <div className="relative grid size-full place-items-center rounded-full bg-surface ring-[3px] ring-[#050d18]">
               {me ? (
                 <Image
@@ -159,6 +165,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
 
         {uniqueUsers.map((user, index) => {
           const isMe = me?.id === user.id;
+          const hasStory = Boolean(user.media_url);
           return (
             <button
               key={user.id}
@@ -167,7 +174,11 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
               className="group min-w-18 max-w-20 shrink-0 text-center"
               title={isMe ? "Tu historia" : `Ver historia de ${user.username}`}
             >
-              <div className="relative mx-auto mb-1.5 size-[64px] rounded-full bg-gradient-to-tr from-amber-400 via-fuchsia-500 to-violet-500 p-[2px] transition group-hover:scale-[1.03]">
+              <div
+                className={`relative mx-auto mb-1.5 size-[64px] rounded-full p-[2px] transition group-hover:scale-[1.03] ${
+                  hasStory ? "bg-gradient-to-tr from-amber-400 via-fuchsia-500 to-violet-500" : "bg-white/20"
+                }`}
+              >
                 <div className="relative size-full overflow-hidden rounded-full bg-surface ring-[3px] ring-[#050d18]">
                   <Image
                     src={user.avatar_url || "/demo-reddit.png"}
