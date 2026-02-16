@@ -1,14 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function LoginPage() {
   const r = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const oauthError = searchParams.get("error");
+  const oauthErrorMessage =
+    oauthError === "google_oauth_config"
+      ? "El acceso con Google no está configurado correctamente. Revisa GOOGLE_CLIENT_ID en variables de entorno."
+      : oauthError === "google_oauth_redirect"
+        ? "El callback OAuth de Google apunta a treddit.com. Configura GOOGLE_REDIRECT_URI con tu dominio público para evitar el Error 400 invalid_request."
+        : null;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -51,7 +60,7 @@ export default function LoginPage() {
             />
           </label>
 
-          {error && <p className="text-sm text-red-400">{error}</p>}
+          {(error || oauthErrorMessage) && <p className="text-sm text-red-400">{error || oauthErrorMessage}</p>}
 
           <button
             type="submit"
