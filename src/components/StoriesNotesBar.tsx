@@ -27,12 +27,20 @@ function storyAgeLabel(createdAt?: string) {
 
 type StoryItem = {
   id: number;
+  story_id?: number;
   username: string;
   nickname: string | null;
   avatar_url?: string | null;
   content?: string | null;
   media_url?: string | null;
   created_at?: string;
+  viewers?: {
+    id: number;
+    username: string;
+    nickname: string | null;
+    avatar_url: string | null;
+    viewed_at: string;
+  }[];
 };
 
 type Props = {
@@ -65,6 +73,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
   const myStoriesCount = myStories.length;
   const storyPreviewIsVideo = isVideoUrl(storyMediaUrl);
   const activeStory = viewerIndex !== null ? sortedStories[viewerIndex] : null;
+  const activeStoryViewers = activeStory?.viewers || [];
 
   const otherUsers = useMemo(() => {
     const grouped = new Map<number, StoryItem & { storyCount: number }>();
@@ -104,6 +113,15 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
 
     return () => window.clearInterval(interval);
   }, [viewerIndex, sortedStories]);
+
+  useEffect(() => {
+    if (!activeStory || !me || activeStory.id === me.id || !activeStory.story_id) return;
+    void fetch("/api/stories", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ storyId: activeStory.story_id }),
+    }).catch(() => undefined);
+  }, [activeStory, me]);
 
   async function handleUpload(file?: File | null) {
     if (!file) return;
@@ -194,52 +212,10 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
               router.push("/auth/login");
               return;
             }
-            setIsPublishing(true);
-            setStoryMediaUrl("");
-            setStoryText("");
-            setPublishError(null);
-            setIsStoryMenuOpen(false);
-          }}
-          className="group min-w-18 max-w-20 shrink-0 text-center"
-          title={canInteract ? "Publicar historia" : "Inicia sesión para publicar historias"}
-        >
-          <div
-            className={`relative mx-auto mb-1.5 grid size-[64px] place-items-center rounded-full p-[2px] transition group-hover:scale-[1.03] ${
-              myStoriesCount > 0
-                ? "bg-gradient-to-tr from-amber-400 via-fuchsia-500 to-violet-500"
-                : "bg-white/20"
-            }`}
-          >
-            <div className="relative grid size-full place-items-center rounded-full bg-surface ring-[3px] ring-[#050d18]">
-              {me ? (
-                <Image
-                  src={me.avatar_url || "/demo-reddit.png"}
-                  alt={me.username}
-                  fill
-                  sizes="64px"
-                  className="rounded-full object-cover"
-                />
-              ) : (
-                <span className="text-2xl font-bold">+</span>
-              )}
-              <span className="absolute -bottom-0.5 -right-0.5 grid size-5 place-items-center rounded-full bg-[#0095f6] text-sm font-bold text-white ring-2 ring-[#050d18]">
-                +
-              </span>
-              {myStoriesCount > 0 && (
-                <span className="absolute -top-1 -left-1 rounded-full bg-brand px-1.5 text-[10px] font-semibold text-white">
-                  {myStoriesCount}
-                </span>
-              )}
-            </div>
-          </div>
-          <p className="truncate text-[12px] font-medium text-white">{myStoriesCount > 0 ? "Agregar" : "Tu historia"}</p>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => {
-            if (!canInteract) {
-              router.push("/auth/login");
+            if (myStoriesCount > 0) {
+              const firstMyStoryIndex = sortedStories.findIndex((story) => story.id === me?.id);
+              setViewerIndex(firstMyStoryIndex >= 0 ? firstMyStoryIndex : null);
+              setIsStoryMenuOpen(false);
               return;
             }
             setIsPublishing(true);
@@ -249,27 +225,43 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
             setIsStoryMenuOpen(false);
           }}
           className="group min-w-18 max-w-20 shrink-0 text-center"
-          title={canInteract ? "Crear historia" : "Inicia sesión para crear historias"}
+          title={canInteract ? (myStoriesCount > 0 ? "Ver tu historia" : "Publicar historia") : "Inicia sesión para publicar historias"}
         >
-          <div className="relative mx-auto mb-1.5 grid size-[64px] place-items-center rounded-full bg-white/15 p-[2px] transition group-hover:scale-[1.03]">
-            <div className="grid size-full place-items-center rounded-full bg-surface ring-[3px] ring-[#050d18]">
-              <span className="text-3xl leading-none text-white">+</span>
+          <div
+            className={`relative mx-auto mb-1.5 grid size-[64px] place-items-center rounded-full p-[2px] transition group-hover:scale-[1.03] ${
+              myStoriesCount > 0
+                ? "bg-gradient-to-tr from-amber-400 via-fuchsia-500 to-violet-500"
+                : "bg-white/20"
+            }`}
+          >
+            <div className="relative grid size-full place-items-center overflow-hidden rounded-full bg-surface ring-[3px] ring-[#050d18]">
+              <Image
+                src={me?.avatar_url || "/demo-reddit.png"}
+                alt={me?.username || "Tu historia"}
+                fill
+                sizes="64px"
+                className="rounded-full object-cover"
+              />
+              {myStoriesCount > 1 && (
+                <span className="absolute -top-1 -left-1 rounded-full bg-brand px-1.5 text-[10px] font-semibold text-white">
+                  {myStoriesCount}
+                </span>
+              )}
             </div>
           </div>
-          <p className="truncate text-[12px] font-medium text-white">Crear historia</p>
+          <p className="truncate text-[12px] font-medium text-white">Tu historia</p>
         </button>
 
         {otherUsers.map((user) => {
           const hasStory = Boolean(user.media_url);
           const firstStoryIndex = sortedStories.findIndex((story) => story.id === user.id);
-          const isSelf = me?.id === user.id;
           return (
             <button
               key={user.id}
               type="button"
               onClick={() => setViewerIndex(firstStoryIndex >= 0 ? firstStoryIndex : null)}
               className="group min-w-18 max-w-20 shrink-0 text-center"
-              title={isSelf ? "Ver tus historias" : `Ver historia de ${user.username}`}
+              title={`Ver historia de ${user.username}`}
             >
               <div
                 className={`relative mx-auto mb-1.5 size-[64px] rounded-full p-[2px] transition group-hover:scale-[1.03] ${
@@ -291,7 +283,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
                   )}
                 </div>
               </div>
-              <p className="truncate text-[12px] font-medium text-white">{isSelf ? "Tú" : user.username}</p>
+              <p className="truncate text-[12px] font-medium text-white">{user.username}</p>
             </button>
           );
         })}
@@ -393,7 +385,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
                   const isPast = index < viewerIndex;
                   const isCurrent = index === viewerIndex;
                   return (
-                    <div key={`${story.id}-${story.created_at}-${index}`} className="h-1 flex-1 overflow-hidden rounded-full bg-white/25">
+                    <div key={`${story.story_id || story.id}-${story.created_at}-${index}`} className="h-1 flex-1 overflow-hidden rounded-full bg-white/25">
                       <div
                         className="h-full rounded-full bg-white transition-[width] duration-100"
                         style={{ width: `${isPast ? 100 : isCurrent ? viewerProgress : 0}%` }}
@@ -479,12 +471,12 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
                 <div className="mt-3 flex items-center justify-between gap-3 text-xs text-white/70">
                   <div className="flex items-center gap-2">
                     <span>👁️</span>
-                    <span>{me?.id === activeStory.id ? `Visto por ${otherUsers.length} personas` : "Visto por seguidores y amigos"}</span>
+                    <span>{me?.id === activeStory.id ? `Visto por ${activeStoryViewers.length} personas` : "Historia privada"}</span>
                   </div>
-                  {me?.id === activeStory.id && otherUsers.length > 0 && (
+                  {me?.id === activeStory.id && activeStoryViewers.length > 0 && (
                     <div className="flex -space-x-2">
-                      {otherUsers.slice(0, 3).map((viewer) => (
-                        <div key={`viewer-${viewer.id}`} className="relative size-6 overflow-hidden rounded-full border border-black/70">
+                      {activeStoryViewers.slice(0, 3).map((viewer) => (
+                        <div key={`viewer-${activeStory.story_id || activeStory.id}-${viewer.id}`} className="relative size-6 overflow-hidden rounded-full border border-black/70">
                           <Image
                             src={viewer.avatar_url || "/demo-reddit.png"}
                             alt={viewer.username}

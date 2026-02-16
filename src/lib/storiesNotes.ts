@@ -11,6 +11,13 @@ export type StoryItem = {
   content: string | null;
   media_url: string;
   created_at: string;
+  viewers?: {
+    id: number;
+    username: string;
+    nickname: string | null;
+    avatar_url: string | null;
+    viewed_at: string;
+  }[];
 };
 
 export type NoteItem = {
@@ -48,6 +55,15 @@ type NoteRow = RowDataPacket & {
   song_artist: string | null;
   song_url: string | null;
   created_at: string | Date;
+};
+
+type StoryViewRow = RowDataPacket & {
+  story_id: number;
+  viewer_id: number;
+  username: string;
+  nickname: string | null;
+  avatar_url: string | null;
+  viewed_at: string | Date;
 };
 
 let schemaEnsured = false;
@@ -90,6 +106,19 @@ export async function ensureStoriesNotesTables() {
   await db.execute("ALTER TABLE Stories ADD COLUMN media_url VARCHAR(500) NOT NULL DEFAULT ''").catch(() => undefined);
   await db.execute("ALTER TABLE Stories MODIFY COLUMN content VARCHAR(220) NULL").catch(() => undefined);
 
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS Story_Views (
+      story_id INT UNSIGNED NOT NULL,
+      viewer_id INT(10) UNSIGNED NOT NULL,
+      viewed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (story_id, viewer_id),
+      KEY idx_story_views_viewer_id (viewer_id),
+      KEY idx_story_views_viewed_at (viewed_at),
+      CONSTRAINT fk_story_views_story FOREIGN KEY (story_id) REFERENCES Stories(id) ON DELETE CASCADE ON UPDATE CASCADE,
+      CONSTRAINT fk_story_views_user FOREIGN KEY (viewer_id) REFERENCES Users(id) ON DELETE CASCADE ON UPDATE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
   await db.execute("ALTER TABLE User_Notes ADD COLUMN song_title VARCHAR(120) NULL").catch(() => undefined);
   await db.execute("ALTER TABLE User_Notes ADD COLUMN song_artist VARCHAR(120) NULL").catch(() => undefined);
   await db.execute("ALTER TABLE User_Notes ADD COLUMN song_url VARCHAR(500) NULL").catch(() => undefined);
@@ -129,6 +158,35 @@ export async function deleteStoryByUser(userId: number) {
   return res.affectedRows;
 }
 
+export async function registerStoryView(storyId: number, viewerId: number) {
+  if (!isDatabaseConfigured()) return false;
+  await ensureStoriesNotesTables();
+
+  const [res] = await db.execute<ResultSetHeader>(
+    `
+    INSERT INTO Story_Views (story_id, viewer_id)
+    SELECT s.id, ?
+    FROM Stories s
+    WHERE s.id = ?
+      AND s.expires_at > NOW()
+      AND s.user_id <> ?
+      AND (
+        s.user_id = ?
+        OR EXISTS (
+          SELECT 1
+          FROM Follows f
+          WHERE f.follower = ?
+            AND f.followed = s.user_id
+        )
+      )
+    ON DUPLICATE KEY UPDATE viewed_at = CURRENT_TIMESTAMP
+    `,
+    [viewerId, storyId, viewerId, viewerId, viewerId],
+  );
+
+  return res.affectedRows > 0;
+}
+
 export async function deleteNoteByUser(userId: number) {
   if (!isDatabaseConfigured()) return 0;
   await ensureStoriesNotesTables();
@@ -165,7 +223,7 @@ export async function loadActiveStories(limit = 24, viewerId?: number | null): P
     [viewerId ?? null, viewerId ?? null, viewerId ?? null, limit],
   );
 
-  return rows.map((row) => ({
+  const items = rows.map((row) => ({
     id: Number(row.id),
     userId: Number(row.user_id),
     username: row.username,
@@ -174,6 +232,42 @@ export async function loadActiveStories(limit = 24, viewerId?: number | null): P
     content: row.content,
     media_url: row.media_url,
     created_at: new Date(row.created_at).toISOString(),
+  }));
+
+  if (!viewerId) return items;
+
+  const ownStoryIds = items.filter((item) => item.userId === viewerId).map((item) => item.id);
+  if (ownStoryIds.length === 0) return items;
+
+  const placeholders = ownStoryIds.map(() => "?").join(", ");
+  const [viewRows] = await db.query<StoryViewRow[]>(
+    `
+    SELECT sv.story_id, sv.viewer_id, sv.viewed_at, u.username, u.nickname, u.avatar_url
+    FROM Story_Views sv
+    JOIN Users u ON u.id = sv.viewer_id
+    WHERE sv.story_id IN (${placeholders})
+    ORDER BY sv.viewed_at DESC
+    `,
+    ownStoryIds,
+  );
+
+  const viewersByStoryId = new Map<number, StoryItem["viewers"]>();
+  for (const row of viewRows) {
+    const storyId = Number(row.story_id);
+    const current = viewersByStoryId.get(storyId) || [];
+    current.push({
+      id: Number(row.viewer_id),
+      username: row.username,
+      nickname: row.nickname,
+      avatar_url: row.avatar_url,
+      viewed_at: new Date(row.viewed_at).toISOString(),
+    });
+    viewersByStoryId.set(storyId, current);
+  }
+
+  return items.map((item) => ({
+    ...item,
+    viewers: item.userId === viewerId ? viewersByStoryId.get(item.id) || [] : undefined,
   }));
 }
 

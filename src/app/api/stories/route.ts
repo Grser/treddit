@@ -3,7 +3,7 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 
 import { getSessionUser, requireUser } from "@/lib/auth";
-import { createStory, deleteStoryByUser, loadActiveStories } from "@/lib/storiesNotes";
+import { createStory, deleteStoryByUser, loadActiveStories, registerStoryView } from "@/lib/storiesNotes";
 
 export async function GET() {
   const me = await getSessionUser();
@@ -39,5 +39,24 @@ export async function POST(req: Request) {
 export async function DELETE() {
   const me = await requireUser();
   await deleteStoryByUser(me.id);
+  return NextResponse.json({ ok: true });
+}
+
+export async function PATCH(req: Request) {
+  const me = await requireUser();
+
+  let payload: unknown;
+  try {
+    payload = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Formato inválido" }, { status: 400 });
+  }
+
+  const storyId = Number((payload as { storyId?: unknown })?.storyId);
+  if (!Number.isFinite(storyId) || storyId <= 0) {
+    return NextResponse.json({ error: "Historia inválida" }, { status: 400 });
+  }
+
+  await registerStoryView(storyId, me.id);
   return NextResponse.json({ ok: true });
 }
