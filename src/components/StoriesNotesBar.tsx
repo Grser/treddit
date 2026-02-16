@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 function isVideoUrl(url: string | null | undefined) {
   if (!url) return false;
@@ -43,6 +43,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
   const [isUploading, setIsUploading] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+  const [viewerProgress, setViewerProgress] = useState(0);
   const [isStoryMenuOpen, setIsStoryMenuOpen] = useState(false);
 
   const sortedStories = useMemo(
@@ -66,6 +67,30 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
     }
     return Array.from(grouped.values()).slice(0, 12);
   }, [me?.id, sortedStories]);
+
+  useEffect(() => {
+    if (viewerIndex === null || !sortedStories[viewerIndex]) {
+      setViewerProgress(0);
+      return;
+    }
+
+    setViewerProgress(0);
+    const interval = window.setInterval(() => {
+      setViewerProgress((prev) => {
+        const next = prev + 2;
+        if (next >= 100) {
+          setViewerIndex((current) => {
+            if (current === null) return null;
+            return current < sortedStories.length - 1 ? current + 1 : null;
+          });
+          return 100;
+        }
+        return next;
+      });
+    }, 100);
+
+    return () => window.clearInterval(interval);
+  }, [viewerIndex, sortedStories]);
 
   async function handleUpload(file?: File | null) {
     if (!file) return;
@@ -197,6 +222,30 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
           <p className="truncate text-[12px] font-medium text-white">{myStoriesCount > 0 ? "Agregar" : "Tu historia"}</p>
         </button>
 
+        <button
+          type="button"
+          onClick={() => {
+            if (!canInteract) {
+              router.push("/auth/login");
+              return;
+            }
+            setIsPublishing(true);
+            setStoryMediaUrl("");
+            setStoryText("");
+            setPublishError(null);
+            setIsStoryMenuOpen(false);
+          }}
+          className="group min-w-18 max-w-20 shrink-0 text-center"
+          title={canInteract ? "Crear historia" : "Inicia sesión para crear historias"}
+        >
+          <div className="relative mx-auto mb-1.5 grid size-[64px] place-items-center rounded-full bg-white/15 p-[2px] transition group-hover:scale-[1.03]">
+            <div className="grid size-full place-items-center rounded-full bg-surface ring-[3px] ring-[#050d18]">
+              <span className="text-3xl leading-none text-white">+</span>
+            </div>
+          </div>
+          <p className="truncate text-[12px] font-medium text-white">Crear historia</p>
+        </button>
+
         {otherUsers.map((user) => {
           const hasStory = Boolean(user.media_url);
           const firstStoryIndex = sortedStories.findIndex((story) => story.id === user.id);
@@ -326,6 +375,21 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
             </button>
 
             <article className="relative w-full max-w-sm overflow-hidden rounded-2xl border border-white/20 bg-zinc-900">
+              <div className="absolute inset-x-0 top-0 z-10 flex gap-1 px-3 pt-2">
+                {sortedStories.map((story, index) => {
+                  const isPast = index < viewerIndex;
+                  const isCurrent = index === viewerIndex;
+                  return (
+                    <div key={`${story.id}-${story.created_at}-${index}`} className="h-1 flex-1 overflow-hidden rounded-full bg-white/25">
+                      <div
+                        className="h-full rounded-full bg-white transition-[width] duration-100"
+                        style={{ width: `${isPast ? 100 : isCurrent ? viewerProgress : 0}%` }}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+
               <div className="flex items-center gap-2 border-b border-white/15 p-3 text-white">
                 <div className="relative size-8 overflow-hidden rounded-full">
                   <Image
@@ -374,7 +438,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
               <div className="border-t border-white/15 p-3 text-sm text-white/90">
                 {sortedStories[viewerIndex].content && <p>{sortedStories[viewerIndex].content}</p>}
                 <div className="mt-3 flex items-center justify-between gap-3 text-xs text-white/70">
-                  <span>Quién lo ve: personas que te siguen</span>
+                  <span>👁️ Visto por seguidores y amigos</span>
 
                   {me?.id === sortedStories[viewerIndex].id && (
                     <div className="relative">
