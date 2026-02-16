@@ -14,6 +14,7 @@ import { requireUser } from "@/lib/auth";
 import { db, isDatabaseConfigured } from "@/lib/db";
 import { getDemoConversation, resolveDemoUserByUsername } from "@/lib/demoStore";
 import { loadInbox } from "@/lib/inbox";
+import { loadActiveNotes } from "@/lib/storiesNotes";
 import {
   fetchConversationMessages,
   getDirectMessageAccess,
@@ -42,12 +43,14 @@ function ConversationLayout({
   messages,
   viewerId,
   helperText,
+  notes,
 }: {
   inbox: Awaited<ReturnType<typeof loadInbox>>;
   participant: ConversationUser;
   messages: Awaited<ReturnType<typeof fetchConversationMessages>>;
   viewerId: number;
   helperText?: string;
+  notes: Awaited<ReturnType<typeof loadActiveNotes>>;
 }) {
   const avatar = participant.avatar_url?.trim() || "/demo-reddit.png";
   const displayName = participant.nickname || participant.username;
@@ -56,7 +59,7 @@ function ConversationLayout({
     <div className="min-h-dvh bg-background text-foreground">
       <Navbar />
       <main className="mx-auto w-full max-w-6xl px-4 py-6 space-y-4">
-        <NotesBar entries={inbox} />
+        <NotesBar notes={notes} />
 
         <div className="grid h-[calc(100dvh-7.75rem)] min-h-[560px] overflow-hidden rounded-3xl border border-border/80 bg-surface shadow-xl lg:grid-cols-[360px_minmax(0,1fr)]">
           <aside className="hidden border-r border-border/80 lg:block">
@@ -101,6 +104,7 @@ function ConversationLayout({
 export default async function ConversationPage({ params }: ConversationParams) {
   const [{ username }, me] = await Promise.all([params, requireUser()]);
   const inboxPromise = loadInbox(me.id);
+  const notesPromise = loadActiveNotes();
 
   if (!isDatabaseConfigured()) {
     const demoTarget = resolveDemoUserByUsername(username);
@@ -136,6 +140,7 @@ export default async function ConversationPage({ params }: ConversationParams) {
         messages={getDemoConversation(me.id, demoTarget.id)}
         viewerId={me.id}
         helperText="Modo demostración: adjunta imágenes, audio o video libremente."
+        notes={await notesPromise}
       />
     );
   }
@@ -215,6 +220,7 @@ export default async function ConversationPage({ params }: ConversationParams) {
       messages={await fetchConversationMessages(me.id, participant.id, 60)}
       viewerId={me.id}
       helperText={participant.allowsAnyone ? "Acepta mensajes de cualquier usuario" : undefined}
+      notes={await notesPromise}
     />
   );
 }

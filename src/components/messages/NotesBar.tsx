@@ -5,30 +5,29 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import type { InboxEntry } from "@/lib/inbox";
-
-const NOTE_ROTATION = [
-  "Disponible ahora ✨",
-  "En línea por si quieres hablar",
-  "Respondo rápido hoy",
-  "Compartiendo ideas nuevas",
-  "Pasando a saludar 👋",
-];
+type NoteItem = {
+  id: number;
+  userId: number;
+  username: string;
+  nickname: string | null;
+  avatar_url: string | null;
+  content: string;
+};
 
 type Props = {
-  entries: InboxEntry[];
+  notes: NoteItem[];
   canInteract?: boolean;
   className?: string;
 };
 
-export default function NotesBar({ entries, canInteract = true, className }: Props) {
+export default function NotesBar({ notes, canInteract = true, className }: Props) {
   const router = useRouter();
   const [isPublishing, setIsPublishing] = useState(false);
   const [noteText, setNoteText] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
 
-  const uniqueEntries = entries
+  const uniqueEntries = notes
     .filter((entry, index, arr) => arr.findIndex((item) => item.userId === entry.userId) === index)
     .slice(0, 12);
 
@@ -42,10 +41,10 @@ export default function NotesBar({ entries, canInteract = true, className }: Pro
     setIsSaving(true);
     setPublishError(null);
     try {
-      const res = await fetch("/api/posts", {
+      const res = await fetch("/api/notes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ description: `📝 Nota: ${normalizedText}` }),
+        body: JSON.stringify({ content: normalizedText }),
       });
 
       const data = (await res.json().catch(() => ({}))) as { error?: string };
@@ -90,8 +89,7 @@ export default function NotesBar({ entries, canInteract = true, className }: Pro
           <p className="truncate text-[12px] font-medium text-white">Tu nota</p>
         </button>
 
-        {uniqueEntries.map((entry, index) => {
-          const note = NOTE_ROTATION[index % NOTE_ROTATION.length];
+        {uniqueEntries.map((entry) => {
           return (
             <Link
               key={entry.userId}
@@ -100,7 +98,7 @@ export default function NotesBar({ entries, canInteract = true, className }: Pro
               title={`Abrir chat con ${entry.username}`}
             >
               <p className="mx-auto mb-1.5 line-clamp-2 min-h-9 rounded-2xl bg-white/14 px-2 py-1 text-[10px] leading-tight text-white/90">
-                {note}
+                {entry.content}
               </p>
               <div className="relative mx-auto mb-1 size-[58px] rounded-full bg-gradient-to-tr from-amber-400 via-fuchsia-500 to-violet-500 p-[2px] transition group-hover:scale-[1.03]">
                 <div className="relative size-full overflow-hidden rounded-full bg-surface ring-[3px] ring-[#050d18]">
@@ -129,7 +127,7 @@ export default function NotesBar({ entries, canInteract = true, className }: Pro
         <div className="fixed inset-0 z-[70] grid place-items-center bg-black/60 px-4">
           <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-4 sm:p-5">
             <h3 className="text-base font-semibold">Publicar nota</h3>
-            <p className="mt-1 text-xs opacity-70">Se publicará como un estado corto en el feed.</p>
+            <p className="mt-1 text-xs opacity-70">Tu nota aparecerá aquí durante 24 horas.</p>
             <textarea
               value={noteText}
               onChange={(event) => setNoteText(event.target.value)}
