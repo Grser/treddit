@@ -43,6 +43,7 @@ type NoteItem = {
   song_title?: string | null;
   song_artist?: string | null;
   song_url?: string | null;
+  created_at?: string;
 };
 
 type Props = {
@@ -67,12 +68,20 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
   const [selectedNote, setSelectedNote] = useState<NoteItem | null>(null);
   const [isActionsOpen, setIsActionsOpen] = useState(false);
 
-  const uniqueEntries = useMemo(
-    () => notes.filter((entry, index, arr) => arr.findIndex((item) => item.userId === entry.userId) === index).slice(0, 12),
+  const sortedNotes = useMemo(
+    () => [...notes].sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()),
     [notes],
   );
-
-  const myNote = me ? uniqueEntries.find((entry) => entry.userId === me.id) : null;
+  const myNotes = useMemo(() => (me ? sortedNotes.filter((entry) => entry.userId === me.id) : []), [me, sortedNotes]);
+  const myNote = myNotes[0] || null;
+  const myNotesCount = myNotes.length;
+  const uniqueEntries = useMemo(
+    () => sortedNotes
+      .filter((entry) => entry.userId !== me?.id)
+      .filter((entry, index, arr) => arr.findIndex((item) => item.userId === entry.userId) === index)
+      .slice(0, 12),
+    [me?.id, sortedNotes],
+  );
   const selectedNoteYoutubeUrl = getYoutubeEmbedUrl(selectedNote?.song_url);
 
   async function publishNote() {
@@ -144,10 +153,11 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
               router.push("/auth/login");
               return;
             }
-            setNoteText(myNote?.content || "");
-            setSongTitle(myNote?.song_title || "");
-            setSongArtist(myNote?.song_artist || "");
-            setSongUrl(myNote?.song_url || "");
+            setNoteText("");
+            setSongTitle("");
+            setSongArtist("");
+            setSongUrl("");
+            setPublishError(null);
             setIsPublishing(true);
           }}
           className="group min-w-20 max-w-24 shrink-0 text-center"
@@ -159,6 +169,11 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
           <div className="relative mx-auto mb-1 size-[58px] rounded-full bg-gradient-to-tr from-amber-400 via-fuchsia-500 to-violet-500 p-[2px] transition group-hover:scale-[1.03]">
             <div className="relative grid size-full place-items-center rounded-full bg-surface ring-[3px] ring-[#050d18] text-xl font-bold text-white">
               +
+              {myNotesCount > 0 && (
+                <span className="absolute -top-1 -left-1 rounded-full bg-brand px-1.5 text-[10px] font-semibold text-white">
+                  {myNotesCount}
+                </span>
+              )}
             </div>
           </div>
           <p className="truncate text-[12px] font-medium text-white">Tu nota</p>
@@ -200,7 +215,7 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
           );
         })}
 
-        {uniqueEntries.length === 0 && (
+        {sortedNotes.length === 0 && (
           <p className="px-2 py-5 text-sm text-white/70">Aún no tienes notas porque no hay chats activos.</p>
         )}
       </div>
@@ -254,7 +269,7 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
               <button
                 type="button"
                 onClick={deleteNote}
-                disabled={isSaving || !myNote}
+                disabled={isSaving || myNotesCount === 0}
                 className="inline-flex h-9 items-center justify-center rounded-full border border-red-400/70 px-4 text-sm text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Borrar nota

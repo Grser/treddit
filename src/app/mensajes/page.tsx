@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 export default async function MessagesPage() {
   const me = await getSessionUser();
   const entries = me ? await loadInbox(me.id) : [];
-  const notes = me ? await loadActiveNotes() : [];
+  const notes = me ? await loadActiveNotes(24, me.id) : [];
 
   return (
     <div className="min-h-dvh bg-background text-foreground">

@@ -2,11 +2,12 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 
-import { requireUser } from "@/lib/auth";
+import { getSessionUser, requireUser } from "@/lib/auth";
 import { createUserNote, deleteNoteByUser, loadActiveNotes } from "@/lib/storiesNotes";
 
 export async function GET() {
-  const items = await loadActiveNotes();
+  const me = await getSessionUser();
+  const items = await loadActiveNotes(24, me?.id);
   return NextResponse.json({ items }, { headers: { "Cache-Control": "no-store" } });
 }
 

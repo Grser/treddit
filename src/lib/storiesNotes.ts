@@ -101,7 +101,6 @@ export async function createStory(userId: number, params: { content?: string | n
   if (!isDatabaseConfigured()) return null;
   await ensureStoriesNotesTables();
 
-  await db.execute("DELETE FROM Stories WHERE user_id=?", [userId]);
   const [insertResult] = await db.execute<ResultSetHeader>(
     "INSERT INTO Stories (user_id, content, media_url, expires_at) VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 24 HOUR))",
     [userId, params.content || null, params.media_url],
@@ -116,7 +115,6 @@ export async function createUserNote(
   if (!isDatabaseConfigured()) return null;
   await ensureStoriesNotesTables();
 
-  await db.execute("DELETE FROM User_Notes WHERE user_id=?", [userId]);
   const [insertResult] = await db.execute<ResultSetHeader>(
     "INSERT INTO User_Notes (user_id, content, song_title, song_artist, song_url, expires_at) VALUES (?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 24 HOUR))",
     [userId, params.content, params.song_title || null, params.song_artist || null, params.song_url || null],
@@ -138,7 +136,7 @@ export async function deleteNoteByUser(userId: number) {
   return res.affectedRows;
 }
 
-export async function loadActiveStories(limit = 12): Promise<StoryItem[]> {
+export async function loadActiveStories(limit = 24, viewerId?: number | null): Promise<StoryItem[]> {
   if (!isDatabaseConfigured()) return [];
   await ensureStoriesNotesTables();
 
@@ -149,11 +147,22 @@ export async function loadActiveStories(limit = 12): Promise<StoryItem[]> {
     SELECT s.id, s.user_id, s.content, s.media_url, s.created_at, u.username, u.nickname, u.avatar_url
     FROM Stories s
     JOIN Users u ON u.id = s.user_id
-    WHERE s.expires_at > NOW() AND u.visible = 1
+    WHERE s.expires_at > NOW()
+      AND u.visible = 1
+      AND (
+        ? IS NULL
+        OR s.user_id = ?
+        OR EXISTS (
+          SELECT 1
+          FROM Follows f
+          WHERE f.follower = ?
+            AND f.followed = s.user_id
+        )
+      )
     ORDER BY s.created_at DESC
     LIMIT ?
     `,
-    [limit],
+    [viewerId ?? null, viewerId ?? null, viewerId ?? null, limit],
   );
 
   return rows.map((row) => ({
@@ -168,7 +177,7 @@ export async function loadActiveStories(limit = 12): Promise<StoryItem[]> {
   }));
 }
 
-export async function loadActiveNotes(limit = 12): Promise<NoteItem[]> {
+export async function loadActiveNotes(limit = 24, viewerId?: number | null): Promise<NoteItem[]> {
   if (!isDatabaseConfigured()) return [];
   await ensureStoriesNotesTables();
 
@@ -179,11 +188,22 @@ export async function loadActiveNotes(limit = 12): Promise<NoteItem[]> {
     SELECT n.id, n.user_id, n.content, n.song_title, n.song_artist, n.song_url, n.created_at, u.username, u.nickname, u.avatar_url
     FROM User_Notes n
     JOIN Users u ON u.id = n.user_id
-    WHERE n.expires_at > NOW() AND u.visible = 1
+    WHERE n.expires_at > NOW()
+      AND u.visible = 1
+      AND (
+        ? IS NULL
+        OR n.user_id = ?
+        OR EXISTS (
+          SELECT 1
+          FROM Follows f
+          WHERE f.follower = ?
+            AND f.followed = n.user_id
+        )
+      )
     ORDER BY n.created_at DESC
     LIMIT ?
     `,
-    [limit],
+    [viewerId ?? null, viewerId ?? null, viewerId ?? null, limit],
   );
 
   return rows.map((row) => ({

@@ -14,18 +14,19 @@ function isVideoUrl(url: string | null | undefined) {
   }
 }
 
-type StoryUser = {
+type StoryItem = {
   id: number;
   username: string;
   nickname: string | null;
   avatar_url?: string | null;
   content?: string | null;
   media_url?: string | null;
+  created_at?: string;
 };
 
 type Props = {
   canInteract: boolean;
-  users: StoryUser[];
+  users: StoryItem[];
   me?: {
     id: number;
     username: string;
@@ -43,15 +44,27 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
   const [publishError, setPublishError] = useState<string | null>(null);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
 
-  const myExistingStory = me ? users.find((user) => user.id === me.id) : null;
-  const storyPreviewIsVideo = isVideoUrl(storyMediaUrl);
-
-  const uniqueUsers = useMemo(
-    () => users
-      .filter((user, index, arr) => arr.findIndex((item) => item.id === user.id) === index)
-      .slice(0, 12),
+  const sortedStories = useMemo(
+    () => [...users].sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()),
     [users],
   );
+  const myStories = useMemo(() => (me ? sortedStories.filter((story) => story.id === me.id) : []), [me, sortedStories]);
+  const myStoriesCount = myStories.length;
+  const storyPreviewIsVideo = isVideoUrl(storyMediaUrl);
+
+  const otherUsers = useMemo(() => {
+    const grouped = new Map<number, StoryItem & { storyCount: number }>();
+    for (const story of sortedStories) {
+      if (me?.id === story.id) continue;
+      const existing = grouped.get(story.id);
+      if (existing) {
+        existing.storyCount += 1;
+        continue;
+      }
+      grouped.set(story.id, { ...story, storyCount: 1 });
+    }
+    return Array.from(grouped.values()).slice(0, 12);
+  }, [me?.id, sortedStories]);
 
   async function handleUpload(file?: File | null) {
     if (!file) return;
@@ -141,15 +154,16 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
               return;
             }
             setIsPublishing(true);
-            setStoryMediaUrl(myExistingStory?.media_url || "");
-            setStoryText(myExistingStory?.content || "");
+            setStoryMediaUrl("");
+            setStoryText("");
+            setPublishError(null);
           }}
           className="group min-w-18 max-w-20 shrink-0 text-center"
           title={canInteract ? "Publicar historia" : "Inicia sesión para publicar historias"}
         >
           <div
             className={`relative mx-auto mb-1.5 grid size-[64px] place-items-center rounded-full p-[2px] transition group-hover:scale-[1.03] ${
-              myExistingStory
+              myStoriesCount > 0
                 ? "bg-gradient-to-tr from-amber-400 via-fuchsia-500 to-violet-500"
                 : "bg-white/20"
             }`}
@@ -169,21 +183,26 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
               <span className="absolute -bottom-0.5 -right-0.5 grid size-5 place-items-center rounded-full bg-[#0095f6] text-sm font-bold text-white ring-2 ring-[#050d18]">
                 +
               </span>
+              {myStoriesCount > 0 && (
+                <span className="absolute -top-1 -left-1 rounded-full bg-brand px-1.5 text-[10px] font-semibold text-white">
+                  {myStoriesCount}
+                </span>
+              )}
             </div>
           </div>
           <p className="truncate text-[12px] font-medium text-white">Tu historia</p>
         </button>
 
-        {uniqueUsers.map((user, index) => {
-          const isMe = me?.id === user.id;
+        {otherUsers.map((user) => {
           const hasStory = Boolean(user.media_url);
+          const firstStoryIndex = sortedStories.findIndex((story) => story.id === user.id);
           return (
             <button
               key={user.id}
               type="button"
-              onClick={() => setViewerIndex(index)}
+              onClick={() => setViewerIndex(firstStoryIndex >= 0 ? firstStoryIndex : null)}
               className="group min-w-18 max-w-20 shrink-0 text-center"
-              title={isMe ? "Tu historia" : `Ver historia de ${user.username}`}
+              title={`Ver historia de ${user.username}`}
             >
               <div
                 className={`relative mx-auto mb-1.5 size-[64px] rounded-full p-[2px] transition group-hover:scale-[1.03] ${
@@ -198,14 +217,19 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
                     sizes="64px"
                     className="object-cover"
                   />
+                  {user.storyCount > 1 && (
+                    <span className="absolute -top-1 -left-1 rounded-full bg-brand px-1.5 text-[10px] font-semibold text-white">
+                      {user.storyCount}
+                    </span>
+                  )}
                 </div>
               </div>
-              <p className="truncate text-[12px] font-medium text-white">{isMe ? "Tu historia" : user.username}</p>
+              <p className="truncate text-[12px] font-medium text-white">{user.username}</p>
             </button>
           );
         })}
 
-        {uniqueUsers.length === 0 && (
+        {sortedStories.length === 0 && (
           <p className="px-2 py-6 text-sm text-white/70">Aún no hay historias disponibles.</p>
         )}
       </div>
@@ -251,7 +275,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
               <button
                 type="button"
                 onClick={deleteMyStory}
-                disabled={isSaving || !myExistingStory}
+                disabled={isSaving || myStoriesCount === 0}
                 className="inline-flex h-9 items-center justify-center rounded-full border border-red-400/70 px-4 text-sm text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Borrar historia
@@ -281,7 +305,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
         </div>
       )}
 
-      {viewerIndex !== null && uniqueUsers[viewerIndex] && (
+      {viewerIndex !== null && sortedStories[viewerIndex] && (
         <div className="fixed inset-0 z-[80] bg-black/95 px-3 py-4 sm:p-6">
           <div className="mx-auto flex h-full max-w-5xl items-center justify-center gap-3">
             <button
@@ -297,14 +321,14 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
               <div className="flex items-center gap-2 border-b border-white/15 p-3 text-white">
                 <div className="relative size-8 overflow-hidden rounded-full">
                   <Image
-                    src={uniqueUsers[viewerIndex].avatar_url || "/demo-reddit.png"}
-                    alt={uniqueUsers[viewerIndex].username}
+                    src={sortedStories[viewerIndex].avatar_url || "/demo-reddit.png"}
+                    alt={sortedStories[viewerIndex].username}
                     fill
                     sizes="32px"
                     className="object-cover"
                   />
                 </div>
-                <p className="text-sm font-medium">{uniqueUsers[viewerIndex].username}</p>
+                <p className="text-sm font-medium">{sortedStories[viewerIndex].username}</p>
                 <button
                   type="button"
                   onClick={() => setViewerIndex(null)}
@@ -316,9 +340,9 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
               </div>
 
               <div className="relative h-[72vh] min-h-[420px] w-full bg-black">
-                {isVideoUrl(uniqueUsers[viewerIndex].media_url) ? (
+                {isVideoUrl(sortedStories[viewerIndex].media_url) ? (
                   <video
-                    src={uniqueUsers[viewerIndex].media_url || ""}
+                    src={sortedStories[viewerIndex].media_url || ""}
                     controls
                     autoPlay
                     playsInline
@@ -326,8 +350,8 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
                   />
                 ) : (
                   <Image
-                    src={uniqueUsers[viewerIndex].media_url || "/demo-reddit.png"}
-                    alt={`Historia de ${uniqueUsers[viewerIndex].username}`}
+                    src={sortedStories[viewerIndex].media_url || "/demo-reddit.png"}
+                    alt={`Historia de ${sortedStories[viewerIndex].username}`}
                     fill
                     sizes="(max-width: 768px) 90vw, 420px"
                     className="object-contain"
@@ -336,18 +360,18 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
                 )}
               </div>
 
-              {uniqueUsers[viewerIndex].content && (
+              {sortedStories[viewerIndex].content && (
                 <div className="border-t border-white/15 p-3 text-sm text-white/90">
-                  {uniqueUsers[viewerIndex].content}
+                  {sortedStories[viewerIndex].content}
                 </div>
               )}
             </article>
 
             <button
               type="button"
-              onClick={() => setViewerIndex((prev) => (prev !== null && prev < uniqueUsers.length - 1 ? prev + 1 : prev))}
+              onClick={() => setViewerIndex((prev) => (prev !== null && prev < sortedStories.length - 1 ? prev + 1 : prev))}
               className="grid size-10 place-items-center rounded-full border border-white/25 bg-black/40 text-xl text-white disabled:opacity-30"
-              disabled={viewerIndex === uniqueUsers.length - 1}
+              disabled={viewerIndex === sortedStories.length - 1}
             >
               ›
             </button>
