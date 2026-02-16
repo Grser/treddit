@@ -38,7 +38,7 @@ export default async function MessagesPage() {
 
         {me && (
           <div className="space-y-4">
-            <NotesBar notes={notes} />
+            <NotesBar notes={notes} me={me} />
 
             <div className="overflow-hidden rounded-3xl border border-border/80 bg-surface shadow-xl">
               <MarkMessagesSeen />

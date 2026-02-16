@@ -44,6 +44,7 @@ function ConversationLayout({
   viewerId,
   helperText,
   notes,
+  me,
 }: {
   inbox: Awaited<ReturnType<typeof loadInbox>>;
   participant: ConversationUser;
@@ -51,6 +52,7 @@ function ConversationLayout({
   viewerId: number;
   helperText?: string;
   notes: Awaited<ReturnType<typeof loadActiveNotes>>;
+  me: { id: number; username: string } ;
 }) {
   const avatar = participant.avatar_url?.trim() || "/demo-reddit.png";
   const displayName = participant.nickname || participant.username;
@@ -59,7 +61,7 @@ function ConversationLayout({
     <div className="min-h-dvh bg-background text-foreground">
       <Navbar />
       <main className="mx-auto w-full max-w-6xl px-4 py-6 space-y-4">
-        <NotesBar notes={notes} />
+        <NotesBar notes={notes} me={me} />
 
         <div className="grid h-[calc(100dvh-7.75rem)] min-h-[560px] overflow-hidden rounded-3xl border border-border/80 bg-surface shadow-xl lg:grid-cols-[360px_minmax(0,1fr)]">
           <aside className="hidden border-r border-border/80 lg:block">
@@ -141,6 +143,7 @@ export default async function ConversationPage({ params }: ConversationParams) {
         viewerId={me.id}
         helperText="Modo demostración: adjunta imágenes, audio o video libremente."
         notes={await notesPromise}
+        me={me}
       />
     );
   }
@@ -221,6 +224,7 @@ export default async function ConversationPage({ params }: ConversationParams) {
       viewerId={me.id}
       helperText={participant.allowsAnyone ? "Acepta mensajes de cualquier usuario" : undefined}
       notes={await notesPromise}
+      me={me}
     />
   );
 }

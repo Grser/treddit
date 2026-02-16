@@ -2,14 +2,15 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 type StoryUser = {
   id: number;
   username: string;
   nickname: string | null;
   avatar_url?: string | null;
-  content?: string;
+  content?: string | null;
+  media_url?: string | null;
 };
 
 type Props = {
@@ -26,20 +27,48 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
   const router = useRouter();
   const [isPublishing, setIsPublishing] = useState(false);
   const [storyText, setStoryText] = useState("");
+  const [storyMediaUrl, setStoryMediaUrl] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
 
   const myExistingStory = me ? users.find((user) => user.id === me.id) : null;
-  const withMe = me
-    ? [{ id: me.id, username: me.username, nickname: "Tu historia", avatar_url: me.avatar_url ?? null, content: myExistingStory?.content }, ...users]
-    : users;
 
-  const uniqueUsers = withMe.filter((user, index, arr) => arr.findIndex((item) => item.id === user.id) === index).slice(0, 12);
+  const uniqueUsers = useMemo(
+    () => users
+      .filter((user, index, arr) => arr.findIndex((item) => item.id === user.id) === index)
+      .slice(0, 12),
+    [users],
+  );
+
+  async function handleUpload(file?: File | null) {
+    if (!file) return;
+    const form = new FormData();
+    form.append("file", file);
+
+    setIsUploading(true);
+    setPublishError(null);
+    try {
+      const res = await fetch("/api/upload", { method: "POST", body: form });
+      const data = (await res.json().catch(() => ({}))) as { error?: string; url?: string };
+      if (!res.ok || !data.url) {
+        setPublishError(data.error || "No se pudo subir la imagen.");
+        return;
+      }
+      setStoryMediaUrl(data.url);
+    } catch {
+      setPublishError("No se pudo subir la imagen.");
+    } finally {
+      setIsUploading(false);
+    }
+  }
 
   async function publishStory() {
     const normalizedText = storyText.trim();
-    if (!normalizedText) {
-      setPublishError("Escribe algo para publicar tu historia.");
+    const normalizedMedia = storyMediaUrl.trim();
+    if (!normalizedMedia) {
+      setPublishError("Sube una foto para publicar tu historia.");
       return;
     }
 
@@ -49,7 +78,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
       const res = await fetch("/api/stories", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: normalizedText }),
+        body: JSON.stringify({ content: normalizedText, media_url: normalizedMedia }),
       });
 
       const data = (await res.json().catch(() => ({}))) as { error?: string };
@@ -59,10 +88,32 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
       }
 
       setStoryText("");
+      setStoryMediaUrl("");
       setIsPublishing(false);
       router.refresh();
     } catch {
       setPublishError("No se pudo publicar tu historia.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function deleteMyStory() {
+    if (!me) return;
+    setIsSaving(true);
+    setPublishError(null);
+    try {
+      const res = await fetch("/api/stories", { method: "DELETE" });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        setPublishError(data.error || "No se pudo borrar tu historia.");
+        return;
+      }
+      setIsPublishing(false);
+      setViewerIndex(null);
+      router.refresh();
+    } catch {
+      setPublishError("No se pudo borrar tu historia.");
     } finally {
       setIsSaving(false);
     }
@@ -79,6 +130,8 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
               return;
             }
             setIsPublishing(true);
+            setStoryMediaUrl(myExistingStory?.media_url || "");
+            setStoryText(myExistingStory?.content || "");
           }}
           className="group min-w-18 max-w-20 shrink-0 text-center"
           title={canInteract ? "Publicar historia" : "Inicia sesión para publicar historias"}
@@ -104,12 +157,13 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
           <p className="truncate text-[12px] font-medium text-white">Tu historia</p>
         </button>
 
-        {uniqueUsers.map((user) => {
+        {uniqueUsers.map((user, index) => {
           const isMe = me?.id === user.id;
           return (
-            <a
+            <button
               key={user.id}
-              href={isMe ? "/perfil" : `/u/${user.username}`}
+              type="button"
+              onClick={() => setViewerIndex(index)}
               className="group min-w-18 max-w-20 shrink-0 text-center"
               title={isMe ? "Tu historia" : `Ver historia de ${user.username}`}
             >
@@ -125,12 +179,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
                 </div>
               </div>
               <p className="truncate text-[12px] font-medium text-white">{isMe ? "Tu historia" : user.username}</p>
-              {user.content && (
-                <p className="mx-auto mt-1 line-clamp-2 min-h-8 max-w-[76px] rounded-xl bg-white/10 px-2 py-1 text-[10px] leading-tight text-white/90">
-                  {user.content}
-                </p>
-              )}
-            </a>
+            </button>
           );
         })}
 
@@ -146,36 +195,126 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
           <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-4 sm:p-5">
             <h3 className="text-base font-semibold">Publicar historia</h3>
             <p className="mt-1 text-xs opacity-70">Tu historia estará visible por 24 horas.</p>
+
+            <label className="mt-3 block text-xs font-medium opacity-90">Foto</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(event) => handleUpload(event.target.files?.[0])}
+              className="mt-1 block w-full text-sm text-foreground/80 file:mr-3 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-2 file:text-sm"
+              disabled={isUploading || isSaving}
+            />
+
+            {storyMediaUrl && (
+              <div className="relative mt-3 h-52 w-full overflow-hidden rounded-xl border border-border">
+                <Image src={storyMediaUrl} alt="Preview de historia" fill sizes="100vw" className="object-cover" unoptimized />
+              </div>
+            )}
+
             <textarea
               value={storyText}
               onChange={(event) => setStoryText(event.target.value)}
               maxLength={220}
-              rows={4}
+              rows={3}
               className="mt-3 w-full rounded-xl border border-border bg-input p-3 text-sm outline-none ring-1 ring-transparent focus:border-brand/50 focus:ring-brand/40"
-              placeholder="¿Qué quieres compartir en tu historia?"
+              placeholder="Texto opcional en la historia"
             />
             <div className="mt-1 text-right text-[11px] opacity-70">{storyText.length}/220</div>
             {publishError && <p className="mt-2 text-xs text-red-400">{publishError}</p>}
-            <div className="mt-4 flex justify-end gap-2">
+            <div className="mt-4 flex justify-between gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  setIsPublishing(false);
-                  setPublishError(null);
-                }}
-                className="inline-flex h-9 items-center justify-center rounded-full border border-border px-4 text-sm"
+                onClick={deleteMyStory}
+                disabled={isSaving || !myExistingStory}
+                className="inline-flex h-9 items-center justify-center rounded-full border border-red-400/70 px-4 text-sm text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Cancelar
+                Borrar historia
               </button>
-              <button
-                type="button"
-                onClick={publishStory}
-                disabled={isSaving}
-                className="inline-flex h-9 items-center justify-center rounded-full bg-brand px-4 text-sm text-white disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isSaving ? "Publicando..." : "Publicar"}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsPublishing(false);
+                    setPublishError(null);
+                  }}
+                  className="inline-flex h-9 items-center justify-center rounded-full border border-border px-4 text-sm"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={publishStory}
+                  disabled={isSaving || isUploading}
+                  className="inline-flex h-9 items-center justify-center rounded-full bg-brand px-4 text-sm text-white disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isSaving ? "Publicando..." : isUploading ? "Subiendo..." : "Publicar"}
+                </button>
+              </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {viewerIndex !== null && uniqueUsers[viewerIndex] && (
+        <div className="fixed inset-0 z-[80] bg-black/95 px-3 py-4 sm:p-6">
+          <div className="mx-auto flex h-full max-w-5xl items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => setViewerIndex((prev) => (prev !== null && prev > 0 ? prev - 1 : prev))}
+              className="grid size-10 place-items-center rounded-full border border-white/25 bg-black/40 text-xl text-white disabled:opacity-30"
+              disabled={viewerIndex === 0}
+            >
+              ‹
+            </button>
+
+            <article className="relative w-full max-w-sm overflow-hidden rounded-2xl border border-white/20 bg-zinc-900">
+              <div className="flex items-center gap-2 border-b border-white/15 p-3 text-white">
+                <div className="relative size-8 overflow-hidden rounded-full">
+                  <Image
+                    src={uniqueUsers[viewerIndex].avatar_url || "/demo-reddit.png"}
+                    alt={uniqueUsers[viewerIndex].username}
+                    fill
+                    sizes="32px"
+                    className="object-cover"
+                  />
+                </div>
+                <p className="text-sm font-medium">{uniqueUsers[viewerIndex].username}</p>
+                <button
+                  type="button"
+                  onClick={() => setViewerIndex(null)}
+                  className="ml-auto text-lg leading-none text-white/90"
+                  aria-label="Cerrar visor"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="relative h-[72vh] min-h-[420px] w-full bg-black">
+                <Image
+                  src={uniqueUsers[viewerIndex].media_url || "/demo-reddit.png"}
+                  alt={`Historia de ${uniqueUsers[viewerIndex].username}`}
+                  fill
+                  sizes="(max-width: 768px) 90vw, 420px"
+                  className="object-contain"
+                  unoptimized
+                />
+              </div>
+
+              {uniqueUsers[viewerIndex].content && (
+                <div className="border-t border-white/15 p-3 text-sm text-white/90">
+                  {uniqueUsers[viewerIndex].content}
+                </div>
+              )}
+            </article>
+
+            <button
+              type="button"
+              onClick={() => setViewerIndex((prev) => (prev !== null && prev < uniqueUsers.length - 1 ? prev + 1 : prev))}
+              className="grid size-10 place-items-center rounded-full border border-white/25 bg-black/40 text-xl text-white disabled:opacity-30"
+              disabled={viewerIndex === uniqueUsers.length - 1}
+            >
+              ›
+            </button>
           </div>
         </div>
       )}

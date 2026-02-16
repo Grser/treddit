@@ -3,7 +3,7 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 
 import { requireUser } from "@/lib/auth";
-import { createUserNote, loadActiveNotes } from "@/lib/storiesNotes";
+import { createUserNote, deleteNoteByUser, loadActiveNotes } from "@/lib/storiesNotes";
 
 export async function GET() {
   const items = await loadActiveNotes();
@@ -28,6 +28,27 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Contenido vacío" }, { status: 400 });
   }
 
-  const id = await createUserNote(me.id, content);
+  const songTitle = typeof (payload as { song_title?: unknown })?.song_title === "string"
+    ? (payload as { song_title: string }).song_title.trim().slice(0, 120)
+    : "";
+  const songArtist = typeof (payload as { song_artist?: unknown })?.song_artist === "string"
+    ? (payload as { song_artist: string }).song_artist.trim().slice(0, 120)
+    : "";
+  const songUrl = typeof (payload as { song_url?: unknown })?.song_url === "string"
+    ? (payload as { song_url: string }).song_url.trim().slice(0, 500)
+    : "";
+
+  const id = await createUserNote(me.id, {
+    content,
+    song_title: songTitle || null,
+    song_artist: songArtist || null,
+    song_url: songUrl || null,
+  });
   return NextResponse.json({ ok: true, id }, { status: 201 });
+}
+
+export async function DELETE() {
+  const me = await requireUser();
+  await deleteNoteByUser(me.id);
+  return NextResponse.json({ ok: true });
 }
