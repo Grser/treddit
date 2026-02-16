@@ -37,6 +37,13 @@ type StoryResponse = {
     content: string | null;
     media_url: string;
     created_at: string;
+    viewers?: {
+      id: number;
+      username: string;
+      nickname: string | null;
+      avatar_url: string | null;
+      viewed_at: string;
+    }[];
   }[];
 };
 
@@ -170,12 +177,14 @@ export default async function Page() {
             me={session}
             users={stories.items.map((story) => ({
               id: story.userId,
+              story_id: story.id,
               username: story.username,
               nickname: story.nickname,
               avatar_url: story.avatar_url,
               content: story.content,
               media_url: story.media_url,
               created_at: story.created_at,
+              viewers: story.viewers,
             }))}
           />
           <Composer enabled={canInteract} />
