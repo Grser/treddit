@@ -106,7 +106,7 @@ function ConversationLayout({
 export default async function ConversationPage({ params }: ConversationParams) {
   const [{ username }, me] = await Promise.all([params, requireUser()]);
   const inboxPromise = loadInbox(me.id);
-  const notesPromise = loadActiveNotes();
+  const notesPromise = loadActiveNotes(24, me.id);
 
   if (!isDatabaseConfigured()) {
     const demoTarget = resolveDemoUserByUsername(username);

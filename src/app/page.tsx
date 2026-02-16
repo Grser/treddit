@@ -36,6 +36,7 @@ type StoryResponse = {
     avatar_url: string | null;
     content: string | null;
     media_url: string;
+    created_at: string;
   }[];
 };
 
@@ -174,6 +175,7 @@ export default async function Page() {
               avatar_url: story.avatar_url,
               content: story.content,
               media_url: story.media_url,
+              created_at: story.created_at,
             }))}
           />
           <Composer enabled={canInteract} />
