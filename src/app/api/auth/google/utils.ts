@@ -148,16 +148,32 @@ export function getBaseUrl(req: Request | NextRequest) {
 }
 
 export async function getRedirectUri(baseUrl: string, req?: Request) {
+  const normalizedBase = normalizeOrigin(baseUrl);
+  const requestOrigin = req ? normalizeOrigin(req.url) : null;
+  const envBase = normalizeOrigin(process.env.NEXT_PUBLIC_BASE_URL || null);
+  const firstNonLocalBase = [normalizedBase, requestOrigin, envBase].find(
+    (origin): origin is string => Boolean(origin && !isLocalOrigin(origin))
+  );
+
   const explicitRedirect =
     process.env.GOOGLE_REDIRECT_URI?.trim() ||
     process.env.GOOGLE_CALLBACK_URL?.trim();
   if (explicitRedirect) {
     const normalized = normalizeOrigin(explicitRedirect);
-    if (normalized) return explicitRedirect;
-    console.error("Invalid GOOGLE_REDIRECT_URI", explicitRedirect);
+    if (normalized && !isLocalOrigin(normalized)) return explicitRedirect;
+    if (normalized && isLocalOrigin(normalized) && !firstNonLocalBase) {
+      return explicitRedirect;
+    }
+    if (normalized && isLocalOrigin(normalized)) {
+      console.warn(
+        "Ignoring local GOOGLE_REDIRECT_URI/GOOGLE_CALLBACK_URL in favor of detected public origin",
+        explicitRedirect
+      );
+    } else {
+      console.error("Invalid GOOGLE_REDIRECT_URI", explicitRedirect);
+    }
   }
 
-  const normalizedBase = normalizeOrigin(baseUrl);
   if (normalizedBase && !isLocalOrigin(normalizedBase)) {
     return new URL("/api/auth/google/callback", normalizedBase).toString();
   }
@@ -181,8 +197,6 @@ export async function getRedirectUri(baseUrl: string, req?: Request) {
     console.error("Unable to read request headers for redirect URI", err);
   }
 
-  const requestOrigin = req ? normalizeOrigin(req.url) : null;
-  const envBase = normalizeOrigin(process.env.NEXT_PUBLIC_BASE_URL || null);
   const safeBase =
     (normalizedBase && !isLocalOrigin(normalizedBase) ? normalizedBase : null) ||
     (requestOrigin && !isLocalOrigin(requestOrigin) ? requestOrigin : null) ||
