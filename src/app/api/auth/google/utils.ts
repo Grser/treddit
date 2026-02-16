@@ -66,7 +66,6 @@ function getForwardedProto(req: Request) {
   return null;
 }
 
-
 function isLocalOrigin(value: string | null) {
   if (!value) return false;
   try {
@@ -118,61 +117,43 @@ export function getBaseUrl(req: Request | NextRequest) {
   }
 
   const forwardedHeaderOrigin = getForwardedFromForwardedHeader(req);
-  if (forwardedHeaderOrigin && !isLocalOrigin(forwardedHeaderOrigin)) return forwardedHeaderOrigin;
+  if (forwardedHeaderOrigin) return forwardedHeaderOrigin;
 
   const forwardedHost = getForwardedHost(req);
   const forwardedProto = getForwardedProto(req);
   const forwardedOrigin = buildOrigin(forwardedHost ?? "", forwardedProto, req);
-  if (forwardedOrigin && !isLocalOrigin(forwardedOrigin) && (!normalizedConfigured || isLocalOrigin(normalizedConfigured))) {
+  if (forwardedOrigin && (!normalizedConfigured || isLocalOrigin(normalizedConfigured))) {
     return forwardedOrigin;
   }
 
   if (normalizedConfigured) return normalizedConfigured;
 
   const headerOrigin = normalizeOrigin(req.headers.get("origin"));
-  if (headerOrigin && !isLocalOrigin(headerOrigin)) return headerOrigin;
+  if (headerOrigin) return headerOrigin;
 
   const refererOrigin = normalizeOrigin(req.headers.get("referer"));
-  if (refererOrigin && !isLocalOrigin(refererOrigin)) return refererOrigin;
+  if (refererOrigin) return refererOrigin;
 
   const hostHeader = req.headers.get("host")?.trim();
   const hostOrigin = buildOrigin(hostHeader ?? "", forwardedProto, req);
-  if (hostOrigin && !isLocalOrigin(hostOrigin)) return hostOrigin;
+  if (hostOrigin) return hostOrigin;
 
-  if (nextOrigin && !isLocalOrigin(nextOrigin)) return nextOrigin;
+  if (nextOrigin) return nextOrigin;
 
-  const requestOrigin = normalizeOrigin(req.url);
-  if (requestOrigin && !isLocalOrigin(requestOrigin)) return requestOrigin;
-
-  return "https://treddit.com";
+  return normalizeOrigin(req.url) ?? "https://treddit.com";
 }
 
 export async function getRedirectUri(baseUrl: string, req?: Request) {
-  const normalizedBase = normalizeOrigin(baseUrl);
-  const requestOrigin = req ? normalizeOrigin(req.url) : null;
-  const envBase = normalizeOrigin(process.env.NEXT_PUBLIC_BASE_URL || null);
-  const firstNonLocalBase = [normalizedBase, requestOrigin, envBase].find(
-    (origin): origin is string => Boolean(origin && !isLocalOrigin(origin))
-  );
-
   const explicitRedirect =
     process.env.GOOGLE_REDIRECT_URI?.trim() ||
     process.env.GOOGLE_CALLBACK_URL?.trim();
   if (explicitRedirect) {
     const normalized = normalizeOrigin(explicitRedirect);
-    if (normalized && !isLocalOrigin(normalized)) return explicitRedirect;
-    if (normalized && isLocalOrigin(normalized) && !firstNonLocalBase) {
-      return explicitRedirect;
-    }
-    if (normalized && isLocalOrigin(normalized)) {
-      console.warn(
-        "Ignoring local GOOGLE_REDIRECT_URI/GOOGLE_CALLBACK_URL in favor of detected public origin",
-        explicitRedirect
-      );
-    } else {
-      console.error("Invalid GOOGLE_REDIRECT_URI", explicitRedirect);
-    }
+    if (normalized) return explicitRedirect;
+    console.error("Invalid GOOGLE_REDIRECT_URI", explicitRedirect);
   }
+
+  const normalizedBase = normalizeOrigin(baseUrl);
 
   if (normalizedBase && !isLocalOrigin(normalizedBase)) {
     return new URL("/api/auth/google/callback", normalizedBase).toString();
@@ -182,25 +163,23 @@ export async function getRedirectUri(baseUrl: string, req?: Request) {
     const headersList = await headers();
     const forwardedHost = headersList.get("x-forwarded-host")?.split(",")[0]?.trim();
     const host = forwardedHost || headersList.get("host")?.trim();
-    if (host && !isLocalHost(host)) {
+    if (host) {
       const forwardedProto = headersList
         .get("x-forwarded-proto")
         ?.split(",")[0]
         ?.trim();
-      const protocol = forwardedProto ?? (isLocalHost(host) ? "http" : "https");
+      const protocol =
+        forwardedProto || (baseUrl.startsWith("https") ? "https" : "http");
       const candidate = `${protocol}://${host}/api/auth/google/callback`;
       const normalized = normalizeOrigin(candidate);
-      if (normalized && !isLocalOrigin(normalized)) return candidate;
+      if (normalized) return candidate;
     }
   } catch (err) {
     console.error("Unable to read request headers for redirect URI", err);
   }
 
-  const safeBase =
-    (normalizedBase && !isLocalOrigin(normalizedBase) ? normalizedBase : null) ||
-    (requestOrigin && !isLocalOrigin(requestOrigin) ? requestOrigin : null) ||
-    (envBase && !isLocalOrigin(envBase) ? envBase : null) ||
-    "https://treddit.com";
+  const requestOrigin = req ? normalizeOrigin(req.url) : null;
+  const safeBase = normalizedBase || requestOrigin || process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
   return new URL("/api/auth/google/callback", safeBase).toString();
 }
 
