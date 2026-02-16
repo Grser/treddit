@@ -6,8 +6,20 @@ export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
   const origin = getBaseUrl(req); // p.ej. https://mi-dominio.com
-  const clientId = process.env.GOOGLE_CLIENT_ID!;
+  const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
   const redirectUri = await getRedirectUri(origin, req);
+
+  if (!clientId || !clientId.endsWith(".apps.googleusercontent.com")) {
+    const fallback = new URL("/auth/login?error=google_oauth_config", origin);
+    return NextResponse.redirect(fallback);
+  }
+
+  const redirectHost = new URL(redirectUri).hostname;
+  const requestHost = req.headers.get("host")?.split(":")[0]?.trim().toLowerCase() ?? null;
+  if (redirectHost === "treddit.com" && requestHost && requestHost !== "treddit.com") {
+    const fallback = new URL("/auth/login?error=google_oauth_redirect", origin);
+    return NextResponse.redirect(fallback);
+  }
 
   // state anti-CSRF
   const state = randomBytes(16).toString("hex");

@@ -63,6 +63,19 @@ Prioridad usada por el backend:
 
 Si no encuentra nada válido, cae en `https://treddit.com`.
 
+
+## Solución rápida: Error 400 `invalid_request` con Google
+
+Si Google muestra *"You can't sign in to this app because it doesn't comply with Google's OAuth 2.0 policy"*, revisa:
+
+1. `GOOGLE_CLIENT_ID` debe ser un Client ID de tipo **Web application** (`*.apps.googleusercontent.com`).
+2. En Google Cloud Console, la URI autorizada debe incluir exactamente:
+   - `https://tu-dominio.com/api/auth/google/callback`
+3. En tu `.env`, define `GOOGLE_REDIRECT_URI` con esa misma URL exacta.
+4. Si la app OAuth está en modo **Testing**, agrega el correo del usuario como **Test user** o publica la app.
+
+La ruta `/api/auth/google/start` ahora redirige a `/auth/login` con un mensaje de configuración cuando detecta una configuración inválida.
+
 ## Configuración de correo para recuperación de contraseña
 
 Para que la función de recuperación por código funcione necesitas configurar un servidor SMTP mediante variables de entorno:
