@@ -34,7 +34,8 @@ type StoryResponse = {
     username: string;
     nickname: string | null;
     avatar_url: string | null;
-    content: string;
+    content: string | null;
+    media_url: string;
   }[];
 };
 
@@ -172,6 +173,7 @@ export default async function Page() {
               nickname: story.nickname,
               avatar_url: story.avatar_url,
               content: story.content,
+              media_url: story.media_url,
             }))}
           />
           <Composer enabled={canInteract} />
