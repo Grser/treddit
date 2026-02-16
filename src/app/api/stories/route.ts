@@ -28,7 +28,7 @@ export async function POST(req: Request) {
     : "";
 
   if (!mediaUrl) {
-    return NextResponse.json({ error: "La historia necesita una foto" }, { status: 400 });
+    return NextResponse.json({ error: "La historia necesita una foto o video" }, { status: 400 });
   }
 
   const id = await createStory(me.id, { content: content || null, media_url: mediaUrl });
