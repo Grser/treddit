@@ -77,10 +77,9 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
   const myNotesCount = myNotes.length;
   const uniqueEntries = useMemo(
     () => sortedNotes
-      .filter((entry) => entry.userId !== me?.id)
       .filter((entry, index, arr) => arr.findIndex((item) => item.userId === entry.userId) === index)
       .slice(0, 12),
-    [me?.id, sortedNotes],
+    [sortedNotes],
   );
   const selectedNoteYoutubeUrl = getYoutubeEmbedUrl(selectedNote?.song_url);
 
@@ -180,6 +179,7 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
         </button>
 
         {uniqueEntries.map((entry) => {
+          const isSelf = me?.id === entry.userId;
           return (
             <button
               key={entry.userId}
@@ -189,7 +189,7 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
                 setIsActionsOpen(false);
               }}
               className="group min-w-20 max-w-24 shrink-0 text-center"
-              title={`Ver nota de ${entry.username}`}
+              title={isSelf ? "Ver tu nota" : `Ver nota de ${entry.username}`}
             >
               <p className="mx-auto mb-1.5 line-clamp-2 min-h-9 rounded-2xl bg-white/14 px-2 py-1 text-[10px] leading-tight text-white/90">
                 {entry.content}
@@ -210,7 +210,7 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
                   />
                 </div>
               </div>
-              <p className="truncate text-[12px] font-medium text-white">{entry.nickname || entry.username}</p>
+              <p className="truncate text-[12px] font-medium text-white">{isSelf ? "Tú" : entry.nickname || entry.username}</p>
             </button>
           );
         })}
