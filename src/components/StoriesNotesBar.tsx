@@ -43,6 +43,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
   const [isUploading, setIsUploading] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+  const [isStoryMenuOpen, setIsStoryMenuOpen] = useState(false);
 
   const sortedStories = useMemo(
     () => [...users].sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()),
@@ -55,6 +56,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
   const otherUsers = useMemo(() => {
     const grouped = new Map<number, StoryItem & { storyCount: number }>();
     for (const story of sortedStories) {
+      if (me?.id === story.id) continue;
       const existing = grouped.get(story.id);
       if (existing) {
         existing.storyCount += 1;
@@ -63,7 +65,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
       grouped.set(story.id, { ...story, storyCount: 1 });
     }
     return Array.from(grouped.values()).slice(0, 12);
-  }, [sortedStories]);
+  }, [me?.id, sortedStories]);
 
   async function handleUpload(file?: File | null) {
     if (!file) return;
@@ -113,6 +115,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
       setStoryText("");
       setStoryMediaUrl("");
       setIsPublishing(false);
+      setIsStoryMenuOpen(false);
       router.refresh();
     } catch {
       setPublishError("No se pudo publicar tu historia.");
@@ -134,6 +137,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
       }
       setIsPublishing(false);
       setViewerIndex(null);
+      setIsStoryMenuOpen(false);
       router.refresh();
     } catch {
       setPublishError("No se pudo borrar tu historia.");
@@ -156,6 +160,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
             setStoryMediaUrl("");
             setStoryText("");
             setPublishError(null);
+            setIsStoryMenuOpen(false);
           }}
           className="group min-w-18 max-w-20 shrink-0 text-center"
           title={canInteract ? "Publicar historia" : "Inicia sesión para publicar historias"}
@@ -189,7 +194,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
               )}
             </div>
           </div>
-          <p className="truncate text-[12px] font-medium text-white">Tu historia</p>
+          <p className="truncate text-[12px] font-medium text-white">{myStoriesCount > 0 ? "Agregar" : "Tu historia"}</p>
         </button>
 
         {otherUsers.map((user) => {
@@ -310,7 +315,10 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
           <div className="mx-auto flex h-full max-w-5xl items-center justify-center gap-3">
             <button
               type="button"
-              onClick={() => setViewerIndex((prev) => (prev !== null && prev > 0 ? prev - 1 : prev))}
+              onClick={() => {
+                setIsStoryMenuOpen(false);
+                setViewerIndex((prev) => (prev !== null && prev > 0 ? prev - 1 : prev));
+              }}
               className="grid size-10 place-items-center rounded-full border border-white/25 bg-black/40 text-xl text-white disabled:opacity-30"
               disabled={viewerIndex === 0}
             >
@@ -331,7 +339,10 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
                 <p className="text-sm font-medium">{sortedStories[viewerIndex].username}</p>
                 <button
                   type="button"
-                  onClick={() => setViewerIndex(null)}
+                  onClick={() => {
+                    setIsStoryMenuOpen(false);
+                    setViewerIndex(null);
+                  }}
                   className="ml-auto text-lg leading-none text-white/90"
                   aria-label="Cerrar visor"
                 >
@@ -360,16 +371,46 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
                 )}
               </div>
 
-              {sortedStories[viewerIndex].content && (
-                <div className="border-t border-white/15 p-3 text-sm text-white/90">
-                  {sortedStories[viewerIndex].content}
+              <div className="border-t border-white/15 p-3 text-sm text-white/90">
+                {sortedStories[viewerIndex].content && <p>{sortedStories[viewerIndex].content}</p>}
+                <div className="mt-3 flex items-center justify-between gap-3 text-xs text-white/70">
+                  <span>Quién lo ve: personas que te siguen</span>
+
+                  {me?.id === sortedStories[viewerIndex].id && (
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setIsStoryMenuOpen((prev) => !prev)}
+                        className="grid size-8 place-items-center rounded-full border border-white/20 bg-white/5 text-lg leading-none text-white"
+                        aria-label="Opciones de historia"
+                      >
+                        ⋯
+                      </button>
+
+                      {isStoryMenuOpen && (
+                        <div className="absolute right-0 top-10 min-w-36 rounded-xl border border-white/15 bg-zinc-950 p-1 shadow-xl">
+                          <button
+                            type="button"
+                            onClick={deleteMyStory}
+                            disabled={isSaving}
+                            className="flex w-full items-center rounded-lg px-3 py-2 text-left text-sm text-red-300 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {isSaving ? "Borrando..." : "Borrar historia"}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
             </article>
 
             <button
               type="button"
-              onClick={() => setViewerIndex((prev) => (prev !== null && prev < sortedStories.length - 1 ? prev + 1 : prev))}
+              onClick={() => {
+                setIsStoryMenuOpen(false);
+                setViewerIndex((prev) => (prev !== null && prev < sortedStories.length - 1 ? prev + 1 : prev));
+              }}
               className="grid size-10 place-items-center rounded-full border border-white/25 bg-black/40 text-xl text-white disabled:opacity-30"
               disabled={viewerIndex === sortedStories.length - 1}
             >
