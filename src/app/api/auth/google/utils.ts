@@ -91,7 +91,7 @@ function buildOrigin(host: string, proto: string | null | undefined, req: Reques
     authority = `${authority}:${forwardedPort}`;
   }
 
-  const protocol = proto || (req.url.startsWith("https") ? "https" : "http");
+  const protocol = proto ?? (isLocalHost(host) ? "http" : "https");
   try {
     return new URL(`${protocol}://${authority}`).origin;
   } catch (err) {
@@ -187,8 +187,7 @@ export async function getRedirectUri(baseUrl: string, req?: Request) {
         .get("x-forwarded-proto")
         ?.split(",")[0]
         ?.trim();
-      const protocol =
-        forwardedProto || (baseUrl.startsWith("https") ? "https" : "http");
+      const protocol = forwardedProto ?? (isLocalHost(host) ? "http" : "https");
       const candidate = `${protocol}://${host}/api/auth/google/callback`;
       const normalized = normalizeOrigin(candidate);
       if (normalized && !isLocalOrigin(normalized)) return candidate;
