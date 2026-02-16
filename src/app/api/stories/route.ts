@@ -27,13 +27,29 @@ export async function POST(req: Request) {
   const mediaUrl = typeof (payload as { media_url?: unknown })?.media_url === "string"
     ? (payload as { media_url: string }).media_url.trim().slice(0, 500)
     : "";
+  const mediaUrls = Array.isArray((payload as { media_urls?: unknown })?.media_urls)
+    ? (payload as { media_urls: unknown[] }).media_urls
+      .filter((value): value is string => typeof value === "string")
+      .map((value) => value.trim().slice(0, 500))
+      .filter(Boolean)
+    : [];
+  const normalizedMediaUrls = [...new Set(mediaUrls.length > 0 ? mediaUrls : mediaUrl ? [mediaUrl] : [])].slice(0, 10);
 
-  if (!mediaUrl) {
+  if (normalizedMediaUrls.length === 0) {
     return NextResponse.json({ error: "La historia necesita una foto o video" }, { status: 400 });
   }
 
-  const id = await createStory(me.id, { content: content || null, media_url: mediaUrl });
-  return NextResponse.json({ ok: true, id }, { status: 201 });
+  const ids: number[] = [];
+  for (const currentMediaUrl of normalizedMediaUrls) {
+    const id = await createStory(me.id, { content: content || null, media_url: currentMediaUrl });
+    if (typeof id === "number" && id > 0) ids.push(id);
+  }
+
+  if (ids.length === 0) {
+    return NextResponse.json({ error: "No se pudo publicar tu historia" }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true, ids, id: ids[0] }, { status: 201 });
 }
 
 export async function DELETE() {
