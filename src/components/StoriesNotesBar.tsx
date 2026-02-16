@@ -67,15 +67,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
   }
 
   return (
-    <section className="rounded-2xl border border-border bg-surface p-3 sm:p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <div>
-          <h2 className="font-semibold">Historias</h2>
-          <p className="text-xs opacity-70">Publicaciones rápidas de la comunidad</p>
-        </div>
-        {!canInteract && <span className="text-xs text-brand">Inicia sesión para publicar</span>}
-      </div>
-
+    <section className="rounded-2xl border border-border bg-[#050d18] p-3 sm:p-4">
       <div className="flex gap-3 overflow-x-auto pb-1">
         <button
           type="button"
@@ -86,15 +78,28 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
             }
             setIsPublishing(true);
           }}
-          className="group min-w-20 max-w-24 shrink-0 text-center"
+          className="group min-w-18 max-w-20 shrink-0 text-center"
           title={canInteract ? "Publicar historia" : "Inicia sesión para publicar historias"}
         >
-          <div className="relative mx-auto mb-1 grid size-16 place-items-center rounded-full bg-gradient-to-br from-brand via-fuchsia-500 to-amber-300 p-[2px] transition group-hover:scale-[1.03]">
-            <div className="grid size-full place-items-center rounded-full bg-surface ring-2 ring-surface text-2xl font-bold">
-              +
+          <div className="relative mx-auto mb-1.5 grid size-[64px] place-items-center rounded-full bg-gradient-to-tr from-amber-400 via-fuchsia-500 to-violet-500 p-[2px] transition group-hover:scale-[1.03]">
+            <div className="relative grid size-full place-items-center rounded-full bg-surface ring-[3px] ring-[#050d18]">
+              {me ? (
+                <Image
+                  src={me.avatar_url || "/demo-reddit.png"}
+                  alt={me.username}
+                  fill
+                  sizes="64px"
+                  className="rounded-full object-cover"
+                />
+              ) : (
+                <span className="text-2xl font-bold">+</span>
+              )}
+              <span className="absolute -bottom-0.5 -right-0.5 grid size-5 place-items-center rounded-full bg-[#0095f6] text-sm font-bold text-white ring-2 ring-[#050d18]">
+                +
+              </span>
             </div>
           </div>
-          <p className="truncate text-xs font-medium">Nueva story</p>
+          <p className="truncate text-[12px] font-medium text-white">Tu historia</p>
         </button>
 
         {uniqueUsers.map((user) => {
@@ -103,11 +108,11 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
             <a
               key={user.id}
               href={isMe ? "/perfil" : `/u/${user.username}`}
-              className="group min-w-20 max-w-24 shrink-0 text-center"
+              className="group min-w-18 max-w-20 shrink-0 text-center"
               title={isMe ? "Tu historia" : `Ver historia de ${user.username}`}
             >
-              <div className="relative mx-auto mb-1 size-16 rounded-full bg-gradient-to-br from-fuchsia-500 via-orange-400 to-amber-300 p-[2px] transition group-hover:scale-[1.03]">
-                <div className="relative size-full overflow-hidden rounded-full bg-surface ring-2 ring-surface">
+              <div className="relative mx-auto mb-1.5 size-[64px] rounded-full bg-gradient-to-tr from-amber-400 via-fuchsia-500 to-violet-500 p-[2px] transition group-hover:scale-[1.03]">
+                <div className="relative size-full overflow-hidden rounded-full bg-surface ring-[3px] ring-[#050d18]">
                   <Image
                     src={user.avatar_url || "/demo-reddit.png"}
                     alt={user.nickname || user.username}
@@ -117,15 +122,17 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
                   />
                 </div>
               </div>
-              <p className="truncate text-xs font-medium">{isMe ? "Tu story" : user.username}</p>
+              <p className="truncate text-[12px] font-medium text-white">{isMe ? "Tu historia" : user.username}</p>
             </a>
           );
         })}
 
         {uniqueUsers.length === 0 && (
-          <p className="px-2 py-6 text-sm opacity-70">Aún no hay historias disponibles.</p>
+          <p className="px-2 py-6 text-sm text-white/70">Aún no hay historias disponibles.</p>
         )}
       </div>
+
+      {!canInteract && <p className="mt-2 text-xs text-brand">Inicia sesión para publicar historias.</p>}
 
       {isPublishing && (
         <div className="fixed inset-0 z-[70] grid place-items-center bg-black/60 px-4">
