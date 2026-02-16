@@ -35,6 +35,13 @@ function isMissingShellError(error: unknown): boolean {
 
 async function hasSystemShell() {
   if (!shellAvailabilityPromise) {
+    if (process.platform === "win32") {
+      // Nodemailer may attempt to spawn /bin/sh internally in some flows.
+      // Windows environments in this project do not provide that path.
+      shellAvailabilityPromise = Promise.resolve(false);
+      return shellAvailabilityPromise;
+    }
+
     shellAvailabilityPromise = access("/bin/sh")
       .then(() => true)
       .catch(() => false);
