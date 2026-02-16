@@ -55,7 +55,6 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
   const otherUsers = useMemo(() => {
     const grouped = new Map<number, StoryItem & { storyCount: number }>();
     for (const story of sortedStories) {
-      if (me?.id === story.id) continue;
       const existing = grouped.get(story.id);
       if (existing) {
         existing.storyCount += 1;
@@ -64,7 +63,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
       grouped.set(story.id, { ...story, storyCount: 1 });
     }
     return Array.from(grouped.values()).slice(0, 12);
-  }, [me?.id, sortedStories]);
+  }, [sortedStories]);
 
   async function handleUpload(file?: File | null) {
     if (!file) return;
@@ -196,13 +195,14 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
         {otherUsers.map((user) => {
           const hasStory = Boolean(user.media_url);
           const firstStoryIndex = sortedStories.findIndex((story) => story.id === user.id);
+          const isSelf = me?.id === user.id;
           return (
             <button
               key={user.id}
               type="button"
               onClick={() => setViewerIndex(firstStoryIndex >= 0 ? firstStoryIndex : null)}
               className="group min-w-18 max-w-20 shrink-0 text-center"
-              title={`Ver historia de ${user.username}`}
+              title={isSelf ? "Ver tus historias" : `Ver historia de ${user.username}`}
             >
               <div
                 className={`relative mx-auto mb-1.5 size-[64px] rounded-full p-[2px] transition group-hover:scale-[1.03] ${
@@ -224,7 +224,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
                   )}
                 </div>
               </div>
-              <p className="truncate text-[12px] font-medium text-white">{user.username}</p>
+              <p className="truncate text-[12px] font-medium text-white">{isSelf ? "Tú" : user.username}</p>
             </button>
           );
         })}
