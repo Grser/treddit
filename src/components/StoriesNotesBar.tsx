@@ -4,6 +4,9 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+const STORY_DURATION_MS = 5000;
+const STORY_TICK_MS = 100;
+
 function isVideoUrl(url: string | null | undefined) {
   if (!url) return false;
   try {
@@ -12,6 +15,14 @@ function isVideoUrl(url: string | null | undefined) {
   } catch {
     return /\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(url);
   }
+}
+
+function storyAgeLabel(createdAt?: string) {
+  if (!createdAt) return "ahora";
+  const value = new Date(createdAt).getTime();
+  if (!Number.isFinite(value)) return "ahora";
+  const diffHours = Math.max(1, Math.round((Date.now() - value) / (1000 * 60 * 60)));
+  return `${diffHours} h`;
 }
 
 type StoryItem = {
@@ -53,6 +64,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
   const myStories = useMemo(() => (me ? sortedStories.filter((story) => story.id === me.id) : []), [me, sortedStories]);
   const myStoriesCount = myStories.length;
   const storyPreviewIsVideo = isVideoUrl(storyMediaUrl);
+  const activeStory = viewerIndex !== null ? sortedStories[viewerIndex] : null;
 
   const otherUsers = useMemo(() => {
     const grouped = new Map<number, StoryItem & { storyCount: number }>();
@@ -75,9 +87,10 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
     }
 
     setViewerProgress(0);
+    const increment = 100 / (STORY_DURATION_MS / STORY_TICK_MS);
     const interval = window.setInterval(() => {
       setViewerProgress((prev) => {
-        const next = prev + 2;
+        const next = prev + increment;
         if (next >= 100) {
           setViewerIndex((current) => {
             if (current === null) return null;
@@ -87,7 +100,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
         }
         return next;
       });
-    }, 100);
+    }, STORY_TICK_MS);
 
     return () => window.clearInterval(interval);
   }, [viewerIndex, sortedStories]);
@@ -359,7 +372,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
         </div>
       )}
 
-      {viewerIndex !== null && sortedStories[viewerIndex] && (
+      {activeStory && (
         <div className="fixed inset-0 z-[80] bg-black/95 px-3 py-4 sm:p-6">
           <div className="mx-auto flex h-full max-w-5xl items-center justify-center gap-3">
             <button
@@ -375,7 +388,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
             </button>
 
             <article className="relative w-full max-w-sm overflow-hidden rounded-2xl border border-white/20 bg-zinc-900">
-              <div className="absolute inset-x-0 top-0 z-10 flex gap-1 px-3 pt-2">
+              <div className="absolute inset-x-0 top-0 z-20 flex gap-1 px-3 pt-2">
                 {sortedStories.map((story, index) => {
                   const isPast = index < viewerIndex;
                   const isCurrent = index === viewerIndex;
@@ -390,24 +403,50 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
                 })}
               </div>
 
-              <div className="flex items-center gap-2 border-b border-white/15 p-3 text-white">
-                <div className="relative size-8 overflow-hidden rounded-full">
+              <div className="absolute inset-x-0 top-0 z-30 mt-4 flex items-center gap-2 px-3 pt-3 text-white">
+                <div className="relative size-8 overflow-hidden rounded-full ring-2 ring-black/20">
                   <Image
-                    src={sortedStories[viewerIndex].avatar_url || "/demo-reddit.png"}
-                    alt={sortedStories[viewerIndex].username}
+                    src={activeStory.avatar_url || "/demo-reddit.png"}
+                    alt={activeStory.username}
                     fill
                     sizes="32px"
                     className="object-cover"
                   />
                 </div>
-                <p className="text-sm font-medium">{sortedStories[viewerIndex].username}</p>
+                <p className="text-sm font-medium">{activeStory.username}</p>
+                <span className="text-xs text-white/70">{storyAgeLabel(activeStory.created_at)}</span>
+                {me?.id === activeStory.id && (
+                  <div className="relative ml-auto">
+                    <button
+                      type="button"
+                      onClick={() => setIsStoryMenuOpen((prev) => !prev)}
+                      className="grid size-8 place-items-center rounded-full bg-black/40 text-lg leading-none text-white"
+                      aria-label="Opciones de historia"
+                    >
+                      ⋯
+                    </button>
+
+                    {isStoryMenuOpen && (
+                      <div className="absolute right-0 top-10 min-w-36 rounded-xl border border-white/15 bg-zinc-950 p-1 shadow-xl">
+                        <button
+                          type="button"
+                          onClick={deleteMyStory}
+                          disabled={isSaving}
+                          className="flex w-full items-center rounded-lg px-3 py-2 text-left text-sm text-red-300 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {isSaving ? "Borrando..." : "Borrar historia"}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <button
                   type="button"
                   onClick={() => {
                     setIsStoryMenuOpen(false);
                     setViewerIndex(null);
                   }}
-                  className="ml-auto text-lg leading-none text-white/90"
+                  className="text-lg leading-none text-white/90"
                   aria-label="Cerrar visor"
                 >
                   ×
@@ -415,9 +454,9 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
               </div>
 
               <div className="relative h-[72vh] min-h-[420px] w-full bg-black">
-                {isVideoUrl(sortedStories[viewerIndex].media_url) ? (
+                {isVideoUrl(activeStory.media_url) ? (
                   <video
-                    src={sortedStories[viewerIndex].media_url || ""}
+                    src={activeStory.media_url || ""}
                     controls
                     autoPlay
                     playsInline
@@ -425,8 +464,8 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
                   />
                 ) : (
                   <Image
-                    src={sortedStories[viewerIndex].media_url || "/demo-reddit.png"}
-                    alt={`Historia de ${sortedStories[viewerIndex].username}`}
+                    src={activeStory.media_url || "/demo-reddit.png"}
+                    alt={`Historia de ${activeStory.username}`}
                     fill
                     sizes="(max-width: 768px) 90vw, 420px"
                     className="object-contain"
@@ -436,33 +475,25 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
               </div>
 
               <div className="border-t border-white/15 p-3 text-sm text-white/90">
-                {sortedStories[viewerIndex].content && <p>{sortedStories[viewerIndex].content}</p>}
+                {activeStory.content && <p>{activeStory.content}</p>}
                 <div className="mt-3 flex items-center justify-between gap-3 text-xs text-white/70">
-                  <span>👁️ Visto por seguidores y amigos</span>
-
-                  {me?.id === sortedStories[viewerIndex].id && (
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() => setIsStoryMenuOpen((prev) => !prev)}
-                        className="grid size-8 place-items-center rounded-full border border-white/20 bg-white/5 text-lg leading-none text-white"
-                        aria-label="Opciones de historia"
-                      >
-                        ⋯
-                      </button>
-
-                      {isStoryMenuOpen && (
-                        <div className="absolute right-0 top-10 min-w-36 rounded-xl border border-white/15 bg-zinc-950 p-1 shadow-xl">
-                          <button
-                            type="button"
-                            onClick={deleteMyStory}
-                            disabled={isSaving}
-                            className="flex w-full items-center rounded-lg px-3 py-2 text-left text-sm text-red-300 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
-                          >
-                            {isSaving ? "Borrando..." : "Borrar historia"}
-                          </button>
+                  <div className="flex items-center gap-2">
+                    <span>👁️</span>
+                    <span>{me?.id === activeStory.id ? `Visto por ${otherUsers.length} personas` : "Visto por seguidores y amigos"}</span>
+                  </div>
+                  {me?.id === activeStory.id && otherUsers.length > 0 && (
+                    <div className="flex -space-x-2">
+                      {otherUsers.slice(0, 3).map((viewer) => (
+                        <div key={`viewer-${viewer.id}`} className="relative size-6 overflow-hidden rounded-full border border-black/70">
+                          <Image
+                            src={viewer.avatar_url || "/demo-reddit.png"}
+                            alt={viewer.username}
+                            fill
+                            sizes="24px"
+                            className="object-cover"
+                          />
                         </div>
-                      )}
+                      ))}
                     </div>
                   )}
                 </div>
