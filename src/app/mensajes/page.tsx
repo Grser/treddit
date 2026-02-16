@@ -7,12 +7,14 @@ import NotesBar from "@/components/messages/NotesBar";
 
 import { getSessionUser } from "@/lib/auth";
 import { loadInbox } from "@/lib/inbox";
+import { loadActiveNotes } from "@/lib/storiesNotes";
 
 export const dynamic = "force-dynamic";
 
 export default async function MessagesPage() {
   const me = await getSessionUser();
   const entries = me ? await loadInbox(me.id) : [];
+  const notes = me ? await loadActiveNotes() : [];
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
@@ -36,7 +38,7 @@ export default async function MessagesPage() {
 
         {me && (
           <div className="space-y-4">
-            <NotesBar entries={entries} />
+            <NotesBar notes={notes} />
 
             <div className="overflow-hidden rounded-3xl border border-border/80 bg-surface shadow-xl">
               <MarkMessagesSeen />

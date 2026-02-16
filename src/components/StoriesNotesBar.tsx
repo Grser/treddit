@@ -9,6 +9,7 @@ type StoryUser = {
   username: string;
   nickname: string | null;
   avatar_url?: string | null;
+  content?: string;
 };
 
 type Props = {
@@ -28,8 +29,9 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
   const [isSaving, setIsSaving] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
 
+  const myExistingStory = me ? users.find((user) => user.id === me.id) : null;
   const withMe = me
-    ? [{ id: me.id, username: me.username, nickname: "Tu historia", avatar_url: me.avatar_url ?? null }, ...users]
+    ? [{ id: me.id, username: me.username, nickname: "Tu historia", avatar_url: me.avatar_url ?? null, content: myExistingStory?.content }, ...users]
     : users;
 
   const uniqueUsers = withMe.filter((user, index, arr) => arr.findIndex((item) => item.id === user.id) === index).slice(0, 12);
@@ -44,10 +46,10 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
     setIsSaving(true);
     setPublishError(null);
     try {
-      const res = await fetch("/api/posts", {
+      const res = await fetch("/api/stories", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ description: `📸 Historia: ${normalizedText}` }),
+        body: JSON.stringify({ content: normalizedText }),
       });
 
       const data = (await res.json().catch(() => ({}))) as { error?: string };
@@ -123,6 +125,11 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
                 </div>
               </div>
               <p className="truncate text-[12px] font-medium text-white">{isMe ? "Tu historia" : user.username}</p>
+              {user.content && (
+                <p className="mx-auto mt-1 line-clamp-2 min-h-8 max-w-[76px] rounded-xl bg-white/10 px-2 py-1 text-[10px] leading-tight text-white/90">
+                  {user.content}
+                </p>
+              )}
             </a>
           );
         })}
@@ -138,7 +145,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
         <div className="fixed inset-0 z-[70] grid place-items-center bg-black/60 px-4">
           <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-4 sm:p-5">
             <h3 className="text-base font-semibold">Publicar historia</h3>
-            <p className="mt-1 text-xs opacity-70">Se publicará como un post rápido en tu feed.</p>
+            <p className="mt-1 text-xs opacity-70">Tu historia estará visible por 24 horas.</p>
             <textarea
               value={storyText}
               onChange={(event) => setStoryText(event.target.value)}

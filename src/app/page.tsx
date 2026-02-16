@@ -25,6 +25,19 @@ type DiscoveryResponse = {
   trendingTags: { tag: string; count: number; views?: number }[];
 };
 
+
+
+type StoryResponse = {
+  items: {
+    id: number;
+    userId: number;
+    username: string;
+    nickname: string | null;
+    avatar_url: string | null;
+    content: string;
+  }[];
+};
+
 type CommunityListResponse = {
   items: {
     id: number;
@@ -73,6 +86,21 @@ async function getDiscovery(
   return (await res.json()) as DiscoveryResponse;
 }
 
+async function getStories(
+  base: string,
+  cookieHeader?: string,
+  strategy: RequestStrategy = {},
+): Promise<StoryResponse> {
+  const { includeCookies = true, revalidateSeconds } = strategy;
+  const res = await fetch(`${base}/api/stories`, {
+    cache: revalidateSeconds ? "force-cache" : "no-store",
+    ...(revalidateSeconds ? { next: { revalidate: revalidateSeconds } } : {}),
+    headers: includeCookies ? withCookieHeader(cookieHeader) : undefined,
+  });
+  if (!res.ok) return { items: [] };
+  return (await res.json()) as StoryResponse;
+}
+
 async function getCommunities(
   base: string,
   cookieHeader?: string,
@@ -104,15 +132,20 @@ export default async function Page() {
     includeCookies: hasSessionCookie,
     revalidateSeconds: hasSessionCookie ? undefined : 30,
   });
+  const storiesPromise = getStories(base, cookieHeader, {
+    includeCookies: hasSessionCookie,
+    revalidateSeconds: hasSessionCookie ? undefined : 30,
+  });
   const communitiesPromise = getCommunities(base, cookieHeader, hasSessionCookie, {
     includeCookies: hasSessionCookie,
     revalidateSeconds: hasSessionCookie ? undefined : 60,
   });
 
-  const [session, { items }, discovery, initialCommunities] = await Promise.all([
+  const [session, { items }, discovery, stories, initialCommunities] = await Promise.all([
     sessionPromise,
     feedPromise,
     discoveryPromise,
+    storiesPromise,
     communitiesPromise,
   ]);
 
@@ -133,7 +166,13 @@ export default async function Page() {
           <StoriesNotesBar
             canInteract={canInteract}
             me={session}
-            users={discovery.recommendedUsers}
+            users={stories.items.map((story) => ({
+              id: story.userId,
+              username: story.username,
+              nickname: story.nickname,
+              avatar_url: story.avatar_url,
+              content: story.content,
+            }))}
           />
           <Composer enabled={canInteract} />
 
