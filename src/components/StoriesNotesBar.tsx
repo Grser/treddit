@@ -4,6 +4,16 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
+function isVideoUrl(url: string | null | undefined) {
+  if (!url) return false;
+  try {
+    const parsedUrl = new URL(url);
+    return /\.(mp4|webm|ogg|mov|m4v)$/i.test(parsedUrl.pathname);
+  } catch {
+    return /\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(url);
+  }
+}
+
 type StoryUser = {
   id: number;
   username: string;
@@ -34,6 +44,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
 
   const myExistingStory = me ? users.find((user) => user.id === me.id) : null;
+  const storyPreviewIsVideo = isVideoUrl(storyMediaUrl);
 
   const uniqueUsers = useMemo(
     () => users
@@ -53,12 +64,12 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
       const res = await fetch("/api/upload", { method: "POST", body: form });
       const data = (await res.json().catch(() => ({}))) as { error?: string; url?: string };
       if (!res.ok || !data.url) {
-        setPublishError(data.error || "No se pudo subir la imagen.");
+        setPublishError(data.error || "No se pudo subir el archivo.");
         return;
       }
       setStoryMediaUrl(data.url);
     } catch {
-      setPublishError("No se pudo subir la imagen.");
+      setPublishError("No se pudo subir el archivo.");
     } finally {
       setIsUploading(false);
     }
@@ -68,7 +79,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
     const normalizedText = storyText.trim();
     const normalizedMedia = storyMediaUrl.trim();
     if (!normalizedMedia) {
-      setPublishError("Sube una foto para publicar tu historia.");
+      setPublishError("Sube una foto o video para publicar tu historia.");
       return;
     }
 
@@ -207,10 +218,10 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
             <h3 className="text-base font-semibold">Publicar historia</h3>
             <p className="mt-1 text-xs opacity-70">Tu historia estará visible por 24 horas.</p>
 
-            <label className="mt-3 block text-xs font-medium opacity-90">Foto</label>
+            <label className="mt-3 block text-xs font-medium opacity-90">Foto o video</label>
             <input
               type="file"
-              accept="image/*"
+              accept="image/*,video/*"
               onChange={(event) => handleUpload(event.target.files?.[0])}
               className="mt-1 block w-full text-sm text-foreground/80 file:mr-3 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-2 file:text-sm"
               disabled={isUploading || isSaving}
@@ -218,7 +229,11 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
 
             {storyMediaUrl && (
               <div className="relative mt-3 h-52 w-full overflow-hidden rounded-xl border border-border">
-                <Image src={storyMediaUrl} alt="Preview de historia" fill sizes="100vw" className="object-cover" unoptimized />
+                {storyPreviewIsVideo ? (
+                  <video src={storyMediaUrl} controls className="h-full w-full object-cover" />
+                ) : (
+                  <Image src={storyMediaUrl} alt="Preview de historia" fill sizes="100vw" className="object-cover" unoptimized />
+                )}
               </div>
             )}
 
@@ -301,14 +316,24 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
               </div>
 
               <div className="relative h-[72vh] min-h-[420px] w-full bg-black">
-                <Image
-                  src={uniqueUsers[viewerIndex].media_url || "/demo-reddit.png"}
-                  alt={`Historia de ${uniqueUsers[viewerIndex].username}`}
-                  fill
-                  sizes="(max-width: 768px) 90vw, 420px"
-                  className="object-contain"
-                  unoptimized
-                />
+                {isVideoUrl(uniqueUsers[viewerIndex].media_url) ? (
+                  <video
+                    src={uniqueUsers[viewerIndex].media_url || ""}
+                    controls
+                    autoPlay
+                    playsInline
+                    className="h-full w-full object-contain"
+                  />
+                ) : (
+                  <Image
+                    src={uniqueUsers[viewerIndex].media_url || "/demo-reddit.png"}
+                    alt={`Historia de ${uniqueUsers[viewerIndex].username}`}
+                    fill
+                    sizes="(max-width: 768px) 90vw, 420px"
+                    className="object-contain"
+                    unoptimized
+                  />
+                )}
               </div>
 
               {uniqueUsers[viewerIndex].content && (

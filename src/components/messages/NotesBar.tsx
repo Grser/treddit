@@ -4,6 +4,35 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
+function getYoutubeEmbedUrl(rawUrl: string | null | undefined) {
+  if (!rawUrl) return null;
+  const value = rawUrl.trim();
+  if (!value) return null;
+
+  try {
+    const url = new URL(value);
+    const host = url.hostname.replace(/^www\./, "");
+
+    if (host === "youtube.com" || host === "m.youtube.com") {
+      const videoId = url.searchParams.get("v");
+      if (videoId) {
+        return `https://www.youtube.com/embed/${videoId}`;
+      }
+    }
+
+    if (host === "youtu.be") {
+      const videoId = url.pathname.split("/").filter(Boolean)[0];
+      if (videoId) {
+        return `https://www.youtube.com/embed/${videoId}`;
+      }
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
 type NoteItem = {
   id: number;
   userId: number;
@@ -44,6 +73,7 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
   );
 
   const myNote = me ? uniqueEntries.find((entry) => entry.userId === me.id) : null;
+  const selectedNoteYoutubeUrl = getYoutubeEmbedUrl(selectedNote?.song_url);
 
   async function publishNote() {
     const normalizedText = noteText.trim();
@@ -294,7 +324,21 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
             </div>
 
             {selectedNote.song_url && (
-              <audio key={selectedNote.id} src={selectedNote.song_url} controls autoPlay className="mt-4 w-full" />
+              selectedNoteYoutubeUrl ? (
+                <div className="mt-4 overflow-hidden rounded-xl border border-white/15">
+                  <iframe
+                    key={`yt-${selectedNote.id}`}
+                    src={selectedNoteYoutubeUrl}
+                    title={`Video de ${selectedNote.nickname || selectedNote.username}`}
+                    className="h-56 w-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    referrerPolicy="strict-origin-when-cross-origin"
+                    allowFullScreen
+                  />
+                </div>
+              ) : (
+                <audio key={`audio-${selectedNote.id}`} src={selectedNote.song_url} controls autoPlay className="mt-4 w-full" />
+              )
             )}
 
             <div className="mt-4 space-y-2">
