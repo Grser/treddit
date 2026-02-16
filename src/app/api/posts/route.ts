@@ -40,6 +40,33 @@ type CommunityMembershipRow = RowDataPacket & {
   isMember: number;
 };
 
+const ANON_FEED_CACHE_TTL_MS = 15_000;
+const globalForPostsCache = globalThis as unknown as {
+  __tredditAnonFeedCache?: Map<string, { expiresAt: number; payload: { items: unknown[]; nextCursor: string | null } }>;
+};
+
+function getAnonFeedCacheStore() {
+  if (!globalForPostsCache.__tredditAnonFeedCache) {
+    globalForPostsCache.__tredditAnonFeedCache = new Map();
+  }
+  return globalForPostsCache.__tredditAnonFeedCache;
+}
+
+function shouldUseAnonFeedCache(url: URL, meId: number | null) {
+  if (meId) return false;
+  const search = url.searchParams;
+  const likesOf = Number(search.get("likesOf") || 0);
+  return likesOf <= 0;
+}
+
+function createAnonFeedCacheKey(url: URL) {
+  const sorted = [...url.searchParams.entries()]
+    .sort(([keyA], [keyB]) => keyA.localeCompare(keyB))
+    .map(([key, value]) => `${key}=${value}`)
+    .join("&");
+  return sorted || "feed:default";
+}
+
 export async function GET(req: Request) {
   const me = await getSessionUser();
   const url = new URL(req.url);
@@ -91,6 +118,21 @@ export async function GET(req: Request) {
   }
 
   const meId = me?.id ?? null;
+  const canUseAnonCache = shouldUseAnonFeedCache(url, meId);
+  const anonCacheKey = canUseAnonCache ? createAnonFeedCacheKey(url) : null;
+  const anonCacheStore = canUseAnonCache ? getAnonFeedCacheStore() : null;
+
+  if (anonCacheStore && anonCacheKey) {
+    const cached = anonCacheStore.get(anonCacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return NextResponse.json(cached.payload, {
+        headers: {
+          "Cache-Control": "public, max-age=0, s-maxage=15, stale-while-revalidate=30",
+        },
+      });
+    }
+  }
+
   const viewerAgeVerified = meId && isDatabaseConfigured() ? await isUserAgeVerified(meId) : false;
 
   const shouldPrioritizeFollowed = Boolean(
@@ -267,8 +309,19 @@ export async function GET(req: Request) {
     }));
     const nextCursor = list.length > limit ? String(items[items.length - 1].id) : null;
 
-    return new NextResponse(JSON.stringify({ items, nextCursor }), {
-      headers: { "Cache-Control": "no-store", "Content-Type": "application/json" },
+    const payload = { items, nextCursor };
+    if (anonCacheStore && anonCacheKey) {
+      anonCacheStore.set(anonCacheKey, {
+        expiresAt: Date.now() + ANON_FEED_CACHE_TTL_MS,
+        payload,
+      });
+    }
+
+    return new NextResponse(JSON.stringify(payload), {
+      headers: {
+        "Cache-Control": anonCacheStore ? "public, max-age=0, s-maxage=15, stale-while-revalidate=30" : "no-store",
+        "Content-Type": "application/json",
+      },
     });
   } catch (error) {
     console.error("Failed to load posts from database", error);

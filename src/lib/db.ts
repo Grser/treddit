@@ -24,7 +24,7 @@ const globalForDb = globalThis as unknown as { __tredditDbPool?: mysql.Pool | nu
 let pool: mysql.Pool | null = null;
 
 const parsedPoolSize = Number.parseInt(String(DATABASE_POOL_SIZE ?? ""), 10);
-const connectionLimit = Number.isFinite(parsedPoolSize) && parsedPoolSize > 0 ? parsedPoolSize : 5;
+const connectionLimit = Number.isFinite(parsedPoolSize) && parsedPoolSize > 0 ? parsedPoolSize : 10;
 
 if (DATABASE_POOL_SIZE && (!Number.isFinite(parsedPoolSize) || parsedPoolSize <= 0)) {
   console.warn(

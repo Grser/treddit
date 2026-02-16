@@ -31,6 +31,11 @@ const globalForDiscovery = globalThis as unknown as {
   __tredditTrendingCache?: { expiresAt: number; items: TrendingTag[] };
 };
 
+const DISCOVERY_ANON_TTL_MS = 30_000;
+const globalForDiscoveryResponse = globalThis as unknown as {
+  __tredditDiscoveryAnonCache?: { expiresAt: number; payload: { recommendedUsers: DiscoveryUser[]; trendingTags: TrendingTag[] } };
+};
+
 // extrae hashtags tipo #algo
 function extractHashtags(text?: string | null) {
   if (!text) return [] as string[];
@@ -78,6 +83,15 @@ async function getTrendingTagsCached(): Promise<TrendingTag[]> {
 export async function GET() {
   const me = await getSessionUser();
 
+  if (!me) {
+    const cached = globalForDiscoveryResponse.__tredditDiscoveryAnonCache;
+    if (cached && cached.expiresAt > Date.now()) {
+      return NextResponse.json(cached.payload, {
+        headers: { "Cache-Control": "public, max-age=0, s-maxage=30, stale-while-revalidate=60" },
+      });
+    }
+  }
+
   if (!isDatabaseConfigured()) {
     const recommendedUsers = getDemoRecommendedUsers(me?.id);
     const trendingTags = getDemoTrendingTags(5).map((item) => ({
@@ -123,8 +137,21 @@ export async function GET() {
     is_verified: Boolean(row.is_verified),
   }));
 
-  return NextResponse.json({
+  const payload = {
     recommendedUsers,
     trendingTags,
+  };
+
+  if (!me) {
+    globalForDiscoveryResponse.__tredditDiscoveryAnonCache = {
+      expiresAt: Date.now() + DISCOVERY_ANON_TTL_MS,
+      payload,
+    };
+  }
+
+  return NextResponse.json(payload, {
+    headers: {
+      "Cache-Control": me ? "no-store" : "public, max-age=0, s-maxage=30, stale-while-revalidate=60",
+    },
   });
 }
