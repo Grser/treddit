@@ -34,6 +34,8 @@ export default function ImagePickerField({
   const [error, setError] = useState<string | null>(null);
   const [fileKey, setFileKey] = useState(0);
 
+  const hasValue = Boolean(value.trim());
+
   function switchMode(next: Mode) {
     setMode(next);
     setError(null);
@@ -129,7 +131,8 @@ export default function ImagePickerField({
 
       {mode === "url" && (
         <input
-          type="url"
+          type="text"
+          inputMode="url"
           value={value}
           onChange={(event) => {
             setValue(event.target.value);
@@ -157,7 +160,10 @@ export default function ImagePickerField({
 
       <div className="flex items-center gap-3 text-xs">
         {uploading && <span className="text-foreground/70">{t.uploading}</span>}
-        {value && (
+        {hasValue && (
+          <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-emerald-300">Imagen cargada</span>
+        )}
+        {hasValue && (
           <button type="button" onClick={clearValue} className="text-red-500 hover:underline">
             {t.clear}
           </button>
@@ -166,7 +172,7 @@ export default function ImagePickerField({
 
       {error && <p className="text-xs text-red-500">{error}</p>}
 
-      {value && (
+      {hasValue && (
         <div className="relative h-28 w-full overflow-hidden rounded-lg border border-border sm:h-36">
           <Image
             src={value}

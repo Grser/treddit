@@ -85,12 +85,12 @@ export default async function EditProfilePage({ params }: { params: Promise<{ us
     <div className="min-h-dvh bg-background">
       <Navbar />
       <main className="mx-auto max-w-4xl px-4 py-8">
-        <header className="mb-6 rounded-3xl border border-border bg-surface p-6 shadow-sm">
+        <header className="mb-6 rounded-3xl border border-border bg-gradient-to-br from-surface to-surface/80 p-6 shadow-sm">
           <h1 className="text-2xl font-semibold">Editar perfil</h1>
           <p className="mt-2 text-sm opacity-70">Actualiza tu información pública y preferencias de privacidad.</p>
         </header>
 
-        <form action="/api/profile" method="post" className="space-y-5">
+        <form action="/api/profile" method="post" className="space-y-5 pb-28">
           <input type="hidden" name="mode" value="update" />
 
           <section className="rounded-3xl border border-border bg-surface p-5 shadow-sm">
@@ -107,7 +107,7 @@ export default async function EditProfilePage({ params }: { params: Promise<{ us
             </div>
           </section>
 
-          <section className="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+          <section className="rounded-3xl border border-border bg-surface/95 p-5 shadow-sm">
             <h2 className="mb-4 text-lg font-semibold">Imágenes</h2>
             <div className="grid gap-4 sm:grid-cols-2">
               <ImagePickerField name="avatar_url" label="Avatar" initialUrl={u.avatar_url} />
@@ -115,9 +115,9 @@ export default async function EditProfilePage({ params }: { params: Promise<{ us
                 name="banner_url"
                 label="Banner"
                 initialUrl={u.banner_url}
-                minWidth={1500}
-                minHeight={500}
-                helpText="Para evitar pixelación, sube una imagen de al menos 1500x500 px."
+                minWidth={2200}
+                minHeight={700}
+                helpText="Para evitar pixelación en pantallas grandes, usa al menos 2200x700 px (ideal 2400x800)."
               />
             </div>
           </section>
@@ -194,9 +194,12 @@ export default async function EditProfilePage({ params }: { params: Promise<{ us
             </div>
           </section>
 
-          <div className="flex gap-3">
-            <button className="h-10 rounded-full bg-brand px-5 text-white">Guardar cambios</button>
-            <a href={`/u/${me.username}`} className="h-10 rounded-full border border-border px-5 leading-10">Cancelar</a>
+          <div className="sticky bottom-4 z-20 mt-8 flex items-center justify-between gap-3 rounded-2xl border border-border bg-surface/95 px-3 py-3 shadow-lg backdrop-blur sm:px-4">
+            <p className="hidden text-xs opacity-70 sm:block">Tus cambios se guardarán de inmediato en el perfil público.</p>
+            <div className="ml-auto flex gap-3">
+              <a href={`/u/${me.username}`} className="h-10 rounded-full border border-border px-5 leading-10">Cancelar</a>
+              <button className="h-10 rounded-full bg-brand px-5 font-semibold text-white">Guardar cambios</button>
+            </div>
           </div>
         </form>
       </main>
