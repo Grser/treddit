@@ -41,20 +41,20 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
 
   return (
     <>
-      <div className="border-b border-[#1f2c35] bg-[#111b21] px-4 py-4 backdrop-blur">
-        <h1 className="text-3xl font-semibold text-white">Chats</h1>
+      <div className="border-b border-border/80 bg-surface px-4 py-4 backdrop-blur">
+        <h1 className="text-3xl font-semibold text-foreground">Chats</h1>
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           type="search"
           placeholder="Buscar chat o iniciar uno nuevo"
-          className="mt-3 w-full rounded-full border border-[#2a3942] bg-[#202c33] px-4 py-2.5 text-sm text-white outline-none transition focus:border-[#00a884]"
+          className="mt-3 w-full rounded-full border border-border bg-input px-4 py-2.5 text-sm text-foreground outline-none transition focus:border-brand"
           aria-label="Buscar contactos"
         />
         <div className="mt-3 flex flex-wrap gap-2 text-sm">
-          <button type="button" onClick={() => setTab("all")} className={`rounded-full border px-3 py-1.5 ${tab === "all" ? "border-[#00a884] bg-[#00a884]/20 text-[#d1f4cc]" : "border-[#2a3942] text-white/80"}`}>Todos</button>
-          <button type="button" onClick={() => setTab("unread")} className={`rounded-full border px-3 py-1.5 ${tab === "unread" ? "border-[#00a884] bg-[#00a884]/20 text-[#d1f4cc]" : "border-[#2a3942] text-white/80"}`}>No leídos</button>
-          <button type="button" onClick={() => setTab("groups")} className={`rounded-full border px-3 py-1.5 ${tab === "groups" ? "border-[#00a884] bg-[#00a884]/20 text-[#d1f4cc]" : "border-[#2a3942] text-white/80"}`}>Grupos</button>
+          <button type="button" onClick={() => setTab("all")} className={`rounded-full border px-3 py-1.5 transition ${tab === "all" ? "border-brand bg-brand/20 text-foreground" : "border-border text-foreground/80 hover:bg-background/70"}`}>Todos</button>
+          <button type="button" onClick={() => setTab("unread")} className={`rounded-full border px-3 py-1.5 transition ${tab === "unread" ? "border-brand bg-brand/20 text-foreground" : "border-border text-foreground/80 hover:bg-background/70"}`}>No leídos</button>
+          <button type="button" onClick={() => setTab("groups")} className={`rounded-full border px-3 py-1.5 transition ${tab === "groups" ? "border-brand bg-brand/20 text-foreground" : "border-border text-foreground/80 hover:bg-background/70"}`}>Grupos</button>
         </div>
       </div>
 
@@ -78,7 +78,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
               <li key={item.userId}>
                 <Link
                   href={`/mensajes/${item.username}`}
-                  className={`flex items-center gap-3 border-b border-[#1f2c35] px-4 py-3 transition ${isActive ? "bg-[#202c33]" : "hover:bg-[#1b262d]"}`}
+                  className={`flex items-center gap-3 border-b border-border/80 px-4 py-3 transition ${isActive ? "bg-brand/10" : "hover:bg-background/70"}`}
                 >
                   <Image
                     src={avatar}
