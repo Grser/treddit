@@ -59,6 +59,7 @@ export default function PostCard({
     timeStyle: "medium",
     timeZone: "UTC",
   }).format(new Date(post.created_at));
+  const previewUrl = post.description ? extractFirstUrl(post.description) : null;
 
   return (
     <article className="bg-surface text-foreground rounded-xl border border-border p-4">
@@ -152,6 +153,19 @@ export default function PostCard({
         <p className="text-sm mb-2 whitespace-pre-wrap break-words">{renderDescription(post.description)}</p>
       )}
 
+      {previewUrl && showSensitive && (
+        <a
+          href={previewUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="mb-2 block rounded-lg border border-border bg-input/60 p-3 hover:bg-input"
+        >
+          <p className="text-xs uppercase tracking-wide opacity-60">Vista previa del enlace</p>
+          <p className="mt-1 truncate text-sm font-medium">{getUrlHostname(previewUrl)}</p>
+          <p className="truncate text-xs opacity-70">{previewUrl}</p>
+        </a>
+      )}
+
       {post.is_sensitive && !showSensitive && canViewSensitive && (
         <button
           type="button"
@@ -215,9 +229,42 @@ function isAnimatedImage(url: string) {
   const normalized = url.toLowerCase();
   return normalized.includes(".gif") || normalized.includes("format=gif") || normalized.includes("type=sticker") || normalized.includes("type=gif");
 }
+
+function extractFirstUrl(text: string) {
+  const match = text.match(/https?:\/\/[^\s]+/i);
+  return match ? sanitizeUrlToken(match[0]) : null;
+}
+
+function sanitizeUrlToken(value: string) {
+  return value.replace(/[),.!?]+$/g, "");
+}
+
+function getUrlHostname(value: string) {
+  try {
+    return new URL(value).hostname.replace(/^www\./, "");
+  } catch {
+    return value;
+  }
+}
+
 function renderDescription(text: string) {
-  const parts = text.split(/([#@][\p{L}\p{N}_]+)/gu);
+  const parts = text.split(/(https?:\/\/[^\s]+|[#@][\p{L}\p{N}_]+)/gu);
   return parts.map((part, index) => {
+    if (/^https?:\/\//i.test(part)) {
+      const normalized = sanitizeUrlToken(part);
+      return (
+        <a
+          key={`url-${index}-${normalized}`}
+          href={normalized}
+          target="_blank"
+          rel="noreferrer"
+          className="text-sky-400 hover:underline"
+        >
+          {normalized}
+        </a>
+      );
+    }
+
     if (/^#[\p{L}\p{N}_]+$/u.test(part)) {
       const href = `/buscar?q=${encodeURIComponent(part)}`;
       return (
