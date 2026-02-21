@@ -41,8 +41,10 @@ type CommunityMembershipRow = RowDataPacket & {
 };
 
 const ANON_FEED_CACHE_TTL_MS = 15_000;
+const AUTH_FEED_CACHE_TTL_MS = 8_000;
 const globalForPostsCache = globalThis as unknown as {
   __tredditAnonFeedCache?: Map<string, { expiresAt: number; payload: { items: unknown[]; nextCursor: string | null } }>;
+  __tredditAuthFeedCache?: Map<string, { expiresAt: number; payload: { items: unknown[]; nextCursor: string | null } }>;
 };
 
 function getAnonFeedCacheStore() {
@@ -50,6 +52,18 @@ function getAnonFeedCacheStore() {
     globalForPostsCache.__tredditAnonFeedCache = new Map();
   }
   return globalForPostsCache.__tredditAnonFeedCache;
+}
+
+function getAuthFeedCacheStore() {
+  if (!globalForPostsCache.__tredditAuthFeedCache) {
+    globalForPostsCache.__tredditAuthFeedCache = new Map();
+  }
+  return globalForPostsCache.__tredditAuthFeedCache;
+}
+
+function clearFeedCaches() {
+  getAnonFeedCacheStore().clear();
+  getAuthFeedCacheStore().clear();
 }
 
 function shouldUseAnonFeedCache(url: URL, meId: number | null) {
@@ -65,6 +79,23 @@ function createAnonFeedCacheKey(url: URL) {
     .map(([key, value]) => `${key}=${value}`)
     .join("&");
   return sorted || "feed:default";
+}
+
+function shouldUseAuthFeedCache(url: URL, meId: number | null) {
+  if (!meId) return false;
+  const search = url.searchParams;
+  const likesOf = Number(search.get("likesOf") || 0);
+  const userId = Number(search.get("userId") || 0);
+  const communityId = Number(search.get("communityId") || 0);
+  const username = (search.get("username") || "").trim();
+  const tag = (search.get("tag") || "").trim();
+  const filter = (search.get("filter") || "").trim();
+
+  return likesOf <= 0 && userId <= 0 && communityId <= 0 && !username && !tag && !filter;
+}
+
+function createAuthFeedCacheKey(url: URL, meId: number) {
+  return `user:${meId}|${createAnonFeedCacheKey(url)}`;
 }
 
 export async function GET(req: Request) {
@@ -119,8 +150,11 @@ export async function GET(req: Request) {
 
   const meId = me?.id ?? null;
   const canUseAnonCache = shouldUseAnonFeedCache(url, meId);
+  const canUseAuthCache = shouldUseAuthFeedCache(url, meId);
   const anonCacheKey = canUseAnonCache ? createAnonFeedCacheKey(url) : null;
+  const authCacheKey = canUseAuthCache && meId ? createAuthFeedCacheKey(url, meId) : null;
   const anonCacheStore = canUseAnonCache ? getAnonFeedCacheStore() : null;
+  const authCacheStore = canUseAuthCache ? getAuthFeedCacheStore() : null;
 
   if (anonCacheStore && anonCacheKey) {
     const cached = anonCacheStore.get(anonCacheKey);
@@ -128,6 +162,17 @@ export async function GET(req: Request) {
       return NextResponse.json(cached.payload, {
         headers: {
           "Cache-Control": "public, max-age=0, s-maxage=15, stale-while-revalidate=30",
+        },
+      });
+    }
+  }
+
+  if (authCacheStore && authCacheKey) {
+    const cached = authCacheStore.get(authCacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return NextResponse.json(cached.payload, {
+        headers: {
+          "Cache-Control": "private, max-age=0, must-revalidate",
         },
       });
     }
@@ -320,9 +365,20 @@ export async function GET(req: Request) {
       });
     }
 
+    if (authCacheStore && authCacheKey) {
+      authCacheStore.set(authCacheKey, {
+        expiresAt: Date.now() + AUTH_FEED_CACHE_TTL_MS,
+        payload,
+      });
+    }
+
     return new NextResponse(JSON.stringify(payload), {
       headers: {
-        "Cache-Control": anonCacheStore ? "public, max-age=0, s-maxage=15, stale-while-revalidate=30" : "no-store",
+        "Cache-Control": anonCacheStore
+          ? "public, max-age=0, s-maxage=15, stale-while-revalidate=30"
+          : authCacheStore
+            ? "private, max-age=0, must-revalidate"
+            : "no-store",
         "Content-Type": "application/json",
       },
     });
@@ -512,6 +568,8 @@ export async function POST(req: Request) {
     }
     return NextResponse.json({ error: "No se pudo crear la publicación" }, { status: 500 });
   }
+
+  clearFeedCaches();
 
   return NextResponse.json({ ok: true, id: postId }, { status: 201 });
 }
