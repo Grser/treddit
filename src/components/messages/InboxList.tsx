@@ -41,7 +41,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
 
   return (
     <>
-      <div className="border-b border-border/80 bg-surface px-4 py-4 backdrop-blur">
+      <div className="border-b border-border/80 bg-surface px-4 py-4">
         <h1 className="text-3xl font-semibold text-foreground">Chats</h1>
         <input
           value={query}
@@ -56,46 +56,48 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
           <button type="button" onClick={() => setTab("unread")} className={`rounded-full border px-3 py-1.5 transition ${tab === "unread" ? "border-brand bg-brand/20 text-foreground" : "border-border text-foreground/80 hover:bg-background/70"}`}>No leídos</button>
           <button type="button" onClick={() => setTab("groups")} className={`rounded-full border px-3 py-1.5 transition ${tab === "groups" ? "border-brand bg-brand/20 text-foreground" : "border-border text-foreground/80 hover:bg-background/70"}`}>Grupos</button>
         </div>
-        <div className="mt-3 rounded-2xl border border-border/80 bg-background/40 p-3">
-          <p className="text-xs font-semibold uppercase tracking-wide opacity-70">Crear grupo</p>
-          <input
-            value={groupName}
-            onChange={(event) => setGroupName(event.target.value)}
-            className="mt-2 w-full rounded-xl border border-border bg-input px-3 py-2 text-xs outline-none"
-            placeholder="Nombre del grupo"
-          />
-          <input
-            value={groupMembers}
-            onChange={(event) => setGroupMembers(event.target.value)}
-            className="mt-2 w-full rounded-xl border border-border bg-input px-3 py-2 text-xs outline-none"
-            placeholder="Usuarios: ana,carlos,luis"
-          />
-          {groupError && <p className="mt-2 text-xs text-red-500">{groupError}</p>}
-          <button
-            type="button"
-            className="mt-2 rounded-full bg-brand px-3 py-1.5 text-xs font-medium text-white"
-            onClick={async () => {
-              setGroupError(null);
-              const usernames = groupMembers
-                .split(",")
-                .map((value) => value.trim())
-                .filter(Boolean);
-              const res = await fetch("/api/messages/groups", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: groupName, memberUsernames: usernames }),
-              });
-              const payload = await res.json().catch(() => ({}));
-              if (!res.ok || !payload.groupId) {
-                setGroupError(typeof payload.error === "string" ? payload.error : "No se pudo crear");
-                return;
-              }
-              window.location.href = `/mensajes/grupos/${payload.groupId}`;
-            }}
-          >
-            + Nuevo grupo
-          </button>
-        </div>
+        {tab === "groups" && (
+          <div className="mt-3 rounded-2xl border border-border/80 bg-surface p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide opacity-70">Crear grupo</p>
+            <input
+              value={groupName}
+              onChange={(event) => setGroupName(event.target.value)}
+              className="mt-2 w-full rounded-xl border border-border bg-input px-3 py-2 text-xs outline-none"
+              placeholder="Nombre del grupo"
+            />
+            <input
+              value={groupMembers}
+              onChange={(event) => setGroupMembers(event.target.value)}
+              className="mt-2 w-full rounded-xl border border-border bg-input px-3 py-2 text-xs outline-none"
+              placeholder="Usuarios: ana,carlos,luis"
+            />
+            {groupError && <p className="mt-2 text-xs text-red-500">{groupError}</p>}
+            <button
+              type="button"
+              className="mt-2 rounded-full bg-brand px-3 py-1.5 text-xs font-medium text-white"
+              onClick={async () => {
+                setGroupError(null);
+                const usernames = groupMembers
+                  .split(",")
+                  .map((value) => value.trim())
+                  .filter(Boolean);
+                const res = await fetch("/api/messages/groups", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ name: groupName, memberUsernames: usernames }),
+                });
+                const payload = await res.json().catch(() => ({}));
+                if (!res.ok || !payload.groupId) {
+                  setGroupError(typeof payload.error === "string" ? payload.error : "No se pudo crear");
+                  return;
+                }
+                window.location.href = `/mensajes/grupos/${payload.groupId}`;
+              }}
+            >
+              + Nuevo grupo
+            </button>
+          </div>
+        )}
       </div>
 
       {visibleEntries.length === 0 ? (
