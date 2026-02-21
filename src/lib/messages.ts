@@ -470,7 +470,7 @@ export async function createDirectMessage(
     return appendDemoMessage(sender, recipientId, text.trim(), attachments, replyToMessageId);
   }
   const normalized = text.trim().slice(0, 1000);
-  if (!normalized) {
+  if (!normalized && attachments.length === 0) {
     throw new Error("EMPTY_MESSAGE");
   }
   await ensureMessageTables();
