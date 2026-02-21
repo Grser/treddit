@@ -52,7 +52,7 @@ export default function ProfileHeader({
   return (
     <section className="mt-0">
       {/* Banner */}
-      <div className="relative h-44 w-full overflow-hidden bg-muted sm:h-64 md:h-72">
+      <div className="relative h-36 w-full overflow-hidden bg-muted sm:h-48 md:h-56">
         {user.banner_url ? (
           <Image
             src={user.banner_url}
