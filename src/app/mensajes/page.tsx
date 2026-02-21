@@ -50,7 +50,7 @@ export default async function MessagesPage() {
                 <InboxList entries={entries} currentUserId={me.id} className="h-[calc(100dvh-16rem)] min-h-[360px] overflow-y-auto" />
               </aside>
 
-              <section className="hidden h-full lg:flex lg:flex-col lg:items-center lg:justify-center lg:bg-gradient-to-b lg:from-background/40 lg:to-brand/5 lg:p-8">
+              <section className="hidden h-full lg:flex lg:flex-col lg:items-center lg:justify-center lg:bg-surface lg:p-8">
                 <div className="max-w-sm text-center">
                   <p className="text-xl font-semibold">Selecciona un chat</p>
                   <p className="mt-2 text-sm opacity-70">
