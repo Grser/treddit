@@ -13,10 +13,14 @@ function normalizeBaseUrl(value: string | null | undefined) {
   }
 }
 
-function isLocalHost(host: string | null | undefined) {
-  if (!host) return false;
-  const hostname = host.split(":")[0]?.trim().toLowerCase();
-  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1" || hostname === "0.0.0.0";
+function normalizeHost(host: string | null | undefined) {
+  if (!host) return null;
+  const first = host.split(",")[0]?.trim().toLowerCase();
+  if (!first) return null;
+
+  // Allow hostnames, IPv4 and optional ports while rejecting malformed header values.
+  if (!/^[a-z0-9.-]+(?::\d+)?$/.test(first)) return null;
+  return first;
 }
 
 export async function getRequestBaseUrl() {
@@ -31,11 +35,11 @@ export async function getRequestBaseUrl() {
   }
 
   const headerList = await headers();
-  const forwardedHost = headerList.get("x-forwarded-host")?.split(",")[0]?.trim();
-  const host = forwardedHost || headerList.get("host")?.trim();
+  const forwardedHost = normalizeHost(headerList.get("x-forwarded-host"));
+  const host = forwardedHost || normalizeHost(headerList.get("host"));
   const forwardedProto = headerList.get("x-forwarded-proto")?.split(",")[0]?.trim().toLowerCase();
 
-  if (host && isLocalHost(host)) {
+  if (host) {
     const protocol = forwardedProto === "https" ? "https" : "http";
     return `${protocol}://${host}`;
   }
