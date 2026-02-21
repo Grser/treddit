@@ -117,6 +117,7 @@ export default function NavbarClient({ session }: { session?: SessionUser | null
     root.style.setProperty("--custom-border", palette.border);
     root.style.setProperty("--custom-foreground", palette.foreground);
     root.style.setProperty("--custom-brand", palette.brand);
+    root.style.setProperty("--color-brand", palette.brand);
   }
 
   function changeLightPalette(palette: LightPaletteKey) {
@@ -577,6 +578,18 @@ function AppearanceMenu({
                 </label>
               ))}
             </div>
+          )}
+
+          {(isDarkMode || selectedLightPalette !== "custom") && (
+            <label className="mt-3 block rounded-lg border border-border bg-input p-2 text-center text-[11px]" title="Color de marca">
+              <span className="mb-1 block">Color de marca</span>
+              <input
+                type="color"
+                value={customPalette.brand}
+                onChange={(event) => onUpdateCustomColor("brand", event.target.value)}
+                className="h-7 w-full cursor-pointer rounded border border-border bg-transparent p-0"
+              />
+            </label>
           )}
         </div>
       )}
