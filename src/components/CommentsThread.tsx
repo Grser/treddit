@@ -309,14 +309,14 @@ function CommentItem({
         unoptimized
       />
       <div className="min-w-0 flex-1">
-        <p className="text-sm">
+        <div className="text-sm">
           <span className="inline-flex flex-wrap items-center gap-2">
             <MentionUserLink username={node.username} text={node.nickname || node.username} className="font-medium hover:underline" />
             <UserBadges size="sm" isAdmin={node.is_admin} isVerified={node.is_verified} labels={badges} />
             <MentionUserLink username={node.username} text={`@${node.username}`} className="opacity-60 hover:underline" />
             <span className="text-xs opacity-60">{new Date(node.created_at).toLocaleString()}</span>
           </span>
-        </p>
+        </div>
         <p className="whitespace-pre-wrap break-words text-sm">{renderCommentText(node.text)}</p>
 
         <div className="mt-1">

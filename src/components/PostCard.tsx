@@ -99,7 +99,7 @@ export default function PostCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-start gap-2">
             <div className="leading-tight flex-1 min-w-0">
-              <p className="text-sm font-semibold truncate flex items-center gap-2">
+              <div className="text-sm font-semibold truncate flex items-center gap-2">
                 <MentionUserLink username={post.username} text={displayName} className="hover:underline truncate" />
                 <UserBadges
                   size="sm"
@@ -108,7 +108,7 @@ export default function PostCard({
                   labels={strings.badges}
                 />
                 <MentionUserLink username={post.username} text={`@${post.username}`} className="hidden opacity-60 hover:underline sm:inline" />
-              </p>
+              </div>
               <p className="text-xs opacity-60">
                 <Link href={`/p/${post.id}`} className="hover:underline">
                   {createdAtLabel}
@@ -138,14 +138,14 @@ export default function PostCard({
           </div>
 
           {post.replyTo && (
-            <p className="text-sm mt-1 opacity-70">
+            <div className="text-sm mt-1 opacity-70">
               {strings.postCard.replyingTo}{" "}
               <MentionUserLink
                 username={post.replyTo.username}
                 text={`@${post.replyTo.username}`}
                 className="text-blue-400 hover:underline"
               />
-            </p>
+            </div>
           )}
         </div>
       </div>
