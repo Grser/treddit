@@ -304,7 +304,7 @@ export default function DirectConversation({
             const timeLabel = new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
             const avatar = !isMine ? msg.sender.avatar_url?.trim() || "/demo-reddit.png" : null;
             return (
-              <li key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"} ${prevSameSender ? "mt-0.5" : "mt-2.5"}`}>
+              <li key={msg.id} className={`group/message flex ${isMine ? "justify-end" : "justify-start"} ${prevSameSender ? "mt-0.5" : "mt-2.5"}`}>
                 <div className={`flex max-w-[92%] items-end gap-2 md:max-w-[82%] ${isMine ? "flex-row-reverse" : "flex-row"}`}>
                   {!isMine && (
                     showAvatar ? (
@@ -375,13 +375,15 @@ export default function DirectConversation({
                       </ul>
                     ) : null}
                     {messageReactions[msg.id] && (
-                      <div className="mt-1 w-fit rounded-full bg-background/80 px-2 py-0.5 text-sm shadow">{messageReactions[msg.id]}</div>
+                      <div className={`mt-1 w-fit rounded-full border px-2 py-0.5 text-sm shadow transition ${isMine ? "border-white/20 bg-white/10 text-white" : "border-border bg-background/80 text-foreground"}`}>
+                        {messageReactions[msg.id]}
+                      </div>
                     )}
-                    <div className="relative mt-1 flex items-center justify-end gap-3">
+                    <div className={`relative mt-1 flex items-center justify-end gap-3 transition-opacity ${messageMenuId === msg.id ? "opacity-100" : "opacity-0 group-hover/message:opacity-100"}`}>
                       <button
                         type="button"
                         onClick={() => setMessageMenuId((prev) => (prev === msg.id ? null : msg.id))}
-                        className={`rounded-full px-2 py-0.5 text-sm ${isMine ? "text-white/80 hover:bg-white/10" : "opacity-70 hover:opacity-100 hover:bg-muted"}`}
+                        className={`inline-flex size-6 items-center justify-center rounded-full text-xs transition ${isMine ? "bg-white/10 text-white/90 hover:bg-white/20" : "bg-background/90 text-foreground/80 hover:bg-muted"}`}
                         aria-label="Abrir menú"
                       >
                         ▾
@@ -390,17 +392,17 @@ export default function DirectConversation({
                       {!nextSameSender && (
                         <button
                           type="button"
-                          className={`text-xs ${isMine ? "text-white/80 hover:text-white" : "opacity-70 hover:opacity-100"}`}
+                          className={`rounded-full px-2 py-0.5 text-xs transition ${isMine ? "text-white/85 hover:bg-white/10 hover:text-white" : "opacity-80 hover:bg-muted hover:opacity-100"}`}
                           onClick={() => selectLatestMessageFromSender(msg)}
                         >
                           Responder
                         </button>
                       )}
                       {messageMenuId === msg.id && (
-                        <div className="absolute bottom-7 right-0 z-20 w-52 rounded-xl border border-border bg-surface p-2 shadow-xl">
+                        <div className="absolute bottom-8 right-0 z-20 w-56 rounded-2xl border border-border bg-surface/95 p-2 shadow-xl backdrop-blur">
                           <div className="mb-2 flex flex-wrap gap-1 border-b border-border pb-2">
                             {MESSAGE_REACTIONS.map((emoji) => (
-                              <button key={`${msg.id}-${emoji}`} type="button" className="rounded-full px-2 py-1 text-base hover:bg-muted" onClick={() => handleReaction(msg.id, emoji)}>{emoji}</button>
+                              <button key={`${msg.id}-${emoji}`} type="button" className="rounded-full border border-transparent px-2 py-1 text-base transition hover:border-border hover:bg-muted" onClick={() => handleReaction(msg.id, emoji)}>{emoji}</button>
                             ))}
                           </div>
                           <button type="button" className="block w-full rounded px-2 py-1 text-left text-xs hover:bg-muted" onClick={() => selectLatestMessageFromSender(msg)}>Responder</button>
