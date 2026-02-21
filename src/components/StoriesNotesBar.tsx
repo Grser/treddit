@@ -77,6 +77,14 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
   const currentViewerIndex = viewerIndex ?? 0;
   const activeStoryViewers = activeStory?.viewers || [];
 
+  function openPublishModal() {
+    setIsPublishing(true);
+    setStoryMediaUrls([]);
+    setStoryText("");
+    setPublishError(null);
+    setIsStoryMenuOpen(false);
+  }
+
   const otherUsers = useMemo(() => {
     const grouped = new Map<number, StoryItem & { storyCount: number }>();
     for (const story of sortedStories) {
@@ -229,11 +237,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
               setIsStoryMenuOpen(false);
               return;
             }
-            setIsPublishing(true);
-            setStoryMediaUrls([]);
-            setStoryText("");
-            setPublishError(null);
-            setIsStoryMenuOpen(false);
+            openPublishModal();
           }}
           className="group min-w-18 max-w-20 shrink-0 text-center"
           title={canInteract ? (myStoriesCount > 0 ? "Ver tu historia" : "Publicar historia") : "Inicia sesión para publicar historias"}
@@ -262,6 +266,20 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
           </div>
           <p className="truncate text-[12px] font-medium text-white">Tu historia</p>
         </button>
+
+        {canInteract && myStoriesCount > 0 && (
+          <button
+            type="button"
+            onClick={openPublishModal}
+            className="group min-w-16 max-w-16 shrink-0 text-center"
+            title="Subir más historias"
+          >
+            <div className="mx-auto mb-1.5 grid size-[64px] place-items-center rounded-full border border-dashed border-white/40 bg-white/10 text-2xl text-white transition group-hover:scale-[1.03]">
+              +
+            </div>
+            <p className="truncate text-[11px] text-white/90">Agregar</p>
+          </button>
+        )}
 
         {otherUsers.map((user) => {
           const hasStory = Boolean(user.media_url);
@@ -438,6 +456,14 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
 
                     {isStoryMenuOpen && (
                       <div className="absolute right-0 top-10 min-w-36 rounded-xl border border-white/15 bg-zinc-950 p-1 shadow-xl">
+                        <button
+                          type="button"
+                          onClick={openPublishModal}
+                          disabled={isSaving}
+                          className="flex w-full items-center rounded-lg px-3 py-2 text-left text-sm text-white hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          Agregar historias
+                        </button>
                         <button
                           type="button"
                           onClick={deleteMyStory}

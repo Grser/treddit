@@ -77,9 +77,10 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
   const myNotesCount = myNotes.length;
   const uniqueEntries = useMemo(
     () => sortedNotes
+      .filter((entry) => entry.userId !== me?.id)
       .filter((entry, index, arr) => arr.findIndex((item) => item.userId === entry.userId) === index)
       .slice(0, 12),
-    [sortedNotes],
+    [me?.id, sortedNotes],
   );
   const selectedNoteYoutubeUrl = getYoutubeEmbedUrl(selectedNote?.song_url);
 
@@ -152,6 +153,11 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
               router.push("/auth/login");
               return;
             }
+            if (myNote) {
+              setSelectedNote(myNote);
+              setIsActionsOpen(false);
+              return;
+            }
             setNoteText("");
             setSongTitle("");
             setSongArtist("");
@@ -160,10 +166,10 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
             setIsPublishing(true);
           }}
           className="group min-w-20 max-w-24 shrink-0 text-center"
-          title={canInteract ? "Publicar nota" : "Inicia sesión para publicar notas"}
+          title={canInteract ? (myNote ? "Ver tu nota" : "Publicar nota") : "Inicia sesión para publicar notas"}
         >
           <p className="mx-auto mb-1.5 line-clamp-2 min-h-9 rounded-2xl bg-white/14 px-2 py-1 text-[10px] leading-tight text-white/90">
-            Publica una nota rápida
+            {myNote?.content || "Publica una nota rápida"}
           </p>
           <div className="relative mx-auto mb-1 size-[58px] rounded-full bg-gradient-to-tr from-amber-400 via-fuchsia-500 to-violet-500 p-[2px] transition group-hover:scale-[1.03]">
             <div className="relative grid size-full place-items-center rounded-full bg-surface ring-[3px] ring-[#050d18] text-xl font-bold text-white">
