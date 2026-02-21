@@ -65,8 +65,7 @@ export default async function UserPage({
 }: {
   params: Promise<{ username: string }>;
 }) {
-  const { username } = await params;
-  const me = await getSessionUser();
+  const [{ username }, me] = await Promise.all([params, getSessionUser()]);
 
   if (!isDatabaseConfigured()) {
     const demoUser = resolveDemoUserByUsername(username);
@@ -81,7 +80,7 @@ export default async function UserPage({
 
     return (
       <div className="min-h-dvh">
-        <Navbar />
+        <Navbar session={me} />
         <ProfileHeader
           viewerId={me?.id}
           user={{
@@ -163,12 +162,15 @@ export default async function UserPage({
   const canMessage = Boolean(canMessageResult);
   const messageHref = canMessage ? `/mensajes/${user.username}` : null;
 
-  const viewerAgeVerified = me?.id ? await isUserAgeVerified(me.id) : false;
+  const viewerAgeVerifiedPromise = me?.id ? isUserAgeVerified(me.id) : Promise.resolve(false);
 
   let pinnedPost: PostCardType | null = null;
   if (user.pinned_post_id) {
-    const communityColumn = await getPostsCommunityColumn();
-    const sensitiveColumn = await getPostsSensitiveColumn();
+    const [communityColumn, sensitiveColumn, viewerAgeVerified] = await Promise.all([
+      getPostsCommunityColumn(),
+      getPostsSensitiveColumn(),
+      viewerAgeVerifiedPromise,
+    ]);
     const hasCommunityColumn = Boolean(communityColumn);
     const communityIdSelect = hasCommunityColumn && communityColumn ? `p.${communityColumn}` : "NULL";
     const communityJoin = hasCommunityColumn && communityColumn ? `LEFT JOIN Communities c ON c.id = p.${communityColumn}` : "";
@@ -250,7 +252,7 @@ export default async function UserPage({
 
   return (
     <div className="min-h-dvh">
-      <Navbar />
+      <Navbar session={me} />
       <ProfileHeader
         viewerId={me?.id}
         user={{

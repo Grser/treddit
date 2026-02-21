@@ -1,5 +1,6 @@
 import Navbar from "@/components/Navbar";
 
+import { getSessionUser } from "@/lib/auth";
 import { db, isDatabaseConfigured } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -14,11 +15,14 @@ type Campaign = {
 
 export default async function AdsPage() {
   const databaseReady = isDatabaseConfigured();
-  const campaigns = databaseReady ? await loadCampaigns() : [];
+  const [session, campaigns] = await Promise.all([
+    getSessionUser(),
+    databaseReady ? loadCampaigns() : Promise.resolve([]),
+  ]);
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
-      <Navbar />
+      <Navbar session={session} />
       <main className="mx-auto w-full max-w-4xl space-y-6 px-4 py-8">
         <header className="rounded-3xl border border-border bg-surface p-6 shadow-sm">
           <h1 className="text-2xl font-semibold">Anuncios de la comunidad</h1>

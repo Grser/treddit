@@ -223,14 +223,17 @@ export default async function ConversationPage({ params }: ConversationParams) {
     allowsAnyone: access.allowsAnyone,
   };
 
+  const messagesPromise = fetchConversationMessages(me.id, participant.id, 60);
+  const [inbox, messages, notes] = await Promise.all([inboxPromise, messagesPromise, notesPromise]);
+
   return (
     <ConversationLayout
-      inbox={await inboxPromise}
+      inbox={inbox}
       participant={participant}
-      messages={await fetchConversationMessages(me.id, participant.id, 60)}
+      messages={messages}
       viewerId={me.id}
       helperText={participant.allowsAnyone ? "Acepta mensajes de cualquier usuario" : undefined}
-      notes={await notesPromise}
+      notes={notes}
       me={me}
     />
   );
