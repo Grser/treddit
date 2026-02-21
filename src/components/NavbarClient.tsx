@@ -53,6 +53,15 @@ export default function NavbarClient({ session }: { session?: SessionUser | null
     let active = true;
 
     async function resolveSession() {
+      const hasSessionCookie = document.cookie
+        .split(";")
+        .some((cookie) => cookie.trim().startsWith("treddit_token="));
+
+      if (!hasSessionCookie) {
+        setResolvedSession(null);
+        return;
+      }
+
       try {
         const res = await fetch("/api/auth/me", { cache: "no-store" });
         if (!res.ok) {
