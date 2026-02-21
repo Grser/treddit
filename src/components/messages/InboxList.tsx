@@ -57,8 +57,9 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
           <button type="button" onClick={() => setTab("groups")} className={`rounded-full border px-3 py-1.5 transition ${tab === "groups" ? "border-brand bg-brand/20 text-foreground" : "border-border text-foreground/80 hover:bg-background/70"}`}>Grupos</button>
         </div>
         {tab === "groups" && (
-          <div className="mt-3 rounded-2xl border border-border/80 bg-surface p-3">
-            <p className="text-xs font-semibold uppercase tracking-wide opacity-70">Crear grupo</p>
+          <div className="mt-3 rounded-2xl border border-border/80 bg-background/70 p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-brand/90">Nuevo grupo</p>
+            <p className="mt-1 text-xs opacity-70">Crea una sala, agrega usuarios por nombre y empieza a chatear.</p>
             <input
               value={groupName}
               onChange={(event) => setGroupName(event.target.value)}
@@ -74,7 +75,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
             {groupError && <p className="mt-2 text-xs text-red-500">{groupError}</p>}
             <button
               type="button"
-              className="mt-2 rounded-full bg-brand px-3 py-1.5 text-xs font-medium text-white"
+              className="mt-2 rounded-full bg-brand px-3 py-1.5 text-xs font-semibold text-white shadow-sm shadow-brand/40"
               onClick={async () => {
                 setGroupError(null);
                 const usernames = groupMembers
@@ -94,7 +95,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
                 window.location.href = `/mensajes/grupos/${payload.groupId}`;
               }}
             >
-              + Nuevo grupo
+              Crear grupo
             </button>
           </div>
         )}
@@ -116,6 +117,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
             const isMine = item.lastSenderId === currentUserId;
             const isActive = activeUsername === item.username;
             const href = item.type === "group" && item.groupId ? `/mensajes/grupos/${item.groupId}` : `/mensajes/${item.username}`;
+            const isGroup = item.type === "group";
 
             return (
               <li key={item.userId}>
@@ -123,22 +125,26 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
                   href={href}
                   className={`flex items-center gap-3 border-b border-border/80 px-4 py-3 transition ${isActive ? "bg-brand/10" : "hover:bg-background/70"}`}
                 >
-                  <Image
-                    src={avatar}
-                    alt={displayName}
-                    width={52}
-                    height={52}
-                    className="size-12 rounded-full object-cover ring-1 ring-border"
-                    unoptimized
-                  />
+                  {isGroup ? (
+                    <div className="flex size-12 items-center justify-center rounded-full bg-emerald-500/15 text-xl ring-1 ring-emerald-500/40">👥</div>
+                  ) : (
+                    <Image
+                      src={avatar}
+                      alt={displayName}
+                      width={52}
+                      height={52}
+                      className="size-12 rounded-full object-cover ring-1 ring-border"
+                      unoptimized
+                    />
+                  )}
                   <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex items-center gap-1.5 text-sm">
                       <span className="line-clamp-1 font-semibold">{displayName}</span>
-                      <UserBadges size="sm" isAdmin={item.is_admin} isVerified={item.is_verified} />
+                      {!isGroup && <UserBadges size="sm" isAdmin={item.is_admin} isVerified={item.is_verified} />}
                       <span className="ml-auto text-xs opacity-60">{item.isStarter ? "Nuevo" : getCompactTime(item.createdAt)}</span>
                     </div>
                     <p className={`line-clamp-1 text-sm ${unread ? "font-semibold" : "opacity-70"}`}>
-                      {item.isStarter ? "" : isMine ? "Tú: " : ""}
+                      {isGroup ? "Grupo · " : item.isStarter ? "" : isMine ? "Tú: " : ""}
                       {preview}
                     </p>
                     {item.isStarter && (

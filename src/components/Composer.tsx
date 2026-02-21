@@ -373,7 +373,7 @@ export default function Composer({ enabled }: { enabled: boolean }) {
                 <button type="button" className="h-8 rounded-full border border-border px-3 text-xs" onClick={saveCurrentMedia}>
                   Guardar en mi pack
                 </button>
-                <span className="text-xs opacity-70">Como WhatsApp: reutiliza tus {mediaKind === "gif" ? "GIFs" : "stickers"} en próximos posts.</span>
+                <span className="text-xs opacity-70">Guárdalos para reutilizar tus {mediaKind === "gif" ? "GIFs" : "stickers"} en próximos posts.</span>
               </div>
               {selectedPack.length > 0 && (
                 <div className="flex flex-wrap gap-2">
