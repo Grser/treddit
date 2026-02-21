@@ -59,6 +59,7 @@ export default function DirectConversation({
   const [messageReactions, setMessageReactions] = useState<Record<number, string>>({});
   const [savedGifs, setSavedGifs] = useState<string[]>([]);
   const [savedStickers, setSavedStickers] = useState<string[]>([]);
+  const [isTrayOpen, setIsTrayOpen] = useState(false);
 
   useEffect(() => {
     setMessages(initialMessages);
@@ -73,6 +74,11 @@ export default function DirectConversation({
   useEffect(() => {
     textareaRef.current?.focus();
   }, [recipient.id]);
+
+  useEffect(() => {
+    resizeTextarea();
+  }, [text]);
+
 
   useEffect(() => {
     const container = scrollRef.current;
@@ -174,6 +180,13 @@ export default function DirectConversation({
 
   function addEmoji(emoji: string) {
     setText((prev) => `${prev}${prev && !prev.endsWith(" ") ? " " : ""}${emoji}`);
+  }
+
+  function resizeTextarea() {
+    const node = textareaRef.current;
+    if (!node) return;
+    node.style.height = "0px";
+    node.style.height = `${Math.min(node.scrollHeight, 140)}px`;
   }
 
   function addQuickMedia(item: (typeof QUICK_MEDIA)[number]) {
@@ -414,55 +427,6 @@ export default function DirectConversation({
             <button type="button" onClick={() => setReplyingTo(null)} className="text-sm opacity-70 hover:opacity-100">✕</button>
           </div>
         )}
-        <textarea
-          ref={textareaRef}
-          id="dm-textarea"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              const form = e.currentTarget.form;
-              if (form) {
-                form.requestSubmit();
-              }
-            }
-          }}
-          rows={1}
-          className="max-h-36 w-full resize-y rounded-2xl bg-input px-4 py-3 text-sm outline-none ring-1 ring-border transition focus:ring-2 focus:ring-white/20"
-          placeholder={strings.comments.replyPlaceholder || "Escribe tu mensaje"}
-          disabled={sending || uploading}
-        />
-        <div className="flex flex-wrap items-center gap-2">
-          {QUICK_EMOJIS.map((emoji) => (
-            <button
-              key={emoji}
-              type="button"
-              onClick={() => addEmoji(emoji)}
-              className="rounded-full border border-border px-2 py-1 text-sm hover:bg-muted"
-              disabled={sending || uploading}
-            >
-              {emoji}
-            </button>
-          ))}
-          {QUICK_MEDIA.map((item) => (
-            <button
-              key={item.label}
-              type="button"
-              onClick={() => addQuickMedia(item)}
-              className="rounded-full border border-border px-2 py-1 text-xs hover:bg-muted"
-              disabled={sending || uploading}
-            >
-              + {item.type}
-            </button>
-          ))}
-          {savedStickers.slice(0, 6).map((url) => (
-            <button key={`stk-${url}`} type="button" onClick={() => setAttachments((prev) => [...prev, { url, type: "image", name: "Sticker guardado" }])} className="rounded-full border border-border px-2 py-1 text-[11px] hover:bg-muted">sticker</button>
-          ))}
-          {savedGifs.slice(0, 6).map((url) => (
-            <button key={`gif-${url}`} type="button" onClick={() => setAttachments((prev) => [...prev, { url, type: "image", name: "GIF guardado" }])} className="rounded-full border border-border px-2 py-1 text-[11px] hover:bg-muted">gif</button>
-          ))}
-        </div>
         {error && <p className="text-sm text-red-500">{error}</p>}
         {attachments.length > 0 && (
           <div className="flex flex-wrap gap-2 text-xs">
@@ -496,24 +460,94 @@ export default function DirectConversation({
             ))}
           </div>
         )}
-        <div className="flex items-center justify-between gap-3">
+        {isTrayOpen && (
+          <div className="space-y-2 rounded-2xl border border-border bg-background/70 p-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {QUICK_EMOJIS.map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  onClick={() => addEmoji(emoji)}
+                  className="rounded-full border border-border px-2 py-1 text-sm hover:bg-muted"
+                  disabled={sending || uploading}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {QUICK_MEDIA.map((item) => (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={() => addQuickMedia(item)}
+                  className="rounded-full border border-border px-3 py-1 text-xs hover:bg-muted"
+                  disabled={sending || uploading}
+                >
+                  + {item.type}
+                </button>
+              ))}
+              {savedStickers.slice(0, 4).map((url) => (
+                <button key={`stk-${url}`} type="button" onClick={() => setAttachments((prev) => [...prev, { url, type: "image", name: "Sticker guardado" }])} className="rounded-full border border-border px-2 py-1 text-[11px] hover:bg-muted">sticker</button>
+              ))}
+              {savedGifs.slice(0, 4).map((url) => (
+                <button key={`gif-${url}`} type="button" onClick={() => setAttachments((prev) => [...prev, { url, type: "image", name: "GIF guardado" }])} className="rounded-full border border-border px-2 py-1 text-[11px] hover:bg-muted">gif</button>
+              ))}
+            </div>
+          </div>
+        )}
+        <div className="flex items-end gap-2">
           <div className="flex items-center gap-2">
             <input ref={fileInputRef} type="file" hidden accept="image/*,video/*,audio/*" onChange={handleFileChange} />
             <button
               type="button"
-              className="inline-flex h-9 items-center gap-2 rounded-full border border-border px-3 text-sm transition hover:bg-muted"
+              className="inline-flex size-10 items-center justify-center rounded-full bg-input text-lg transition hover:bg-muted"
               onClick={() => fileInputRef.current?.click()}
               disabled={sending || uploading}
+              aria-label="Adjuntar"
             >
-              {uploading ? "Subiendo..." : "Adjuntar"}
+              {uploading ? "…" : "+"}
+            </button>
+          </div>
+          <div className="flex flex-1 items-end gap-2 rounded-[26px] bg-input px-3 py-2 ring-1 ring-border focus-within:ring-2 focus-within:ring-white/20">
+            <textarea
+              ref={textareaRef}
+              id="dm-textarea"
+              value={text}
+              onChange={(e) => {
+                setText(e.target.value);
+                resizeTextarea();
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  const form = e.currentTarget.form;
+                  if (form) {
+                    form.requestSubmit();
+                  }
+                }
+              }}
+              rows={1}
+              className="max-h-28 min-h-6 flex-1 resize-none bg-transparent px-1 py-1 text-sm outline-none"
+              placeholder={strings.comments.replyPlaceholder || "Escribe tu mensaje"}
+              disabled={sending || uploading}
+            />
+            <button
+              type="button"
+              onClick={() => setIsTrayOpen((prev) => !prev)}
+              className="pb-1 text-xl opacity-80 transition hover:opacity-100"
+              aria-label="Abrir emojis y stickers"
+            >
+              🙂
             </button>
           </div>
           <button
             type="submit"
             disabled={!canSend}
-            className="inline-flex h-10 items-center rounded-full bg-foreground px-5 text-sm font-medium text-background shadow-sm transition hover:opacity-90 disabled:opacity-60"
+            className="inline-flex size-11 items-center justify-center rounded-full bg-foreground text-base font-medium text-background shadow-sm transition hover:opacity-90 disabled:opacity-60"
+            aria-label={canSend ? strings.comments.send : "Audio"}
           >
-            {strings.comments.send}
+            {canSend ? "➤" : "🎤"}
           </button>
         </div>
       </form>
