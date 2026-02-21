@@ -71,17 +71,17 @@ export default function MentionUserLink({
       </Link>
 
       {open && (
-        <div className="absolute left-0 top-full z-40 mt-2 w-80 overflow-hidden rounded-xl border border-border bg-surface shadow-2xl">
-          <div className="relative aspect-[3/1] w-full bg-muted">
+        <span className="absolute left-0 top-full z-40 mt-2 block w-80 overflow-hidden rounded-xl border border-border bg-surface shadow-2xl">
+          <span className="relative block aspect-[3/1] w-full bg-muted">
             {user?.banner_url ? (
               <Image src={user.banner_url} alt="" fill className="object-cover" unoptimized />
             ) : (
-              <div className="absolute inset-0 bg-gradient-to-r from-brand/50 via-brand/20 to-transparent" />
+              <span className="absolute inset-0 block bg-gradient-to-r from-brand/50 via-brand/20 to-transparent" />
             )}
-          </div>
+          </span>
 
-          <div className="relative p-3 pt-4">
-            <div className="absolute -top-8 left-3 size-16 overflow-hidden rounded-full border-2 border-surface bg-surface">
+          <span className="relative block p-3 pt-4">
+            <span className="absolute -top-8 left-3 block size-16 overflow-hidden rounded-full border-2 border-surface bg-surface">
               <Image
                 src={user?.avatar_url?.trim() || "/demo-reddit.png"}
                 alt={user?.nickname || user?.username || username}
@@ -89,28 +89,28 @@ export default function MentionUserLink({
                 className="object-cover"
                 unoptimized
               />
-            </div>
-            <div className="pl-20">
-              <p className="text-sm font-semibold inline-flex items-center gap-2">
+            </span>
+            <span className="block pl-20">
+              <span className="inline-flex items-center gap-2 text-sm font-semibold">
                 {user?.nickname || user?.username || username}
                 <UserBadges size="sm" isAdmin={user?.is_admin} isVerified={user?.is_verified} />
-              </p>
-              <p className="text-xs opacity-70">@{user?.username || username}</p>
-            </div>
-            {user?.description && <p className="mt-3 text-sm line-clamp-3">{user.description}</p>}
-            <div className="mt-3 flex gap-3 text-xs opacity-80">
+              </span>
+              <span className="block text-xs opacity-70">@{user?.username || username}</span>
+            </span>
+            {user?.description && <span className="mt-3 block text-sm line-clamp-3">{user.description}</span>}
+            <span className="mt-3 flex gap-3 text-xs opacity-80">
               <span>
                 <b>{user?.following ?? 0}</b> Siguiendo
               </span>
               <span>
                 <b>{user?.followers ?? 0}</b> Seguidores
               </span>
-            </div>
+            </span>
             <Link href={`/u/${encodeURIComponent(username)}`} className="mt-3 inline-flex text-xs text-blue-400 hover:underline">
               Ver perfil
             </Link>
-          </div>
-        </div>
+          </span>
+        </span>
       )}
     </span>
   );
