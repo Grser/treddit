@@ -44,9 +44,9 @@ export default async function MessagesPage() {
             <div className="overflow-hidden rounded-3xl border border-border/80 bg-surface shadow-xl">
               <MarkMessagesSeen />
               <MessagesRealtimeSync />
-              <div className="grid h-[calc(100dvh-7.75rem)] min-h-[540px] lg:grid-cols-[360px_minmax(0,1fr)]">
+              <div className="grid h-[calc(100dvh-7rem)] min-h-[500px] lg:grid-cols-[360px_minmax(0,1fr)]">
               <aside className="border-b border-border/80 lg:border-b-0 lg:border-r">
-                <InboxList entries={entries} currentUserId={me.id} className="h-[calc(100dvh-18rem)] min-h-[360px] overflow-y-auto" />
+                <InboxList entries={entries} currentUserId={me.id} className="h-[calc(100dvh-16rem)] min-h-[360px] overflow-y-auto" />
               </aside>
 
               <section className="hidden h-full lg:flex lg:flex-col lg:items-center lg:justify-center lg:bg-gradient-to-b lg:from-background/40 lg:to-brand/5 lg:p-8">

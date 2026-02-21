@@ -17,6 +17,7 @@ type InboxListProps = {
 
 export default function InboxList({ entries, currentUserId, activeUsername, className }: InboxListProps) {
   const [query, setQuery] = useState("");
+  const [tab, setTab] = useState<"all" | "unread" | "groups">("all");
 
   const normalizedQuery = query.trim().toLowerCase();
   const filteredEntries = useMemo(() => {
@@ -27,21 +28,37 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
     });
   }, [entries, normalizedQuery]);
 
+  const visibleEntries = useMemo(() => {
+    if (tab === "unread") return filteredEntries.filter((entry) => entry.unreadCount > 0);
+    if (tab === "groups") {
+      return filteredEntries.filter((entry) => {
+        const label = `${entry.nickname || ""} ${entry.username}`.toLowerCase();
+        return label.includes("grupo") || label.includes("group");
+      });
+    }
+    return filteredEntries;
+  }, [filteredEntries, tab]);
+
   return (
     <>
-      <div className="border-b border-border/80 px-4 py-4">
-        <h1 className="text-2xl font-semibold">Mensajes</h1>
+      <div className="border-b border-border/80 bg-background/70 px-4 py-4 backdrop-blur">
+        <h1 className="text-2xl font-semibold">Chats</h1>
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           type="search"
-          placeholder="Buscar contactos..."
-          className="mt-3 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none transition focus:border-brand"
+          placeholder="Buscar chat o iniciar uno nuevo"
+          className="mt-3 w-full rounded-full border border-border bg-surface px-4 py-2.5 text-sm outline-none transition focus:border-brand"
           aria-label="Buscar contactos"
         />
+        <div className="mt-3 flex flex-wrap gap-2 text-sm">
+          <button type="button" onClick={() => setTab("all")} className={`rounded-full border px-3 py-1.5 ${tab === "all" ? "border-brand bg-brand/20" : "border-border"}`}>Todos</button>
+          <button type="button" onClick={() => setTab("unread")} className={`rounded-full border px-3 py-1.5 ${tab === "unread" ? "border-brand bg-brand/20" : "border-border"}`}>No leídos</button>
+          <button type="button" onClick={() => setTab("groups")} className={`rounded-full border px-3 py-1.5 ${tab === "groups" ? "border-brand bg-brand/20" : "border-border"}`}>Grupos</button>
+        </div>
       </div>
 
-      {filteredEntries.length === 0 ? (
+      {visibleEntries.length === 0 ? (
         <div className="p-4 text-sm opacity-70">
           {entries.length === 0
             ? "Aún no tienes mensajes nuevos. ¡Participa en las conversaciones para recibir respuestas!"
@@ -49,7 +66,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
         </div>
       ) : (
         <ul className={className || "h-[calc(100dvh-18rem)] min-h-[360px] overflow-y-auto"}>
-          {filteredEntries.map((item) => {
+          {visibleEntries.map((item) => {
             const avatar = item.avatar_url?.trim() || "/demo-reddit.png";
             const displayName = item.nickname || item.username;
             const preview = item.isStarter ? "Síguense mutuamente · toca para iniciar chat" : item.lastMessage?.trim() || "Archivo adjunto";
@@ -61,7 +78,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
               <li key={item.userId}>
                 <Link
                   href={`/mensajes/${item.username}`}
-                  className={`flex items-center gap-3 border-b border-border/60 px-4 py-3 transition ${isActive ? "bg-brand/10" : "hover:bg-muted/50"}`}
+                  className={`flex items-center gap-3 border-b border-border/60 px-4 py-3 transition ${isActive ? "bg-brand/10" : "hover:bg-background/60"}`}
                 >
                   <Image
                     src={avatar}

@@ -1,6 +1,7 @@
 import type { RowDataPacket } from "mysql2";
 
 import Image from "next/image";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import Navbar from "@/components/Navbar";
@@ -65,7 +66,7 @@ function ConversationLayout({
         <NotesBar notes={notes} me={me} />
         <MessagesRealtimeSync />
 
-        <div className="grid h-[calc(100dvh-7.75rem)] min-h-[560px] overflow-hidden rounded-3xl border border-border/80 bg-surface shadow-xl lg:grid-cols-[360px_minmax(0,1fr)]">
+        <div className="grid h-[calc(100dvh-7rem)] min-h-[560px] overflow-hidden rounded-3xl border border-border/80 bg-surface shadow-xl lg:grid-cols-[360px_minmax(0,1fr)]">
           <aside className="hidden border-r border-border/80 lg:block">
             <InboxList
               entries={inbox}
@@ -76,6 +77,9 @@ function ConversationLayout({
           </aside>
 
           <section className="flex h-full min-h-0 flex-col">
+            <div className="border-b border-border/80 px-4 py-2 lg:hidden">
+              <Link href="/mensajes" className="text-sm font-medium text-brand hover:underline">← Volver a chats</Link>
+            </div>
             <header className="flex items-center gap-3 border-b border-border/80 px-4 py-3">
               <Image
                 src={avatar}
