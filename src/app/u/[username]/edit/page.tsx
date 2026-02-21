@@ -111,7 +111,14 @@ export default async function EditProfilePage({ params }: { params: Promise<{ us
             <h2 className="mb-4 text-lg font-semibold">Imágenes</h2>
             <div className="grid gap-4 sm:grid-cols-2">
               <ImagePickerField name="avatar_url" label="Avatar" initialUrl={u.avatar_url} />
-              <ImagePickerField name="banner_url" label="Banner" initialUrl={u.banner_url} />
+              <ImagePickerField
+                name="banner_url"
+                label="Banner"
+                initialUrl={u.banner_url}
+                minWidth={1500}
+                minHeight={500}
+                helpText="Para evitar pixelación, sube una imagen de al menos 1500x500 px."
+              />
             </div>
           </section>
 
