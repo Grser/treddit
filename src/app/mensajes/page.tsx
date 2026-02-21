@@ -3,6 +3,7 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import InboxList from "@/components/messages/InboxList";
 import MarkMessagesSeen from "@/components/messages/MarkMessagesSeen";
+import MessagesRealtimeSync from "@/components/messages/MessagesRealtimeSync";
 import NotesBar from "@/components/messages/NotesBar";
 
 import { getSessionUser } from "@/lib/auth";
@@ -42,6 +43,7 @@ export default async function MessagesPage() {
 
             <div className="overflow-hidden rounded-3xl border border-border/80 bg-surface shadow-xl">
               <MarkMessagesSeen />
+              <MessagesRealtimeSync />
               <div className="grid h-[calc(100dvh-7.75rem)] min-h-[540px] lg:grid-cols-[360px_minmax(0,1fr)]">
               <aside className="border-b border-border/80 lg:border-b-0 lg:border-r">
                 <InboxList entries={entries} currentUserId={me.id} className="h-[calc(100dvh-18rem)] min-h-[360px] overflow-y-auto" />

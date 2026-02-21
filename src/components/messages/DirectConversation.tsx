@@ -203,6 +203,7 @@ export default function DirectConversation({
           nextMessage.attachments = attachments;
         }
         setMessages((prev) => mergeById(prev, [nextMessage]));
+        window.dispatchEvent(new CustomEvent("treddit:messages-updated"));
         setText("");
         setAttachments([]);
         setReplyingTo(null);

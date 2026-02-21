@@ -63,6 +63,11 @@ export default function Feed({
   }, [source, userId, likesOf, limit, filter, communityId, tag, username]);
 
   useEffect(() => {
+    setPosts(dedupePosts(initialItems || []));
+    setLoading(false);
+  }, [initialItems]);
+
+  useEffect(() => {
     if (skipFirstLoad.current) {
       skipFirstLoad.current = false;
       return;

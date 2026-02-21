@@ -60,8 +60,6 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
   const router = useRouter();
   const [isPublishing, setIsPublishing] = useState(false);
   const [noteText, setNoteText] = useState("");
-  const [songTitle, setSongTitle] = useState("");
-  const [songArtist, setSongArtist] = useState("");
   const [songUrl, setSongUrl] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
@@ -99,8 +97,6 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           content: normalizedText,
-          song_title: songTitle.trim(),
-          song_artist: songArtist.trim(),
           song_url: songUrl.trim(),
         }),
       });
@@ -112,8 +108,6 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
       }
 
       setNoteText("");
-      setSongTitle("");
-      setSongArtist("");
       setSongUrl("");
       setIsPublishing(false);
       router.refresh();
@@ -159,8 +153,6 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
               return;
             }
             setNoteText("");
-            setSongTitle("");
-            setSongArtist("");
             setSongUrl("");
             setPublishError(null);
             setIsPublishing(true);
@@ -245,29 +237,14 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
 
             <div className="mt-3 grid gap-2">
               <input
-                type="text"
-                value={songTitle}
-                onChange={(event) => setSongTitle(event.target.value)}
-                maxLength={120}
-                className="h-10 w-full rounded-xl border border-border bg-input px-3 text-sm outline-none ring-1 ring-transparent focus:border-brand/50 focus:ring-brand/40"
-                placeholder="Canción (opcional)"
-              />
-              <input
-                type="text"
-                value={songArtist}
-                onChange={(event) => setSongArtist(event.target.value)}
-                maxLength={120}
-                className="h-10 w-full rounded-xl border border-border bg-input px-3 text-sm outline-none ring-1 ring-transparent focus:border-brand/50 focus:ring-brand/40"
-                placeholder="Artista (opcional)"
-              />
-              <input
                 type="url"
                 value={songUrl}
                 onChange={(event) => setSongUrl(event.target.value)}
                 maxLength={500}
                 className="h-10 w-full rounded-xl border border-border bg-input px-3 text-sm outline-none ring-1 ring-transparent focus:border-brand/50 focus:ring-brand/40"
-                placeholder="Enlace de la canción (opcional)"
+                placeholder="Enlace de la canción (Spotify, YouTube, etc.)"
               />
+              <p className="text-[11px] text-white/70">Al publicar, detectamos automáticamente artista y título desde el enlace.</p>
             </div>
 
             {publishError && <p className="mt-2 text-xs text-red-400">{publishError}</p>}
@@ -363,25 +340,25 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
             )}
 
             <div className="mt-4 space-y-2">
-              <button
-                type="button"
-                onClick={() => {
-                  if (!canInteract) {
-                    router.push("/auth/login");
-                    return;
-                  }
-                  const noteToEdit = me?.id === selectedNote.userId ? selectedNote : myNote;
-                  setNoteText(noteToEdit?.content || "");
-                  setSongTitle(noteToEdit?.song_title || "");
-                  setSongArtist(noteToEdit?.song_artist || "");
-                  setSongUrl(noteToEdit?.song_url || "");
-                  setSelectedNote(null);
-                  setIsPublishing(true);
-                }}
-                className="inline-flex h-10 w-full items-center justify-center rounded-xl bg-brand px-4 text-sm font-semibold text-white"
-              >
-                Dejar una nota nueva
-              </button>
+              {me?.id === selectedNote.userId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!canInteract) {
+                      router.push("/auth/login");
+                      return;
+                    }
+                    const noteToEdit = selectedNote;
+                    setNoteText(noteToEdit.content || "");
+                    setSongUrl(noteToEdit.song_url || "");
+                    setSelectedNote(null);
+                    setIsPublishing(true);
+                  }}
+                  className="inline-flex h-10 w-full items-center justify-center rounded-xl bg-brand px-4 text-sm font-semibold text-white"
+                >
+                  Editar mi nota
+                </button>
+              )}
               {me?.id === selectedNote.userId && (
                 <button
                   type="button"
