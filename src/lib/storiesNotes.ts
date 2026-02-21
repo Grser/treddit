@@ -11,6 +11,7 @@ export type StoryItem = {
   content: string | null;
   media_url: string;
   created_at: string;
+  viewed_by_me?: boolean;
   viewers?: {
     id: number;
     username: string;
@@ -66,6 +67,10 @@ type StoryViewRow = RowDataPacket & {
   nickname: string | null;
   avatar_url: string | null;
   viewed_at: string | Date;
+};
+
+type ViewerStoryRow = RowDataPacket & {
+  story_id: number;
 };
 
 let schemaEnsured = false;
@@ -227,7 +232,7 @@ export async function loadActiveStories(limit = 24, viewerId?: number | null): P
             AND f.followed = s.user_id
         )
       )
-    ORDER BY s.created_at DESC
+    ORDER BY s.created_at ASC
     LIMIT ?
     `,
     [viewerId ?? null, viewerId ?? null, viewerId ?? null, limit],
@@ -246,8 +251,29 @@ export async function loadActiveStories(limit = 24, viewerId?: number | null): P
 
   if (!viewerId) return items;
 
+  const visibleStoryIds = items.filter((item) => item.userId !== viewerId).map((item) => item.id);
+  const viewedStoryIds = new Set<number>();
+  if (visibleStoryIds.length > 0) {
+    const placeholders = visibleStoryIds.map(() => "?").join(", ");
+    const [viewerRows] = await db.query<ViewerStoryRow[]>(
+      `
+      SELECT story_id
+      FROM Story_Views
+      WHERE viewer_id = ?
+        AND story_id IN (${placeholders})
+      `,
+      [viewerId, ...visibleStoryIds],
+    );
+    viewerRows.forEach((row) => viewedStoryIds.add(Number(row.story_id)));
+  }
+
   const ownStoryIds = items.filter((item) => item.userId === viewerId).map((item) => item.id);
-  if (ownStoryIds.length === 0) return items;
+  if (ownStoryIds.length === 0) {
+    return items.map((item) => ({
+      ...item,
+      viewed_by_me: item.userId === viewerId ? true : viewedStoryIds.has(item.id),
+    }));
+  }
 
   const placeholders = ownStoryIds.map(() => "?").join(", ");
   const [viewRows] = await db.query<StoryViewRow[]>(
@@ -278,6 +304,7 @@ export async function loadActiveStories(limit = 24, viewerId?: number | null): P
   return items.map((item) => ({
     ...item,
     viewers: item.userId === viewerId ? viewersByStoryId.get(item.id) || [] : undefined,
+    viewed_by_me: item.userId === viewerId ? true : viewedStoryIds.has(item.id),
   }));
 }
 

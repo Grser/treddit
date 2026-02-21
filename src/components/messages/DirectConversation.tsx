@@ -17,7 +17,11 @@ export type ConversationParticipant = {
   is_verified?: boolean;
 };
 
-const QUICK_EMOJIS = ["😀", "😂", "🔥", "❤️", "👏", "😮", "🙏", "🎉"];
+const QUICK_EMOJIS = ["😀", "😂", "🔥", "❤️", "👏", "😮", "🙏", "🎉"] as const;
+const MESSAGE_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"] as const;
+
+const gifStorageKey = (userId: number) => `treddit_dm_saved_gifs_${userId}`;
+const stickerStorageKey = (userId: number) => `treddit_dm_saved_stickers_${userId}`;
 
 const QUICK_MEDIA: Array<{ label: string; url: string; type: "gif" | "sticker" }> = [
   { label: "GIF hype", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExYzU2b2M0OW53cm9zNnN3eXF5ODNnM2ZwMjk3bWQ2bWF5bnRxd3FuNSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/l0MYt5jPR6QX5pnqM/giphy.gif", type: "gif" },
@@ -51,6 +55,10 @@ export default function DirectConversation({
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [replyingTo, setReplyingTo] = useState<DirectMessageEntry | null>(null);
   const latestIdRef = useRef(initialMessages[initialMessages.length - 1]?.id ?? 0);
+  const [messageMenuId, setMessageMenuId] = useState<number | null>(null);
+  const [messageReactions, setMessageReactions] = useState<Record<number, string>>({});
+  const [savedGifs, setSavedGifs] = useState<string[]>([]);
+  const [savedStickers, setSavedStickers] = useState<string[]>([]);
 
   useEffect(() => {
     setMessages(initialMessages);
@@ -118,6 +126,38 @@ export default function DirectConversation({
     markRead();
   }, [messages, recipient.id]);
 
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const gifs = window.localStorage.getItem(gifStorageKey(viewerId));
+      const stickers = window.localStorage.getItem(stickerStorageKey(viewerId));
+      setSavedGifs(gifs ? JSON.parse(gifs) : []);
+      setSavedStickers(stickers ? JSON.parse(stickers) : []);
+    } catch {
+      setSavedGifs([]);
+      setSavedStickers([]);
+    }
+  }, [viewerId]);
+
+  function persistSavedMedia(next: string[], kind: "gif" | "sticker") {
+    if (typeof window === "undefined") return;
+    const unique = [...new Set(next)].slice(0, 32);
+    if (kind === "gif") {
+      setSavedGifs(unique);
+      window.localStorage.setItem(gifStorageKey(viewerId), JSON.stringify(unique));
+      return;
+    }
+    setSavedStickers(unique);
+    window.localStorage.setItem(stickerStorageKey(viewerId), JSON.stringify(unique));
+  }
+
+  function saveMedia(url: string, kind: "gif" | "sticker") {
+    if (!url) return;
+    const source = kind === "gif" ? savedGifs : savedStickers;
+    persistSavedMedia([url, ...source], kind);
+  }
+
   const canSend = useMemo(
     () => !sending && !uploading && (text.trim().length > 0 || attachments.length > 0),
     [sending, uploading, text, attachments.length],
@@ -137,7 +177,13 @@ export default function DirectConversation({
   }
 
   function addQuickMedia(item: (typeof QUICK_MEDIA)[number]) {
+    saveMedia(item.url, item.type);
     setAttachments((prev) => [...prev, { url: item.url, type: "image", name: item.label }]);
+  }
+
+  function handleReaction(messageId: number, emoji: string) {
+    setMessageReactions((prev) => ({ ...prev, [messageId]: emoji }));
+    setMessageMenuId(null);
   }
 
   async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
@@ -226,7 +272,7 @@ export default function DirectConversation({
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 md:gap-3">
-      <div className="flex min-h-0 flex-1 flex-col rounded-3xl border border-[#1f2c35] bg-[#0b141a] p-3 shadow-sm md:p-4">
+      <div className="flex min-h-0 flex-1 flex-col rounded-3xl border border-border bg-background/70 p-3 shadow-sm md:p-4">
         {messages.length === 0 && (
           <p className="text-sm opacity-70">{strings.comments.none || "Aún no hay mensajes. Inicia la conversación."}</p>
         )}
@@ -240,8 +286,8 @@ export default function DirectConversation({
             const showAvatar = !isMine && !nextSameSender;
             const showHeader = !isMine && !prevSameSender;
             const bubbleClasses = isMine
-              ? "bg-[#005c4b] text-white"
-              : "bg-[#202c33] text-[#e9edef]";
+              ? "bg-brand text-white"
+              : "bg-surface text-foreground";
             const timeLabel = new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
             const avatar = !isMine ? msg.sender.avatar_url?.trim() || "/demo-reddit.png" : null;
             return (
@@ -278,14 +324,25 @@ export default function DirectConversation({
                         {msg.attachments.map((file) => (
                           <li key={`${msg.id}-${file.url}`} className="overflow-hidden rounded-2xl border border-white/10 bg-black/10">
                             {file.type === "image" ? (
-                              <Image
-                                src={file.url}
-                                alt={file.name || "Imagen adjunta"}
-                                width={320}
-                                height={220}
-                                className="h-[220px] w-[320px] max-w-full object-cover"
-                                unoptimized
-                              />
+                              <>
+                                <Image
+                                  src={file.url}
+                                  alt={file.name || "Imagen adjunta"}
+                                  width={320}
+                                  height={220}
+                                  className="h-[220px] w-[320px] max-w-full object-cover"
+                                  unoptimized
+                                />
+                                <div className="flex justify-end bg-black/10 px-2 py-1">
+                                  <button
+                                    type="button"
+                                    className="text-[11px] underline"
+                                    onClick={() => saveMedia(file.url, file.url.toLowerCase().includes("gif") ? "gif" : "sticker")}
+                                  >
+                                    Guardar
+                                  </button>
+                                </div>
+                              </>
                             ) : file.type === "video" ? (
                               <video src={file.url} controls className="h-[220px] w-[320px] max-w-full rounded-lg object-cover" />
                             ) : file.type === "audio" ? (
@@ -304,7 +361,18 @@ export default function DirectConversation({
                         ))}
                       </ul>
                     ) : null}
-                    <div className="mt-1 flex items-center justify-end gap-3">
+                    {messageReactions[msg.id] && (
+                      <div className="mt-1 w-fit rounded-full bg-background/80 px-2 py-0.5 text-sm shadow">{messageReactions[msg.id]}</div>
+                    )}
+                    <div className="relative mt-1 flex items-center justify-end gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setMessageMenuId((prev) => (prev === msg.id ? null : msg.id))}
+                        className={`rounded-full px-2 py-0.5 text-sm ${isMine ? "text-white/80 hover:bg-white/10" : "opacity-70 hover:opacity-100 hover:bg-muted"}`}
+                        aria-label="Abrir menú"
+                      >
+                        ▾
+                      </button>
                       <p className={`text-[11px] ${isMine ? "text-white/70" : "opacity-70"}`}>{timeLabel}</p>
                       {!nextSameSender && (
                         <button
@@ -314,6 +382,18 @@ export default function DirectConversation({
                         >
                           Responder
                         </button>
+                      )}
+                      {messageMenuId === msg.id && (
+                        <div className="absolute bottom-7 right-0 z-20 w-52 rounded-xl border border-border bg-surface p-2 shadow-xl">
+                          <div className="mb-2 flex flex-wrap gap-1 border-b border-border pb-2">
+                            {MESSAGE_REACTIONS.map((emoji) => (
+                              <button key={`${msg.id}-${emoji}`} type="button" className="rounded-full px-2 py-1 text-base hover:bg-muted" onClick={() => handleReaction(msg.id, emoji)}>{emoji}</button>
+                            ))}
+                          </div>
+                          <button type="button" className="block w-full rounded px-2 py-1 text-left text-xs hover:bg-muted" onClick={() => selectLatestMessageFromSender(msg)}>Responder</button>
+                          <button type="button" className="block w-full rounded px-2 py-1 text-left text-xs hover:bg-muted" onClick={async () => { if (msg.text) await navigator.clipboard.writeText(msg.text); setMessageMenuId(null); }}>Copiar</button>
+                          <button type="button" className="block w-full rounded px-2 py-1 text-left text-xs opacity-70">Reenviar (pronto)</button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -375,6 +455,12 @@ export default function DirectConversation({
             >
               + {item.type}
             </button>
+          ))}
+          {savedStickers.slice(0, 6).map((url) => (
+            <button key={`stk-${url}`} type="button" onClick={() => setAttachments((prev) => [...prev, { url, type: "image", name: "Sticker guardado" }])} className="rounded-full border border-border px-2 py-1 text-[11px] hover:bg-muted">sticker</button>
+          ))}
+          {savedGifs.slice(0, 6).map((url) => (
+            <button key={`gif-${url}`} type="button" onClick={() => setAttachments((prev) => [...prev, { url, type: "image", name: "GIF guardado" }])} className="rounded-full border border-border px-2 py-1 text-[11px] hover:bg-muted">gif</button>
           ))}
         </div>
         {error && <p className="text-sm text-red-500">{error}</p>}

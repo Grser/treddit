@@ -34,6 +34,7 @@ type StoryItem = {
   content?: string | null;
   media_url?: string | null;
   created_at?: string;
+  viewed_by_me?: boolean;
   viewers?: {
     id: number;
     username: string;
@@ -67,9 +68,9 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
 
   const sortedStories = useMemo(
     () => [...users].sort((a, b) => {
-      const dateDiff = new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+      const dateDiff = new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
       if (dateDiff !== 0) return dateDiff;
-      return Number(b.story_id || 0) - Number(a.story_id || 0);
+      return Number(a.story_id || 0) - Number(b.story_id || 0);
     }),
     [users],
   );
@@ -90,18 +91,45 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
   }
 
   const otherUsers = useMemo(() => {
-    const grouped = new Map<number, StoryItem & { storyCount: number }>();
+    const grouped = new Map<number, StoryItem & { storyCount: number; seenCount: number }>();
     for (const story of sortedStories) {
       if (me?.id === story.id) continue;
       const existing = grouped.get(story.id);
       if (existing) {
         existing.storyCount += 1;
+        if (story.viewed_by_me) existing.seenCount += 1;
         continue;
       }
-      grouped.set(story.id, { ...story, storyCount: 1 });
+      grouped.set(story.id, { ...story, storyCount: 1, seenCount: story.viewed_by_me ? 1 : 0 });
     }
-    return Array.from(grouped.values()).slice(0, 12);
+    return Array.from(grouped.values())
+      .sort((a, b) => {
+        const aSeen = a.seenCount >= a.storyCount;
+        const bSeen = b.seenCount >= b.storyCount;
+        if (aSeen !== bSeen) return aSeen ? 1 : -1;
+        return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
+      })
+      .slice(0, 12);
   }, [me?.id, sortedStories]);
+
+  function buildStoryRing(storyCount: number, seenCount = 0) {
+    const safeTotal = Math.max(1, storyCount);
+    const safeSeen = Math.min(safeTotal, Math.max(0, seenCount));
+    const viewedColor = "rgba(148, 163, 184, 0.95)";
+    const freshColor = "rgba(236, 72, 153, 0.98)";
+    const separatorColor = "rgba(5, 13, 24, 1)";
+    const segment = 360 / safeTotal;
+    const paint = segment * 0.84;
+    const stops: string[] = [];
+    for (let i = 0; i < safeTotal; i += 1) {
+      const start = i * segment;
+      const end = start + paint;
+      const color = i < safeSeen ? viewedColor : freshColor;
+      stops.push(`${color} ${start}deg ${end}deg`);
+      stops.push(`${separatorColor} ${end}deg ${(i + 1) * segment}deg`);
+    }
+    return { background: `conic-gradient(${stops.join(", ")})` };
+  }
 
   useEffect(() => {
     if (viewerIndex === null || !sortedStories[viewerIndex]) {
@@ -251,11 +279,8 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
           title={canInteract ? (myStoriesCount > 0 ? "Ver tu historia" : "Publicar historia") : "Inicia sesión para publicar historias"}
         >
           <div
-            className={`relative mx-auto mb-1.5 grid size-[64px] place-items-center rounded-full p-[2px] transition group-hover:scale-[1.03] ${
-              myStoriesCount > 0
-                ? "bg-gradient-to-tr from-amber-400 via-fuchsia-500 to-violet-500"
-                : "bg-white/20"
-            }`}
+            className="relative mx-auto mb-1.5 grid size-[64px] place-items-center rounded-full p-[2px] transition group-hover:scale-[1.03]"
+            style={myStoriesCount > 0 ? buildStoryRing(myStoriesCount, myStoriesCount) : undefined}
           >
             <div className="relative grid size-full place-items-center overflow-hidden rounded-full bg-surface ring-[3px] ring-[#050d18]">
               <Image
@@ -265,11 +290,6 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
                 sizes="64px"
                 className="rounded-full object-cover"
               />
-              {myStoriesCount > 1 && (
-                <span className="absolute -top-1 -left-1 rounded-full bg-brand px-1.5 text-[10px] font-semibold text-white">
-                  {myStoriesCount}
-                </span>
-              )}
             </div>
           </div>
           <p className="truncate text-[12px] font-medium text-white">Tu historia</p>
@@ -291,6 +311,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
 
         {otherUsers.map((user) => {
           const hasStory = Boolean(user.media_url);
+          const seenAll = user.seenCount >= user.storyCount;
           const firstStoryIndex = sortedStories.findIndex((story) => story.id === user.id);
           return (
             <button
@@ -301,9 +322,8 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
               title={`Ver historia de ${user.username}`}
             >
               <div
-                className={`relative mx-auto mb-1.5 size-[64px] rounded-full p-[2px] transition group-hover:scale-[1.03] ${
-                  hasStory ? "bg-gradient-to-tr from-amber-400 via-fuchsia-500 to-violet-500" : "bg-white/20"
-                }`}
+                className="relative mx-auto mb-1.5 size-[64px] rounded-full p-[2px] transition group-hover:scale-[1.03]"
+                style={hasStory ? buildStoryRing(user.storyCount, user.seenCount) : undefined}
               >
                 <div className="relative size-full overflow-hidden rounded-full bg-surface ring-[3px] ring-[#050d18]">
                   <Image
@@ -313,14 +333,9 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
                     sizes="64px"
                     className="object-cover"
                   />
-                  {user.storyCount > 1 && (
-                    <span className="absolute -top-1 -left-1 rounded-full bg-brand px-1.5 text-[10px] font-semibold text-white">
-                      {user.storyCount}
-                    </span>
-                  )}
                 </div>
               </div>
-              <p className="truncate text-[12px] font-medium text-white">{user.username}</p>
+              <p className={`truncate text-[12px] font-medium ${seenAll ? "text-white/65" : "text-white"}`}>{user.username}</p>
             </button>
           );
         })}
