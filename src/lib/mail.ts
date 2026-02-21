@@ -2,6 +2,7 @@ import "server-only";
 
 import { access } from "node:fs/promises";
 import type { Transporter } from "nodemailer";
+import type SMTPTransport from "nodemailer/lib/smtp-transport";
 
 let transporterPromise: Promise<Transporter | null> | null = null;
 let shellAvailabilityPromise: Promise<boolean> | null = null;
@@ -71,18 +72,15 @@ function getTransporter() {
       const secure = secureEnv ? secureEnv === "true" || secureEnv === "1" : port === 465;
       const user = process.env.SMTP_USER;
       const pass = process.env.SMTP_PASS;
+      const transportOptions: SMTPTransport.Options = {
+        host,
+        port,
+        secure,
+        auth: user && pass ? { user, pass } : undefined,
+      };
 
       try {
-        const transporter = nodemailer.createTransport({
-          host,
-          port,
-          secure,
-          // Some minimal/distroless environments do not ship a shell.
-          // Keep this strictly on SMTP transport and never shell out.
-          sendmail: false,
-          direct: false,
-          auth: user && pass ? { user, pass } : undefined,
-        });
+        const transporter = nodemailer.createTransport(transportOptions);
 
         const shouldVerify =
           process.env.SMTP_VERIFY_ON_START === "true" || process.env.SMTP_VERIFY_ON_START === "1";
