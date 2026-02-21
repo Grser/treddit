@@ -298,7 +298,7 @@ export default function DirectConversation({
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 md:gap-3">
-      <div className="flex min-h-0 flex-1 flex-col rounded-3xl border border-border bg-background/70 p-3 shadow-sm md:p-4">
+      <div className="flex min-h-0 flex-1 flex-col rounded-3xl border border-border bg-surface/90 p-3 shadow-sm md:p-4">
         {messages.length === 0 && (
           <p className="text-sm opacity-70">{strings.comments.none || "Aún no hay mensajes. Inicia la conversación."}</p>
         )}
@@ -313,7 +313,7 @@ export default function DirectConversation({
             const showHeader = !isMine && !prevSameSender;
             const bubbleClasses = isMine
               ? "bg-brand text-white"
-              : "bg-surface text-foreground";
+              : "bg-input text-foreground";
             const timeLabel = new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
             const avatar = !isMine ? msg.sender.avatar_url?.trim() || "/demo-reddit.png" : null;
             return (
@@ -331,7 +331,15 @@ export default function DirectConversation({
                       />
                     ) : <div className="size-8" />
                   )}
-                  <div className={`rounded-lg px-4 py-2.5 text-sm shadow-sm ${bubbleClasses}`}>
+                  <div className={`relative rounded-lg px-4 py-2.5 text-sm shadow-sm ${bubbleClasses}`}>
+                    <button
+                      type="button"
+                      onClick={() => setMessageMenuId((prev) => (prev === msg.id ? null : msg.id))}
+                      className={`absolute right-2 top-2 inline-flex size-6 items-center justify-center rounded-full text-xs transition ${isMine ? "bg-white/10 text-white/90 hover:bg-white/20" : "bg-background/80 text-foreground/80 hover:bg-muted"}`}
+                      aria-label="Abrir menú"
+                    >
+                      ▾
+                    </button>
                     {showHeader && (
                       <p className="mb-1 flex items-center gap-2 font-semibold text-[11px] uppercase tracking-wide opacity-80">
                         {msg.sender.nickname || msg.sender.username}
@@ -399,15 +407,7 @@ export default function DirectConversation({
                         ))}
                       </div>
                     )}
-                    <div className={`relative mt-1 flex flex-wrap items-center gap-2 transition-opacity ${isMine ? "justify-end" : "justify-start"} ${messageMenuId === msg.id ? "opacity-100" : "opacity-0 group-hover/message:opacity-100"}`}>
-                      <button
-                        type="button"
-                        onClick={() => setMessageMenuId((prev) => (prev === msg.id ? null : msg.id))}
-                        className={`inline-flex size-6 items-center justify-center rounded-full text-xs transition ${isMine ? "bg-white/10 text-white/90 hover:bg-white/20" : "bg-background/90 text-foreground/80 hover:bg-muted"}`}
-                        aria-label="Abrir menú"
-                      >
-                        ▾
-                      </button>
+                    <div className={`relative mt-1 flex flex-wrap items-center gap-2 pr-8 transition-opacity ${isMine ? "justify-end" : "justify-start"} ${messageMenuId === msg.id ? "opacity-100" : "opacity-0 group-hover/message:opacity-100"}`}>
                       <p className={`text-[11px] ${isMine ? "text-white/70" : "opacity-70"}`}>{timeLabel}</p>
                       {!nextSameSender && (
                         <button
