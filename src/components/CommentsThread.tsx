@@ -99,7 +99,7 @@ export default function CommentsThread({
       } finally {
         if (active) setMentionsLoading(false);
       }
-    }, 220);
+    }, 120);
 
     return () => {
       active = false;
@@ -264,7 +264,7 @@ function CommentItem({
       } finally {
         if (active) setMentionsLoading(false);
       }
-    }, 220);
+    }, 120);
 
     return () => {
       active = false;

@@ -71,7 +71,7 @@ export async function GET(req: Request) {
     FROM Comments c
     JOIN Users u ON u.id = c.user
     WHERE c.post = ? AND c.visible = 1
-    ORDER BY c.created_at DESC
+    ORDER BY c.created_at ASC
     LIMIT ?
     `,
       [postId, limit],
@@ -94,13 +94,6 @@ export async function GET(req: Request) {
         roots.push(node);
       }
     });
-
-    // Opcional: ordena hijos cronológicamente ascendente
-    function sortTree(nodes: CommentNode[]) {
-      nodes.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-      nodes.forEach((n) => sortTree(n.replies));
-    }
-    sortTree(roots);
 
     return NextResponse.json(roots, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {

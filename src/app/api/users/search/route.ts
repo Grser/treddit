@@ -39,18 +39,26 @@ export async function GET(req: Request) {
     return NextResponse.json({ items });
   }
 
-  const like = `%${likeEscape(query)}%`;
+  const escaped = likeEscape(query);
+  const startsWith = `${escaped}%`;
+  const contains = `%${escaped}%`;
   const [rows] = await db.query<UserSearchRow[]>(
     `
     SELECT u.id, u.username, u.nickname
     FROM Users u
-    WHERE u.visible = 1 AND (u.username LIKE ? OR u.nickname LIKE ?)
+    WHERE u.visible = 1
+      AND (
+        u.username LIKE ?
+        OR u.nickname LIKE ?
+        OR u.username LIKE ?
+        OR u.nickname LIKE ?
+      )
     ORDER BY
       CASE WHEN u.username LIKE ? THEN 0 ELSE 1 END,
       u.username ASC
     LIMIT 8
     `,
-    [like, like, `${query}%`]
+    [startsWith, startsWith, contains, contains, startsWith]
   );
 
   return NextResponse.json({

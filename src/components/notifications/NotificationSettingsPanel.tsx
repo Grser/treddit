@@ -31,6 +31,8 @@ export default function NotificationSettingsPanel({ initial }: NotificationSetti
   }
 
   async function clearAll() {
+    const confirmed = window.confirm("¿Seguro que quieres borrar todas tus notificaciones?");
+    if (!confirmed) return;
     setSaving(true);
     try {
       await fetch("/api/notifications", {
@@ -54,7 +56,7 @@ export default function NotificationSettingsPanel({ initial }: NotificationSetti
           className="rounded-full border border-border px-3 py-1 text-xs hover:bg-muted/60"
           disabled={saving}
         >
-          Borrar notificaciones
+          Limpiar notificaciones
         </button>
       </div>
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
