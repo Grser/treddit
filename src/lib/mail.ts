@@ -84,7 +84,11 @@ function getTransporter() {
           auth: user && pass ? { user, pass } : undefined,
         });
 
-        await transporter.verify();
+        const shouldVerify =
+          process.env.SMTP_VERIFY_ON_START === "true" || process.env.SMTP_VERIFY_ON_START === "1";
+        if (shouldVerify) {
+          await transporter.verify();
+        }
         return transporter;
       } catch (error) {
         if (isMissingShellError(error)) {
