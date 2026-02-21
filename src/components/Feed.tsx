@@ -74,12 +74,15 @@ export default function Feed({
     }
 
     let alive = true;
+    const controller = new AbortController();
+
     async function load() {
       setLoading(true);
       setHasError(false);
+      setErrMsg(null);
       try {
         const url = query ? `/api/posts?${query}` : "/api/posts";
-        const res = await fetch(url, { cache: "no-store" });
+        const res = await fetch(url, { cache: "no-store", signal: controller.signal });
         if (!res.ok) {
           const text = await res.text().catch(() => "");
           throw new Error(text || `HTTP ${res.status}`);
@@ -89,7 +92,7 @@ export default function Feed({
         const normalized = Array.isArray(data.items) ? data.items : [];
         setPosts(dedupePosts(normalized));
       } catch (error: unknown) {
-        if (!alive) return;
+        if (!alive || (error instanceof DOMException && error.name === "AbortError")) return;
         console.error("Feed load error:", error);
         setHasError(true);
         setErrMsg("No se pudieron cargar las publicaciones.");
@@ -97,9 +100,11 @@ export default function Feed({
         if (alive) setLoading(false);
       }
     }
+
     load();
     return () => {
       alive = false;
+      controller.abort();
     };
   }, [query]);
 
