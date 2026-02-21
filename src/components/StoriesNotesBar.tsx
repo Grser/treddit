@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 const STORY_DURATION_MS = 5000;
 const STORY_TICK_MS = 100;
@@ -84,23 +84,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
     return sortedStories.filter((story) => story.id === activeUserId);
   }, [activeUserId, sortedStories]);
   const activeStory = activeUserStories[viewerIndex] || null;
-  const currentViewerIndex = viewerIndex;
   const activeStoryViewers = activeStory?.viewers || [];
-
-  function openPublishModal() {
-    setIsPublishing(true);
-    setStoryMediaUrls([]);
-    setStoryText("");
-    setPublishError(null);
-    setIsStoryMenuOpen(false);
-  }
-
-  function openStoryViewerForUser(userId: number) {
-    setActiveUserId(userId);
-    setViewerIndex(0);
-    setViewerProgress(0);
-    setIsStoryMenuOpen(false);
-  }
 
   const otherUsers = useMemo(() => {
     const grouped = new Map<number, StoryItem & { storyCount: number; seenCount: number }>();
@@ -123,6 +107,48 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
       })
       .slice(0, 12);
   }, [me?.id, sortedStories]);
+
+  const orderedOtherUserIds = useMemo(() => otherUsers.map((user) => user.id), [otherUsers]);
+
+  const moveToNextStoryOrUser = useCallback((currentIndex: number) => {
+    if (currentIndex < activeUserStories.length - 1) {
+      setViewerIndex(currentIndex + 1);
+      return;
+    }
+
+    const unseenUserId = otherUsers.find((user) => user.id !== activeUserId && user.seenCount < user.storyCount)?.id;
+    if (unseenUserId) {
+      setActiveUserId(unseenUserId);
+      setViewerIndex(0);
+      return;
+    }
+
+    const currentOrderIndex = orderedOtherUserIds.findIndex((id) => id === activeUserId);
+    const fallbackUserId = currentOrderIndex >= 0 ? orderedOtherUserIds[currentOrderIndex + 1] : null;
+    if (fallbackUserId) {
+      setActiveUserId(fallbackUserId);
+      setViewerIndex(0);
+      return;
+    }
+
+    setActiveUserId(null);
+    setViewerIndex(0);
+  }, [activeUserId, activeUserStories.length, orderedOtherUserIds, otherUsers]);
+
+  function openPublishModal() {
+    setIsPublishing(true);
+    setStoryMediaUrls([]);
+    setStoryText("");
+    setPublishError(null);
+    setIsStoryMenuOpen(false);
+  }
+
+  function openStoryViewerForUser(userId: number) {
+    setActiveUserId(userId);
+    setViewerIndex(0);
+    setViewerProgress(0);
+    setIsStoryMenuOpen(false);
+  }
 
   function buildStoryRing(storyCount: number, seenCount = 0) {
     const safeTotal = Math.max(1, storyCount);
@@ -155,13 +181,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
       setViewerProgress((prev) => {
         const next = prev + increment;
         if (next >= 100) {
-          setViewerIndex((current) => {
-            if (current >= activeUserStories.length - 1) {
-              setActiveUserId(null);
-              return 0;
-            }
-            return current + 1;
-          });
+          moveToNextStoryOrUser(viewerIndex);
           return 100;
         }
         return next;
@@ -169,7 +189,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
     }, STORY_TICK_MS);
 
     return () => window.clearInterval(interval);
-  }, [activeStory, activeUserStories.length]);
+  }, [activeStory, moveToNextStoryOrUser, viewerIndex]);
 
   useEffect(() => {
     if (!activeStory || !me || activeStory.id === me.id || !activeStory.story_id) return;
@@ -579,10 +599,9 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
               type="button"
               onClick={() => {
                 setIsStoryMenuOpen(false);
-                setViewerIndex((prev) => Math.min(activeUserStories.length - 1, prev + 1));
+                moveToNextStoryOrUser(viewerIndex);
               }}
               className="hidden size-10 place-items-center rounded-full border border-white/25 bg-black/40 text-xl text-white disabled:opacity-30 sm:grid"
-              disabled={currentViewerIndex === activeUserStories.length - 1}
             >
               ›
             </button>

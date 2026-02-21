@@ -88,7 +88,6 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
   );
   const myNotes = useMemo(() => (me ? sortedNotes.filter((entry) => entry.userId === me.id) : []), [me, sortedNotes]);
   const myNote = myNotes[0] || null;
-  const myNotesCount = myNotes.length;
   const uniqueEntries = useMemo(
     () => sortedNotes
       .filter((entry) => entry.userId !== me?.id)
@@ -184,11 +183,6 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
           <div className="relative mx-auto mb-1 size-[58px] rounded-full bg-gradient-to-tr from-amber-400 via-fuchsia-500 to-violet-500 p-[2px] transition group-hover:scale-[1.03]">
             <div className="relative size-full overflow-hidden rounded-full bg-surface ring-[3px] ring-[var(--color-surface)]">
               <Image src={myNote?.avatar_url || "/demo-reddit.png"} alt={me?.username || "Tu nota"} fill sizes="56px" className="object-cover" />
-              {myNotesCount > 0 && (
-                <span className="absolute -top-1 -left-1 rounded-full bg-brand px-1.5 text-[10px] font-semibold text-white">
-                  {myNotesCount}
-                </span>
-              )}
             </div>
           </div>
           <p className="truncate text-[12px] font-medium text-white">Tu nota</p>
@@ -245,7 +239,7 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
 
             {publishError && <p className="mt-2 text-xs text-red-400">{publishError}</p>}
             <div className="mt-4 flex justify-between gap-2">
-              <button type="button" onClick={deleteNote} disabled={isSaving || myNotesCount === 0} className="inline-flex h-9 items-center justify-center rounded-full border border-red-400/70 px-4 text-sm text-red-300 disabled:cursor-not-allowed disabled:opacity-50">Borrar nota</button>
+              <button type="button" onClick={deleteNote} disabled={isSaving || !myNote} className="inline-flex h-9 items-center justify-center rounded-full border border-red-400/70 px-4 text-sm text-red-300 disabled:cursor-not-allowed disabled:opacity-50">Borrar nota</button>
               <div className="flex justify-end gap-2">
                 <button type="button" onClick={() => { setIsPublishing(false); setPublishError(null); }} className="inline-flex h-9 items-center justify-center rounded-full border border-border px-4 text-sm">Cancelar</button>
                 <button type="button" onClick={publishNote} disabled={isSaving} className="inline-flex h-9 items-center justify-center rounded-full bg-brand px-4 text-sm text-white disabled:cursor-not-allowed disabled:opacity-60">{isSaving ? "Publicando..." : "Publicar"}</button>
