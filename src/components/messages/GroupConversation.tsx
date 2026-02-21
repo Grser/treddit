@@ -204,13 +204,13 @@ export default function GroupConversation({ groupId, viewerId, initialMessages, 
           {settingsError && <p className="mt-2 text-xs text-rose-400">{settingsError}</p>}
         </div>
       )}
-      <ul className="flex-1 space-y-2 overflow-y-auto rounded-2xl border border-border bg-[#0b141a] p-3">
+      <ul className="flex-1 space-y-2 overflow-y-auto rounded-2xl border border-border bg-surface/90 p-3">
         {messages.map((msg) => {
           const mine = msg.senderId === viewerId;
           return (
             <li key={msg.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-[92%] rounded-2xl px-4 py-2 text-sm shadow-sm ${mine ? "bg-emerald-700 text-white" : "bg-[#202c33] text-slate-100"}`}>
-                {!mine && <p className="text-[11px] font-semibold text-emerald-300">{msg.sender.nickname || msg.sender.username}</p>}
+              <div className={`max-w-[92%] rounded-2xl px-4 py-2 text-sm shadow-sm ${mine ? "bg-brand text-white" : "bg-input text-foreground"}`}>
+                {!mine && <p className="text-[11px] font-semibold text-brand/90">{msg.sender.nickname || msg.sender.username}</p>}
                 <p className="whitespace-pre-wrap">{msg.text}</p>
               </div>
             </li>
@@ -239,7 +239,7 @@ export default function GroupConversation({ groupId, viewerId, initialMessages, 
         }}
       >
         <input value={text} onChange={(event) => setText(event.target.value)} className="flex-1 rounded-full bg-background/70 px-4 py-2 text-sm outline-none" placeholder="Escribe un mensaje" />
-        <button type="submit" className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white">Enviar</button>
+        <button type="submit" className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white">Enviar</button>
       </form>
       {sendError && <p className="text-xs text-rose-400">{sendError}</p>}
     </div>
