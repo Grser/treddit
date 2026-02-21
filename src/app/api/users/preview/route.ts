@@ -60,11 +60,21 @@ export async function GET(req: Request) {
       u.avatar_url,
       u.banner_url,
       u.description,
-      (SELECT COUNT(*) FROM Follows f WHERE f.followed = u.id) AS followers,
-      (SELECT COUNT(*) FROM Follows f WHERE f.follower = u.id) AS following,
+      COALESCE(followers_stats.followers, 0) AS followers,
+      COALESCE(following_stats.following, 0) AS following,
       u.is_admin,
       u.is_verified
     FROM Users u
+    LEFT JOIN (
+      SELECT followed, COUNT(*) AS followers
+      FROM Follows
+      GROUP BY followed
+    ) followers_stats ON followers_stats.followed = u.id
+    LEFT JOIN (
+      SELECT follower, COUNT(*) AS following
+      FROM Follows
+      GROUP BY follower
+    ) following_stats ON following_stats.follower = u.id
     WHERE u.username = ? AND u.visible = 1
     LIMIT 1
     `,

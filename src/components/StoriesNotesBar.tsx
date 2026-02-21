@@ -62,7 +62,8 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
-  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+  const [activeUserId, setActiveUserId] = useState<number | null>(null);
+  const [viewerIndex, setViewerIndex] = useState(0);
   const [viewerProgress, setViewerProgress] = useState(0);
   const [isStoryMenuOpen, setIsStoryMenuOpen] = useState(false);
 
@@ -78,8 +79,12 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
   const myStoriesCount = myStories.length;
   const firstStoryMediaUrl = storyMediaUrls[0] || "";
   const storyPreviewIsVideo = isVideoUrl(firstStoryMediaUrl);
-  const activeStory = viewerIndex !== null ? sortedStories[viewerIndex] : null;
-  const currentViewerIndex = viewerIndex ?? 0;
+  const activeUserStories = useMemo(() => {
+    if (activeUserId === null) return [] as StoryItem[];
+    return sortedStories.filter((story) => story.id === activeUserId);
+  }, [activeUserId, sortedStories]);
+  const activeStory = activeUserStories[viewerIndex] || null;
+  const currentViewerIndex = viewerIndex;
   const activeStoryViewers = activeStory?.viewers || [];
 
   function openPublishModal() {
@@ -87,6 +92,13 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
     setStoryMediaUrls([]);
     setStoryText("");
     setPublishError(null);
+    setIsStoryMenuOpen(false);
+  }
+
+  function openStoryViewerForUser(userId: number) {
+    setActiveUserId(userId);
+    setViewerIndex(0);
+    setViewerProgress(0);
     setIsStoryMenuOpen(false);
   }
 
@@ -132,7 +144,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
   }
 
   useEffect(() => {
-    if (viewerIndex === null || !sortedStories[viewerIndex]) {
+    if (!activeStory) {
       setViewerProgress(0);
       return;
     }
@@ -144,8 +156,11 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
         const next = prev + increment;
         if (next >= 100) {
           setViewerIndex((current) => {
-            if (current === null) return null;
-            return current < sortedStories.length - 1 ? current + 1 : null;
+            if (current >= activeUserStories.length - 1) {
+              setActiveUserId(null);
+              return 0;
+            }
+            return current + 1;
           });
           return 100;
         }
@@ -154,7 +169,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
     }, STORY_TICK_MS);
 
     return () => window.clearInterval(interval);
-  }, [viewerIndex, sortedStories]);
+  }, [activeStory, activeUserStories.length]);
 
   useEffect(() => {
     if (!activeStory || !me || activeStory.id === me.id || !activeStory.story_id) return;
@@ -247,7 +262,8 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
         return;
       }
       setIsPublishing(false);
-      setViewerIndex(null);
+      setActiveUserId(null);
+      setViewerIndex(0);
       setIsStoryMenuOpen(false);
       router.refresh();
     } catch {
@@ -260,6 +276,20 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
   return (
     <section className="rounded-2xl border border-border bg-surface p-3 sm:p-4">
       <div className="flex gap-3 overflow-x-auto pb-1">
+        {canInteract && myStoriesCount > 0 && (
+          <button
+            type="button"
+            onClick={openPublishModal}
+            className="group min-w-16 max-w-16 shrink-0 text-center"
+            title="Subir más historias"
+          >
+            <div className="mx-auto mb-1.5 grid size-[64px] place-items-center rounded-full border border-dashed border-border bg-input text-2xl text-foreground transition group-hover:scale-[1.03]">
+              +
+            </div>
+            <p className="truncate text-[11px] text-foreground/90">Agregar</p>
+          </button>
+        )}
+
         <button
           type="button"
           onClick={() => {
@@ -268,9 +298,9 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
               return;
             }
             if (myStoriesCount > 0) {
-              const firstMyStoryIndex = sortedStories.findIndex((story) => story.id === me?.id);
-              setViewerIndex(firstMyStoryIndex >= 0 ? firstMyStoryIndex : null);
-              setIsStoryMenuOpen(false);
+              if (me?.id) {
+                openStoryViewerForUser(me.id);
+              }
               return;
             }
             openPublishModal();
@@ -295,29 +325,14 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
           <p className="truncate text-[12px] font-medium text-foreground">Tu historia</p>
         </button>
 
-        {canInteract && myStoriesCount > 0 && (
-          <button
-            type="button"
-            onClick={openPublishModal}
-            className="group min-w-16 max-w-16 shrink-0 text-center"
-            title="Subir más historias"
-          >
-            <div className="mx-auto mb-1.5 grid size-[64px] place-items-center rounded-full border border-dashed border-border bg-input text-2xl text-foreground transition group-hover:scale-[1.03]">
-              +
-            </div>
-            <p className="truncate text-[11px] text-foreground/90">Agregar</p>
-          </button>
-        )}
-
         {otherUsers.map((user) => {
           const hasStory = Boolean(user.media_url);
           const seenAll = user.seenCount >= user.storyCount;
-          const firstStoryIndex = sortedStories.findIndex((story) => story.id === user.id);
           return (
             <button
               key={user.id}
               type="button"
-              onClick={() => setViewerIndex(firstStoryIndex >= 0 ? firstStoryIndex : null)}
+              onClick={() => openStoryViewerForUser(user.id)}
               className="group min-w-18 max-w-20 shrink-0 text-center"
               title={`Ver historia de ${user.username}`}
             >
@@ -430,7 +445,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
               type="button"
               onClick={() => {
                 setIsStoryMenuOpen(false);
-                setViewerIndex((prev) => (prev !== null && prev > 0 ? prev - 1 : prev));
+                setViewerIndex((prev) => Math.max(0, prev - 1));
               }}
               className="hidden size-10 place-items-center rounded-full border border-white/25 bg-black/40 text-xl text-white disabled:opacity-30 sm:grid"
               disabled={currentViewerIndex === 0}
@@ -440,7 +455,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
 
             <article className="relative w-full max-w-sm overflow-hidden rounded-2xl border border-white/20 bg-zinc-900">
               <div className="absolute inset-x-0 top-0 z-20 flex gap-1 px-3 pt-2">
-                {sortedStories.map((story, index) => {
+                {activeUserStories.map((story, index) => {
                   const isPast = index < currentViewerIndex;
                   const isCurrent = index === currentViewerIndex;
                   return (
@@ -503,7 +518,8 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
                   type="button"
                   onClick={() => {
                     setIsStoryMenuOpen(false);
-                    setViewerIndex(null);
+                    setActiveUserId(null);
+                    setViewerIndex(0);
                   }}
                   className="text-lg leading-none text-white/90"
                   aria-label="Cerrar visor"
@@ -563,10 +579,10 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
               type="button"
               onClick={() => {
                 setIsStoryMenuOpen(false);
-                setViewerIndex((prev) => (prev !== null && prev < sortedStories.length - 1 ? prev + 1 : prev));
+                setViewerIndex((prev) => Math.min(activeUserStories.length - 1, prev + 1));
               }}
               className="hidden size-10 place-items-center rounded-full border border-white/25 bg-black/40 text-xl text-white disabled:opacity-30 sm:grid"
-              disabled={currentViewerIndex === sortedStories.length - 1}
+              disabled={currentViewerIndex === activeUserStories.length - 1}
             >
               ›
             </button>

@@ -182,8 +182,8 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
             {myNote?.content || "Publica una nota rápida"}
           </p>
           <div className="relative mx-auto mb-1 size-[58px] rounded-full bg-gradient-to-tr from-amber-400 via-fuchsia-500 to-violet-500 p-[2px] transition group-hover:scale-[1.03]">
-            <div className="relative grid size-full place-items-center rounded-full bg-surface ring-[3px] ring-[var(--color-surface)] text-xl font-bold text-white">
-              +
+            <div className="relative size-full overflow-hidden rounded-full bg-surface ring-[3px] ring-[var(--color-surface)]">
+              <Image src={myNote?.avatar_url || "/demo-reddit.png"} alt={me?.username || "Tu nota"} fill sizes="56px" className="object-cover" />
               {myNotesCount > 0 && (
                 <span className="absolute -top-1 -left-1 rounded-full bg-brand px-1.5 text-[10px] font-semibold text-white">
                   {myNotesCount}
