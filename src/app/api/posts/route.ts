@@ -159,8 +159,10 @@ export async function GET(req: Request) {
     );
   }
 
-  const communityColumn = await getPostsCommunityColumn();
-  const sensitiveColumn = await getPostsSensitiveColumn();
+  const [communityColumn, sensitiveColumn] = await Promise.all([
+    getPostsCommunityColumn(),
+    getPostsSensitiveColumn(),
+  ]);
   const hasCommunityColumn = Boolean(communityColumn);
   const hasSensitiveColumn = Boolean(sensitiveColumn);
 
@@ -176,6 +178,8 @@ export async function GET(req: Request) {
   }
 
   const whereClause = whereParts.length ? `WHERE ${whereParts.join(" AND ")}` : "";
+  const shouldJoinUsersInIdQuery = Boolean(usernameFilter);
+  const idQueryUsersJoin = shouldJoinUsersInIdQuery ? "JOIN Users u ON u.id = p.user" : "";
   const communityIdSelect = hasCommunityColumn && communityColumn ? `p.${communityColumn}` : "NULL";
   const communityJoin = hasCommunityColumn && communityColumn ? `LEFT JOIN Communities c ON c.id = p.${communityColumn}` : "";
   const communitySlugSelect = hasCommunityColumn ? "c.slug" : "NULL";
@@ -188,8 +192,7 @@ export async function GET(req: Request) {
       SELECT p.id
       FROM Posts p
       ${joins.join(" ")}
-      JOIN Users u ON u.id = p.user
-      ${communityJoin}
+      ${idQueryUsersJoin}
       ${whereClause}
       ORDER BY ${shouldPrioritizeFollowed ? "CASE WHEN ff.follower IS NULL THEN 1 ELSE 0 END, p.id DESC" : "p.id DESC"}
       LIMIT ?
