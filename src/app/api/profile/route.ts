@@ -2,13 +2,22 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import type { RowDataPacket } from "mysql2";
 import { db } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { requireUser, signSession } from "@/lib/auth";
 import { setAllowMessagesFromAnyone } from "@/lib/messages";
 import { ensureAgeVerificationRequestsTable, ensureUsersAgeColumns } from "@/lib/ageVerification";
 import { getRequestBaseUrl } from "@/lib/requestBaseUrl";
 
 type ProfileStatusRow = RowDataPacket & {
   is_age_verified: number;
+};
+
+type SessionRefreshRow = RowDataPacket & {
+  id: number;
+  username: string;
+  email: string;
+  avatar_url: string | null;
+  is_admin: number;
+  is_verified: number;
 };
 
 export async function POST(req: Request) {
@@ -68,8 +77,34 @@ export async function POST(req: Request) {
     console.error("Failed to update message preferences", error);
   }
 
+  const [sessionRows] = await db.query<SessionRefreshRow[]>(
+    "SELECT id, username, email, avatar_url, is_admin, is_verified FROM Users WHERE id=? LIMIT 1",
+    [me.id],
+  );
+
   const requestBaseUrl = await getRequestBaseUrl();
-  return NextResponse.redirect(new URL(`/u/${me.username}`, requestBaseUrl));
+  const response = NextResponse.redirect(new URL(`/u/${me.username}`, requestBaseUrl));
+  const sessionUser = sessionRows[0];
+  if (sessionUser) {
+    const token = signSession({
+      id: Number(sessionUser.id),
+      username: String(sessionUser.username),
+      email: String(sessionUser.email),
+      avatar_url: sessionUser.avatar_url ? String(sessionUser.avatar_url) : null,
+      is_admin: Boolean(sessionUser.is_admin),
+      is_verified: Boolean(sessionUser.is_verified),
+    });
+    const isProd = process.env.NODE_ENV === "production";
+    response.cookies.set("treddit_token", token, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: isProd,
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7,
+    });
+  }
+
+  return response;
 }
 
 function normalizeBirthDate(raw: string) {
@@ -83,4 +118,3 @@ function normalizeBirthDate(raw: string) {
   const normalized = `${year}-${month}-${day}`;
   return /^\d{4}-\d{2}-\d{2}$/.test(normalized) ? normalized : null;
 }
-
