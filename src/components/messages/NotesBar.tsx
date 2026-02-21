@@ -279,11 +279,20 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
                     <iframe key={`yt-${selectedNote.id}`} src={selectedNoteYoutubeUrl} title={`Video de ${selectedNote.nickname || selectedNote.username}`} className="h-56 w-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen />
                   </div>
                 ) : selectedNoteSpotifyUrl ? (
-                  <div className="rounded-xl border border-white/15 bg-black/30 p-4">
-                    <p className="text-sm text-white/80">♪ {selectedNote.song_title || "Canción"}{selectedNote.song_artist ? ` · ${selectedNote.song_artist}` : ""}</p>
-                    <a href={selectedNote.song_url} target="_blank" rel="noreferrer" className="mt-3 inline-flex h-11 w-full items-center justify-center rounded-xl bg-white/90 px-4 text-sm font-semibold text-black transition hover:bg-white">
-                      Escuchar
-                    </a>
+                  <div className="rounded-xl border border-white/15 bg-black/30 p-3">
+                    <iframe
+                      key={`sp-${selectedNote.id}`}
+                      src={selectedNoteSpotifyUrl}
+                      title={`Spotify de ${selectedNote.nickname || selectedNote.username}`}
+                      className="h-[152px] w-full rounded-lg"
+                      allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                      loading="lazy"
+                    />
+                    <div className="mt-2 flex justify-end">
+                      <a href={selectedNote.song_url} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center justify-center rounded-lg bg-white/90 px-3 text-xs font-semibold text-black transition hover:bg-white">
+                        Escuchar en Spotify
+                      </a>
+                    </div>
                   </div>
                 ) : (
                   <audio key={`audio-${selectedNote.id}`} src={selectedNote.song_url} controls autoPlay className="mt-4 w-full" />
