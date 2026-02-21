@@ -63,12 +63,12 @@ export default function MentionUserLink({
 
   return (
     <span className="relative inline-block" onMouseEnter={handleOpen} onMouseLeave={handleClose}>
-      <a
+      <Link
         href={`/u/${encodeURIComponent(username)}`}
         className={className || "text-sky-500 font-semibold hover:underline"}
       >
         {text}
-      </a>
+      </Link>
 
       {open && (
         <div className="absolute left-0 top-full z-40 mt-2 w-80 overflow-hidden rounded-xl border border-border bg-surface shadow-2xl">

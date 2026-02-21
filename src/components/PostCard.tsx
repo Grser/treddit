@@ -1,5 +1,6 @@
 "use client";
 import Image from "next/image";
+import Link from "next/link";
 import CommentsThread from "./CommentsThread";
 import PostActions from "./PostActions";
 import PostPoll from "./PostPoll";
@@ -85,7 +86,7 @@ export default function PostCard({
       )}
 
       <div className="flex items-start gap-3 mb-2">
-        <a href={`/u/${post.username}`} title={`@${post.username}`} className="shrink-0">
+        <Link href={`/u/${post.username}`} title={`@${post.username}`} className="shrink-0">
           <Image
             src={avatar}
             alt={post.nickname || post.username}
@@ -93,7 +94,7 @@ export default function PostCard({
             height={36}
             className="size-9 rounded-full object-cover ring-1 ring-border"
           />
-        </a>
+        </Link>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-start gap-2">
@@ -109,19 +110,19 @@ export default function PostCard({
                 <MentionUserLink username={post.username} text={`@${post.username}`} className="hidden opacity-60 hover:underline sm:inline" />
               </p>
               <p className="text-xs opacity-60">
-                <a href={`/p/${post.id}`} className="hover:underline">
+                <Link href={`/p/${post.id}`} className="hover:underline">
                   {createdAtLabel}
-                </a>
+                </Link>
                 {community && (
                   <>
                     <span aria-hidden="true"> · </span>
-                    <a
+                    <Link
                       href={`/c/${community.slug}`}
                       className="hover:underline"
                       title={community.name}
                     >
                       {community.name}
-                    </a>
+                    </Link>
                   </>
                 )}
               </p>

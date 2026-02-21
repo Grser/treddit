@@ -468,7 +468,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
                 setViewerIndex((prev) => Math.max(0, prev - 1));
               }}
               className="hidden size-10 place-items-center rounded-full border border-white/25 bg-black/40 text-xl text-white disabled:opacity-30 sm:grid"
-              disabled={currentViewerIndex === 0}
+              disabled={viewerIndex === 0}
             >
               ‹
             </button>
@@ -476,8 +476,8 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
             <article className="relative w-full max-w-sm overflow-hidden rounded-2xl border border-white/20 bg-zinc-900">
               <div className="absolute inset-x-0 top-0 z-20 flex gap-1 px-3 pt-2">
                 {activeUserStories.map((story, index) => {
-                  const isPast = index < currentViewerIndex;
-                  const isCurrent = index === currentViewerIndex;
+                  const isPast = index < viewerIndex;
+                  const isCurrent = index === viewerIndex;
                   return (
                     <div key={`${story.story_id || story.id}-${story.created_at}-${index}`} className="h-1 flex-1 overflow-hidden rounded-full bg-white/25">
                       <div
