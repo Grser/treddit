@@ -226,34 +226,42 @@ export default function DirectConversation({
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 md:gap-3">
-      <div className="flex min-h-0 flex-1 flex-col rounded-3xl border border-border/80 bg-gradient-to-b from-background/90 via-surface to-background p-3 shadow-sm md:p-4">
+      <div className="flex min-h-0 flex-1 flex-col rounded-3xl border border-[#1f2c35] bg-[#0b141a] p-3 shadow-sm md:p-4">
         {messages.length === 0 && (
           <p className="text-sm opacity-70">{strings.comments.none || "Aún no hay mensajes. Inicia la conversación."}</p>
         )}
-        <ul ref={scrollRef} className="mt-2 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
-          {messages.map((msg) => {
+        <ul ref={scrollRef} className="mt-2 min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
+          {messages.map((msg, index) => {
             const isMine = msg.senderId === viewerId;
+            const previous = messages[index - 1];
+            const next = messages[index + 1];
+            const prevSameSender = previous?.senderId === msg.senderId;
+            const nextSameSender = next?.senderId === msg.senderId;
+            const showAvatar = !isMine && !nextSameSender;
+            const showHeader = !isMine && !prevSameSender;
             const bubbleClasses = isMine
-              ? "bg-brand text-white"
-              : "border border-border/80 bg-surface text-foreground";
-            const timeLabel = new Date(msg.createdAt).toLocaleString();
+              ? "bg-[#005c4b] text-white"
+              : "bg-[#202c33] text-[#e9edef]";
+            const timeLabel = new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
             const avatar = !isMine ? msg.sender.avatar_url?.trim() || "/demo-reddit.png" : null;
             return (
-              <li key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
-                <div className={`flex max-w-[92%] items-end gap-2 md:max-w-[82%] md:gap-3 ${isMine ? "flex-row-reverse" : "flex-row"}`}>
+              <li key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"} ${prevSameSender ? "mt-0.5" : "mt-2.5"}`}>
+                <div className={`flex max-w-[92%] items-end gap-2 md:max-w-[82%] ${isMine ? "flex-row-reverse" : "flex-row"}`}>
                   {!isMine && (
-                    <Image
-                      src={avatar || "/demo-reddit.png"}
-                      alt={msg.sender.nickname || msg.sender.username}
-                      width={36}
-                      height={36}
-                      className="size-9 rounded-full object-cover ring-1 ring-border"
-                      unoptimized
-                    />
+                    showAvatar ? (
+                      <Image
+                        src={avatar || "/demo-reddit.png"}
+                        alt={msg.sender.nickname || msg.sender.username}
+                        width={32}
+                        height={32}
+                        className="size-8 rounded-full object-cover"
+                        unoptimized
+                      />
+                    ) : <div className="size-8" />
                   )}
-                  <div className={`rounded-2xl px-3 py-2.5 text-sm shadow-sm md:rounded-3xl md:px-4 md:py-3 ${bubbleClasses}`}>
-                    {!isMine && (
-                      <p className="mb-1 flex items-center gap-2 font-semibold text-xs uppercase tracking-wide opacity-80">
+                  <div className={`rounded-lg px-3 py-2 text-sm shadow-sm ${bubbleClasses}`}>
+                    {showHeader && (
+                      <p className="mb-1 flex items-center gap-2 font-semibold text-[11px] uppercase tracking-wide opacity-80">
                         {msg.sender.nickname || msg.sender.username}
                         <UserBadges size="sm" isAdmin={msg.sender.is_admin} isVerified={msg.sender.is_verified} />
                       </p>
@@ -296,15 +304,17 @@ export default function DirectConversation({
                         ))}
                       </ul>
                     ) : null}
-                    <div className="mt-2 flex items-center justify-between gap-3">
+                    <div className="mt-1 flex items-center justify-end gap-3">
                       <p className={`text-[11px] ${isMine ? "text-white/70" : "opacity-70"}`}>{timeLabel}</p>
-                      <button
-                        type="button"
-                        className={`text-xs ${isMine ? "text-white/80 hover:text-white" : "opacity-70 hover:opacity-100"}`}
-                        onClick={() => selectLatestMessageFromSender(msg)}
-                      >
-                        Responder
-                      </button>
+                      {!nextSameSender && (
+                        <button
+                          type="button"
+                          className={`text-xs ${isMine ? "text-white/80 hover:text-white" : "opacity-70 hover:opacity-100"}`}
+                          onClick={() => selectLatestMessageFromSender(msg)}
+                        >
+                          Responder
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

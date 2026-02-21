@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 
 import { getSessionUser, requireUser } from "@/lib/auth";
+import { resolveSongLyrics } from "@/lib/lyrics";
 import { resolveMusicMetadata } from "@/lib/musicMetadata";
 import { createUserNote, deleteNoteByUser, loadActiveNotes } from "@/lib/storiesNotes";
 
@@ -35,12 +36,14 @@ export async function POST(req: Request) {
     : "";
 
   const metadata = songUrl ? await resolveMusicMetadata(songUrl) : { title: null, artist: null };
+  const lyrics = songUrl ? await resolveSongLyrics(metadata.title, metadata.artist) : null;
 
   const id = await createUserNote(me.id, {
     content,
     song_title: metadata.title,
     song_artist: metadata.artist,
     song_url: songUrl || null,
+    song_lyrics: lyrics,
   });
   return NextResponse.json({ ok: true, id }, { status: 201 });
 }

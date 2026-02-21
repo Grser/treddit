@@ -3,7 +3,7 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 
 import { getSessionUser, requireUser } from "@/lib/auth";
-import { createStory, deleteStoryByUser, loadActiveStories, registerStoryView } from "@/lib/storiesNotes";
+import { createStory, deleteStoryById, deleteStoryByUser, loadActiveStories, registerStoryView } from "@/lib/storiesNotes";
 
 export async function GET() {
   const me = await getSessionUser();
@@ -52,8 +52,26 @@ export async function POST(req: Request) {
   return NextResponse.json({ ok: true, ids, id: ids[0] }, { status: 201 });
 }
 
-export async function DELETE() {
+export async function DELETE(req: Request) {
   const me = await requireUser();
+
+  let payload: unknown = null;
+  try {
+    payload = await req.json();
+  } catch {
+    payload = null;
+  }
+
+  const storyId = Number((payload as { storyId?: unknown } | null)?.storyId);
+
+  if (Number.isFinite(storyId) && storyId > 0) {
+    const affected = await deleteStoryById(me.id, storyId);
+    if (affected === 0) {
+      return NextResponse.json({ error: "No se encontró la historia seleccionada." }, { status: 404 });
+    }
+    return NextResponse.json({ ok: true, deleted: affected });
+  }
+
   await deleteStoryByUser(me.id);
   return NextResponse.json({ ok: true });
 }

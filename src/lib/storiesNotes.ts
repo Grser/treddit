@@ -30,6 +30,7 @@ export type NoteItem = {
   song_title: string | null;
   song_artist: string | null;
   song_url: string | null;
+  song_lyrics: string | null;
   created_at: string;
 };
 
@@ -54,6 +55,7 @@ type NoteRow = RowDataPacket & {
   song_title: string | null;
   song_artist: string | null;
   song_url: string | null;
+  song_lyrics: string | null;
   created_at: string | Date;
 };
 
@@ -122,6 +124,7 @@ export async function ensureStoriesNotesTables() {
   await db.execute("ALTER TABLE User_Notes ADD COLUMN song_title VARCHAR(120) NULL").catch(() => undefined);
   await db.execute("ALTER TABLE User_Notes ADD COLUMN song_artist VARCHAR(120) NULL").catch(() => undefined);
   await db.execute("ALTER TABLE User_Notes ADD COLUMN song_url VARCHAR(500) NULL").catch(() => undefined);
+  await db.execute("ALTER TABLE User_Notes ADD COLUMN song_lyrics TEXT NULL").catch(() => undefined);
 
   schemaEnsured = true;
 }
@@ -139,14 +142,14 @@ export async function createStory(userId: number, params: { content?: string | n
 
 export async function createUserNote(
   userId: number,
-  params: { content: string; song_title?: string | null; song_artist?: string | null; song_url?: string | null },
+  params: { content: string; song_title?: string | null; song_artist?: string | null; song_url?: string | null; song_lyrics?: string | null },
 ) {
   if (!isDatabaseConfigured()) return null;
   await ensureStoriesNotesTables();
 
   const [insertResult] = await db.execute<ResultSetHeader>(
-    "INSERT INTO User_Notes (user_id, content, song_title, song_artist, song_url, expires_at) VALUES (?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 24 HOUR))",
-    [userId, params.content, params.song_title || null, params.song_artist || null, params.song_url || null],
+    "INSERT INTO User_Notes (user_id, content, song_title, song_artist, song_url, song_lyrics, expires_at) VALUES (?, ?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 24 HOUR))",
+    [userId, params.content, params.song_title || null, params.song_artist || null, params.song_url || null, params.song_lyrics || null],
   );
   return insertResult.insertId;
 }
@@ -155,6 +158,13 @@ export async function deleteStoryByUser(userId: number) {
   if (!isDatabaseConfigured()) return 0;
   await ensureStoriesNotesTables();
   const [res] = await db.execute<ResultSetHeader>("DELETE FROM Stories WHERE user_id=?", [userId]);
+  return res.affectedRows;
+}
+
+export async function deleteStoryById(userId: number, storyId: number) {
+  if (!isDatabaseConfigured()) return 0;
+  await ensureStoriesNotesTables();
+  const [res] = await db.execute<ResultSetHeader>("DELETE FROM Stories WHERE user_id=? AND id=? LIMIT 1", [userId, storyId]);
   return res.affectedRows;
 }
 
@@ -279,7 +289,7 @@ export async function loadActiveNotes(limit = 24, viewerId?: number | null): Pro
 
   const [rows] = await db.query<NoteRow[]>(
     `
-    SELECT n.id, n.user_id, n.content, n.song_title, n.song_artist, n.song_url, n.created_at, u.username, u.nickname, u.avatar_url
+    SELECT n.id, n.user_id, n.content, n.song_title, n.song_artist, n.song_url, n.song_lyrics, n.created_at, u.username, u.nickname, u.avatar_url
     FROM User_Notes n
     JOIN Users u ON u.id = n.user_id
     WHERE n.expires_at > NOW()
@@ -310,6 +320,7 @@ export async function loadActiveNotes(limit = 24, viewerId?: number | null): Pro
     song_title: row.song_title,
     song_artist: row.song_artist,
     song_url: row.song_url,
+    song_lyrics: row.song_lyrics,
     created_at: new Date(row.created_at).toISOString(),
   }));
 }
