@@ -19,7 +19,7 @@ export default async function MessagesPage() {
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
-      <Navbar />
+      <Navbar session={me} />
       <main className="mx-auto w-full max-w-6xl px-4 py-6">
         {!me && (
           <div className="rounded-2xl border border-border bg-surface p-6 text-sm shadow-sm">

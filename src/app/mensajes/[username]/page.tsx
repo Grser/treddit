@@ -13,6 +13,7 @@ import MessagesRealtimeSync from "@/components/messages/MessagesRealtimeSync";
 import NotesBar from "@/components/messages/NotesBar";
 
 import { requireUser } from "@/lib/auth";
+import type { SessionUser } from "@/lib/auth";
 import { db, isDatabaseConfigured } from "@/lib/db";
 import { getDemoConversation, resolveDemoUserByUsername } from "@/lib/demoStore";
 import { loadInbox } from "@/lib/inbox";
@@ -54,14 +55,14 @@ function ConversationLayout({
   viewerId: number;
   helperText?: string;
   notes: Awaited<ReturnType<typeof loadActiveNotes>>;
-  me: { id: number; username: string } ;
+  me: SessionUser;
 }) {
   const avatar = participant.avatar_url?.trim() || "/demo-reddit.png";
   const displayName = participant.nickname || participant.username;
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
-      <Navbar />
+      <Navbar session={me} />
       <main className="mx-auto w-full max-w-6xl px-4 py-6 space-y-4">
         <NotesBar notes={notes} me={me} />
         <MessagesRealtimeSync />

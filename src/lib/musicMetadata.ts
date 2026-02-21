@@ -21,6 +21,17 @@ function splitSongAndArtist(rawTitle: string, fallbackArtist: string | null) {
     return { title: right.slice(0, 120), artist: left.slice(0, 120) };
   }
 
+  const byMatch = normalizedTitle.match(/^(.+?)\s+by\s+(.+)$/i);
+  if (byMatch) {
+    const [, maybeTitle, maybeArtist] = byMatch;
+    if (maybeTitle?.trim() && maybeArtist?.trim()) {
+      return {
+        title: maybeTitle.trim().slice(0, 120),
+        artist: maybeArtist.trim().slice(0, 120),
+      };
+    }
+  }
+
   return { title: normalizedTitle.slice(0, 120), artist: fallbackArtist };
 }
 

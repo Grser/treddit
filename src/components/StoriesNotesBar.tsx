@@ -66,7 +66,11 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
   const [isStoryMenuOpen, setIsStoryMenuOpen] = useState(false);
 
   const sortedStories = useMemo(
-    () => [...users].sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()),
+    () => [...users].sort((a, b) => {
+      const dateDiff = new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+      if (dateDiff !== 0) return dateDiff;
+      return Number(b.story_id || 0) - Number(a.story_id || 0);
+    }),
     [users],
   );
   const myStories = useMemo(() => (me ? sortedStories.filter((story) => story.id === me.id) : []), [me, sortedStories]);
@@ -199,12 +203,16 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
     }
   }
 
-  async function deleteMyStory() {
+  async function deleteMyStory(storyId?: number) {
     if (!me) return;
     setIsSaving(true);
     setPublishError(null);
     try {
-      const res = await fetch("/api/stories", { method: "DELETE" });
+      const res = await fetch("/api/stories", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: storyId ? JSON.stringify({ storyId }) : undefined,
+      });
       const data = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
         setPublishError(data.error || "No se pudo borrar tu historia.");
@@ -369,7 +377,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
             <div className="mt-4 flex justify-between gap-2">
               <button
                 type="button"
-                onClick={deleteMyStory}
+                onClick={() => deleteMyStory(myStories[0]?.story_id)}
                 disabled={isSaving || myStoriesCount === 0}
                 className="inline-flex h-9 items-center justify-center rounded-full border border-red-400/70 px-4 text-sm text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
               >
@@ -466,7 +474,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
                         </button>
                         <button
                           type="button"
-                          onClick={deleteMyStory}
+                          onClick={() => deleteMyStory(activeStory.story_id)}
                           disabled={isSaving}
                           className="flex w-full items-center rounded-lg px-3 py-2 text-left text-sm text-red-300 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
                         >
