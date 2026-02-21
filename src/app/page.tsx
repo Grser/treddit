@@ -71,7 +71,7 @@ async function getFeed(
   strategy: RequestStrategy = {},
 ): Promise<FeedResponse> {
   const { includeCookies = true, revalidateSeconds } = strategy;
-  const res = await fetch(`${base}/api/posts`, {
+  const res = await fetch(`${base}/api/posts?limit=12`, {
     cache: revalidateSeconds ? "force-cache" : "no-store",
     ...(revalidateSeconds ? { next: { revalidate: revalidateSeconds } } : {}),
     headers: includeCookies ? withCookieHeader(cookieHeader) : undefined,
@@ -139,15 +139,15 @@ export default async function Page() {
   });
   const discoveryPromise = getDiscovery(base, cookieHeader, {
     includeCookies: hasSessionCookie,
-    revalidateSeconds: hasSessionCookie ? undefined : 30,
+    revalidateSeconds: hasSessionCookie ? 15 : 30,
   });
   const storiesPromise = getStories(base, cookieHeader, {
     includeCookies: hasSessionCookie,
-    revalidateSeconds: hasSessionCookie ? undefined : 30,
+    revalidateSeconds: hasSessionCookie ? 15 : 30,
   });
   const communitiesPromise = getCommunities(base, cookieHeader, hasSessionCookie, {
     includeCookies: hasSessionCookie,
-    revalidateSeconds: hasSessionCookie ? undefined : 60,
+    revalidateSeconds: hasSessionCookie ? 30 : 60,
   });
 
   const [session, { items }, discovery, stories, initialCommunities] = await Promise.all([

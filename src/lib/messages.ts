@@ -10,6 +10,7 @@ export type DirectMessageAttachment = {
   url: string;
   type: "image" | "audio" | "video" | "file";
   name?: string | null;
+  durationSeconds?: number | null;
 };
 
 export type DirectMessageEntry = {
@@ -413,8 +414,12 @@ function parseAttachments(raw: string | null): DirectMessageAttachment[] {
             ? row.type
             : "file";
         const name = typeof row.name === "string" ? row.name : null;
+        const durationSeconds =
+          typeof row.durationSeconds === "number" && Number.isFinite(row.durationSeconds)
+            ? Math.max(0, Math.min(Math.round(row.durationSeconds), 60))
+            : null;
         if (!url) return null;
-        return { url, type, name } satisfies DirectMessageAttachment;
+        return { url, type, name, durationSeconds } satisfies DirectMessageAttachment;
       })
       .filter(Boolean) as DirectMessageAttachment[];
   } catch {

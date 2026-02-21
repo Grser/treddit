@@ -28,6 +28,27 @@ const QUICK_MEDIA: Array<{ label: string; url: string; type: "gif" | "sticker" }
   { label: "Sticker cool", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExd2F2dzQ4aGdhMnA2M2V5cnRrb3g4eW9vMGl5eGVvMWFzZm9oOWQwZCZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/3oriO0OEd9QIDdllqo/giphy.gif", type: "sticker" },
 ];
 
+
+async function getAudioDurationSeconds(file: File): Promise<number> {
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const audio = document.createElement("audio");
+    audio.preload = "metadata";
+    audio.src = objectUrl;
+    await new Promise<void>((resolve, reject) => {
+      audio.onloadedmetadata = () => resolve();
+      audio.onerror = () => reject(new Error("No se pudo leer la duración del audio"));
+    });
+    const duration = Number(audio.duration);
+    if (!Number.isFinite(duration) || duration <= 0) {
+      throw new Error("No se pudo leer la duración del audio");
+    }
+    return Math.round(duration);
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
 function mergeById(current: DirectMessageEntry[], incoming: DirectMessageEntry[]) {
   const map = new Map<number, DirectMessageEntry>();
   [...current, ...incoming].forEach((item) => map.set(item.id, item));
@@ -52,6 +73,7 @@ export default function DirectConversation({
   const [attachments, setAttachments] = useState<DirectMessageAttachment[]>([]);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const audioInputRef = useRef<HTMLInputElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [replyingTo, setReplyingTo] = useState<DirectMessageEntry | null>(null);
   const latestIdRef = useRef(initialMessages[initialMessages.length - 1]?.id ?? 0);
@@ -218,6 +240,14 @@ export default function DirectConversation({
     setError(null);
     setUploading(true);
     try {
+      const mime = file.type || "";
+      const isAudio = mime.startsWith("audio/");
+      const durationSeconds = isAudio ? await getAudioDurationSeconds(file) : null;
+
+      if (isAudio && durationSeconds && durationSeconds > 60) {
+        throw new Error("El audio no puede durar más de 1 minuto");
+      }
+
       const fd = new FormData();
       fd.append("file", file);
       const res = await fetch("/api/upload", { method: "POST", body: fd });
@@ -225,12 +255,11 @@ export default function DirectConversation({
       if (!res.ok || !payload.url) {
         throw new Error(strings.composer.errors.uploadFailed || "No se pudo adjuntar el archivo");
       }
-      const mime = file.type || "";
       const type: DirectMessageAttachment["type"] = mime.startsWith("image/")
         ? "image"
         : mime.startsWith("video/")
           ? "video"
-          : mime.startsWith("audio/")
+          : isAudio
             ? "audio"
             : "file";
       setAttachments((prev) => [
@@ -239,6 +268,7 @@ export default function DirectConversation({
           url: payload.url as string,
           type,
           name: file.name,
+          durationSeconds,
         },
       ]);
     } catch (err) {
@@ -248,6 +278,9 @@ export default function DirectConversation({
       setUploading(false);
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
+      }
+      if (audioInputRef.current) {
+        audioInputRef.current.value = "";
       }
     }
   }
@@ -521,6 +554,7 @@ export default function DirectConversation({
         <div className="flex items-end gap-2">
           <div className="flex items-center gap-2">
             <input ref={fileInputRef} type="file" hidden accept="image/*,video/*,audio/*" onChange={handleFileChange} />
+            <input ref={audioInputRef} type="file" hidden accept="audio/*" onChange={handleFileChange} />
             <button
               type="button"
               className="inline-flex size-10 items-center justify-center rounded-full bg-input text-lg transition hover:bg-muted"
@@ -563,14 +597,25 @@ export default function DirectConversation({
               🙂
             </button>
           </div>
-          <button
-            type="submit"
-            disabled={!canSend}
-            className="inline-flex size-11 items-center justify-center rounded-full bg-foreground text-base font-medium text-background shadow-sm transition hover:opacity-90 disabled:opacity-60"
-            aria-label={canSend ? strings.comments.send : "Audio"}
-          >
-            {canSend ? "➤" : "🎤"}
-          </button>
+          {canSend ? (
+            <button
+              type="submit"
+              className="inline-flex size-11 items-center justify-center rounded-full bg-foreground text-base font-medium text-background shadow-sm transition hover:opacity-90"
+              aria-label={strings.comments.send}
+            >
+              ➤
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => audioInputRef.current?.click()}
+              disabled={sending || uploading}
+              className="inline-flex size-11 items-center justify-center rounded-full bg-foreground text-base font-medium text-background shadow-sm transition hover:opacity-90 disabled:opacity-60"
+              aria-label="Enviar audio"
+            >
+              🎤
+            </button>
+          )}
         </div>
       </form>
     </div>
