@@ -49,10 +49,9 @@ export default function GroupConversation({ groupId, viewerId, initialMessages, 
 
   return (
     <div className="flex h-full flex-col gap-3">
-      <div className="flex items-center justify-between rounded-2xl border border-border/80 px-3 py-2 text-sm">
+      <div className="flex items-center justify-between px-1 text-xs">
         <div>
-          <p className="font-semibold">{name}</p>
-          {description && <p className="text-xs opacity-70">{description}</p>}
+          <p className="opacity-70">{description || "Sin descripción"}</p>
         </div>
         <button type="button" onClick={() => setShowSettings((prev) => !prev)} className="rounded-full border border-border px-3 py-1 text-xs">Editar grupo</button>
       </div>
