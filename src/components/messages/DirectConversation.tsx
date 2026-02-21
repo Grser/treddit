@@ -406,7 +406,7 @@ export default function DirectConversation({
 
       <form onSubmit={sendMessage} className="shrink-0 space-y-3 rounded-2xl border border-border bg-surface p-3 shadow-sm md:rounded-3xl md:p-4">
         {replyingTo && (
-          <div className="flex items-start justify-between rounded-xl border border-brand/30 bg-brand/10 px-3 py-2 text-xs">
+          <div className="flex items-start justify-between rounded-xl border border-border bg-muted/40 px-3 py-2 text-xs">
             <div>
               <p className="font-semibold">Respondiendo a {replyingTo.sender.nickname || replyingTo.sender.username}</p>
               <p className="line-clamp-2 opacity-80">{replyingTo.text || "Mensaje con adjunto"}</p>
@@ -429,7 +429,7 @@ export default function DirectConversation({
             }
           }}
           rows={1}
-          className="max-h-36 w-full resize-y rounded-2xl bg-input px-4 py-3 text-sm outline-none ring-1 ring-border transition focus:ring-2 focus:ring-brand/40"
+          className="max-h-36 w-full resize-y rounded-2xl bg-input px-4 py-3 text-sm outline-none ring-1 ring-border transition focus:ring-2 focus:ring-white/20"
           placeholder={strings.comments.replyPlaceholder || "Escribe tu mensaje"}
           disabled={sending || uploading}
         />
@@ -467,17 +467,32 @@ export default function DirectConversation({
         {attachments.length > 0 && (
           <div className="flex flex-wrap gap-2 text-xs">
             {attachments.map((file) => (
-              <span key={file.url} className="inline-flex items-center gap-2 rounded-full bg-muted/70 px-3 py-1 text-foreground">
-                {file.name || file.url}
+              <div key={file.url} className="relative overflow-hidden rounded-2xl border border-border bg-background/60">
+                {file.type === "image" ? (
+                  <Image
+                    src={file.url}
+                    alt={file.name || "Vista previa de imagen"}
+                    width={144}
+                    height={144}
+                    className="size-36 object-cover"
+                    unoptimized
+                  />
+                ) : file.type === "video" ? (
+                  <video src={file.url} className="size-36 object-cover" muted playsInline />
+                ) : file.type === "audio" ? (
+                  <div className="flex h-20 w-48 items-center px-3 text-xs">🎧 {file.name || "Audio"}</div>
+                ) : (
+                  <div className="flex h-20 w-48 items-center px-3 text-xs">📎 {file.name || file.url}</div>
+                )}
                 <button
                   type="button"
-                  className="text-foreground/70 hover:text-red-400"
+                  className="absolute right-1 top-1 inline-flex size-6 items-center justify-center rounded-full bg-black/65 text-sm text-white hover:bg-black"
                   onClick={() => removeAttachment(file.url)}
                   aria-label="Eliminar adjunto"
                 >
                   ×
                 </button>
-              </span>
+              </div>
             ))}
           </div>
         )}
@@ -496,7 +511,7 @@ export default function DirectConversation({
           <button
             type="submit"
             disabled={!canSend}
-            className="inline-flex h-10 items-center rounded-full bg-gradient-to-r from-brand to-fuchsia-500 px-5 text-sm font-medium text-white shadow-sm disabled:opacity-60"
+            className="inline-flex h-10 items-center rounded-full bg-foreground px-5 text-sm font-medium text-background shadow-sm transition hover:opacity-90 disabled:opacity-60"
           >
             {strings.comments.send}
           </button>
