@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { useLocale } from "@/contexts/LocaleContext";
@@ -53,14 +54,14 @@ export default function SidebarRight({
       <div className="bg-surface rounded-lg p-4 border border-border">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold">{t.happening}</h2>
-          <a href="/explorar" className="text-sm text-blue-400 hover:underline">
+          <Link href="/explorar" className="text-sm text-blue-400 hover:underline">
             {t.seeAll}
-          </a>
+          </Link>
         </div>
         <ul className="mt-2 space-y-2 text-sm">
           {trending.slice(0, 5).map((trend) => (
             <li key={trend.tag} className="truncate">
-              <a
+              <Link
                 href={`/buscar?q=${encodeURIComponent(trend.tag)}`}
                 className="flex flex-col rounded-lg border border-transparent px-2 py-1 transition hover:border-brand/60 hover:bg-brand/5"
               >
@@ -68,7 +69,7 @@ export default function SidebarRight({
                 <span className="text-xs opacity-70">
                   {Intl.NumberFormat().format(trend.views ?? trend.count)} visualizaciones · {trend.count} publicaciones
                 </span>
-              </a>
+              </Link>
             </li>
           ))}
           {trending.length === 0 && <li className="opacity-60">{t.noTrends}</li>}
@@ -78,15 +79,15 @@ export default function SidebarRight({
       <div className="bg-surface rounded-lg p-4 border border-border">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold">{t.whoToFollow}</h2>
-          <a href="/gente" className="text-sm text-blue-400 hover:underline">
+          <Link href="/gente" className="text-sm text-blue-400 hover:underline">
             {t.seeAll}
-          </a>
+          </Link>
         </div>
 
         <ul className="mt-3 space-y-3">
           {suggestions.slice(0, 6).map((user) => (
             <li key={user.id} className="flex items-center justify-between gap-3">
-              <a
+              <Link
                 href={`/u/${user.username}`}
                 className="flex items-center gap-3 min-w-0"
                 title={t.viewProfile(user.username)}
@@ -112,7 +113,7 @@ export default function SidebarRight({
                     {user.nickname || `@${user.username}`}
                   </p>
                 </div>
-              </a>
+              </Link>
 
               <FollowButton
                 userId={user.id}

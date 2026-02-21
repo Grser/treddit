@@ -221,7 +221,10 @@ export async function loadActiveStories(limit = 24, viewerId?: number | null): P
     FROM Stories s
     JOIN Users u ON u.id = s.user_id
     WHERE s.expires_at > NOW()
-      AND u.visible = 1
+      AND (
+        u.visible = 1
+        OR (? IS NOT NULL AND s.user_id = ?)
+      )
       AND (
         ? IS NULL
         OR s.user_id = ?
@@ -235,7 +238,7 @@ export async function loadActiveStories(limit = 24, viewerId?: number | null): P
     ORDER BY s.created_at ASC
     LIMIT ?
     `,
-    [viewerId ?? null, viewerId ?? null, viewerId ?? null, limit],
+    [viewerId ?? null, viewerId ?? null, viewerId ?? null, viewerId ?? null, viewerId ?? null, limit],
   );
 
   const items = rows.map((row) => ({
@@ -320,7 +323,10 @@ export async function loadActiveNotes(limit = 24, viewerId?: number | null): Pro
     FROM User_Notes n
     JOIN Users u ON u.id = n.user_id
     WHERE n.expires_at > NOW()
-      AND u.visible = 1
+      AND (
+        u.visible = 1
+        OR (? IS NOT NULL AND n.user_id = ?)
+      )
       AND (
         ? IS NULL
         OR n.user_id = ?
@@ -334,7 +340,7 @@ export async function loadActiveNotes(limit = 24, viewerId?: number | null): Pro
     ORDER BY n.created_at DESC
     LIMIT ?
     `,
-    [viewerId ?? null, viewerId ?? null, viewerId ?? null, limit],
+    [viewerId ?? null, viewerId ?? null, viewerId ?? null, viewerId ?? null, viewerId ?? null, limit],
   );
 
   return rows.map((row) => ({
