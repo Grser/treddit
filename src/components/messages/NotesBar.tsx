@@ -69,6 +69,7 @@ type Props = {
   me?: {
     id: number;
     username: string;
+    avatar_url?: string | null;
   } | null;
 };
 
@@ -97,7 +98,6 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
   );
   const selectedNoteYoutubeUrl = getYoutubeEmbedUrl(selectedNote?.song_url);
   const selectedNoteSpotifyUrl = getSpotifyEmbedUrl(selectedNote?.song_url);
-  const selectedNoteLyrics = selectedNote?.song_lyrics?.replace(/\[\d{2}:\d{2}(?:\.\d{2})?\]/g, "").trim();
 
   async function publishNote() {
     const normalizedText = noteText.trim();
@@ -177,12 +177,12 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
           className="group min-w-20 max-w-24 shrink-0 text-center"
           title={canInteract ? (myNote ? "Ver tu nota" : "Publicar nota") : "Inicia sesión para publicar notas"}
         >
-          <p className="mx-auto mb-1.5 line-clamp-2 min-h-9 rounded-2xl bg-white/14 px-2 py-1 text-[10px] leading-tight text-white/90">
+          <p className="mx-auto mb-2 inline-flex min-h-10 w-full items-center justify-center rounded-2xl bg-white/14 px-2 py-2 text-center text-[10px] leading-tight text-white/90">
             {myNote?.content || "Publica una nota rápida"}
           </p>
           <div className="relative mx-auto mb-1 size-[58px] rounded-full bg-gradient-to-tr from-amber-400 via-fuchsia-500 to-violet-500 p-[2px] transition group-hover:scale-[1.03]">
             <div className="relative size-full overflow-hidden rounded-full bg-surface ring-[3px] ring-[var(--color-surface)]">
-              <Image src={myNote?.avatar_url || "/demo-reddit.png"} alt={me?.username || "Tu nota"} fill sizes="56px" className="object-cover" />
+              <Image src={myNote?.avatar_url || me?.avatar_url || "/demo-reddit.png"} alt={me?.username || "Tu nota"} fill sizes="56px" className="object-cover" />
             </div>
           </div>
           <p className="truncate text-[12px] font-medium text-white">Tu nota</p>
@@ -201,7 +201,7 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
               className="group min-w-20 max-w-24 shrink-0 text-center"
               title={isSelf ? "Ver tu nota" : `Ver nota de ${entry.username}`}
             >
-              <p className="mx-auto mb-1.5 line-clamp-2 min-h-9 rounded-2xl bg-white/14 px-2 py-1 text-[10px] leading-tight text-white/90">
+              <p className="mx-auto mb-2 inline-flex min-h-10 w-full items-center justify-center rounded-2xl bg-white/14 px-2 py-2 text-center text-[10px] leading-tight text-white/90">
                 {entry.content}
               </p>
               {(entry.song_title || entry.song_artist) && (
@@ -273,35 +273,20 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
             </div>
 
             {selectedNote.song_url && (
-              <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px]">
+              <div className="mt-4 space-y-3">
                 {selectedNoteYoutubeUrl ? (
                   <div className="overflow-hidden rounded-xl border border-white/15">
                     <iframe key={`yt-${selectedNote.id}`} src={selectedNoteYoutubeUrl} title={`Video de ${selectedNote.nickname || selectedNote.username}`} className="h-56 w-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen />
                   </div>
                 ) : selectedNoteSpotifyUrl ? (
-                  <div className="overflow-hidden rounded-xl border border-white/15 bg-black/40 p-2">
-                    <iframe
-                      key={`spotify-${selectedNote.id}`}
-                      src={selectedNoteSpotifyUrl}
-                      title={`Spotify de ${selectedNote.nickname || selectedNote.username}`}
-                      className="h-[352px] w-full"
-                      allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                      loading="lazy"
-                    />
+                  <div className="rounded-xl border border-white/15 bg-black/30 p-4">
+                    <p className="text-sm text-white/80">♪ {selectedNote.song_title || "Canción"}{selectedNote.song_artist ? ` · ${selectedNote.song_artist}` : ""}</p>
+                    <a href={selectedNote.song_url} target="_blank" rel="noreferrer" className="mt-3 inline-flex h-11 w-full items-center justify-center rounded-xl bg-white/90 px-4 text-sm font-semibold text-black transition hover:bg-white">
+                      Escuchar
+                    </a>
                   </div>
                 ) : (
                   <audio key={`audio-${selectedNote.id}`} src={selectedNote.song_url} controls autoPlay className="mt-4 w-full" />
-                )}
-
-                {(selectedNoteLyrics || selectedNote.song_title || selectedNote.song_artist) && (
-                  <div className="rounded-xl border border-fuchsia-300/20 bg-fuchsia-900/15 p-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-fuchsia-100/80">Letra</p>
-                    {selectedNoteLyrics ? (
-                      <pre className="mt-2 max-h-[340px] overflow-auto whitespace-pre-wrap text-xs text-fuchsia-50/90">{selectedNoteLyrics}</pre>
-                    ) : (
-                      <p className="mt-2 text-xs text-fuchsia-100/75">No encontramos letra para esta canción todavía.</p>
-                    )}
-                  </div>
                 )}
               </div>
             )}
