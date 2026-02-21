@@ -258,7 +258,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
   }
 
   return (
-    <section className="rounded-2xl border border-border bg-[#050d18] p-3 sm:p-4">
+    <section className="rounded-2xl border border-border bg-surface p-3 sm:p-4">
       <div className="flex gap-3 overflow-x-auto pb-1">
         <button
           type="button"
@@ -282,7 +282,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
             className="relative mx-auto mb-1.5 grid size-[64px] place-items-center rounded-full p-[2px] transition group-hover:scale-[1.03]"
             style={myStoriesCount > 0 ? buildStoryRing(myStoriesCount, myStoriesCount) : undefined}
           >
-            <div className="relative grid size-full place-items-center overflow-hidden rounded-full bg-surface ring-[3px] ring-[#050d18]">
+            <div className="relative grid size-full place-items-center overflow-hidden rounded-full bg-surface ring-[3px] ring-border">
               <Image
                 src={me?.avatar_url || "/demo-reddit.png"}
                 alt={me?.username || "Tu historia"}
@@ -292,7 +292,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
               />
             </div>
           </div>
-          <p className="truncate text-[12px] font-medium text-white">Tu historia</p>
+          <p className="truncate text-[12px] font-medium text-foreground">Tu historia</p>
         </button>
 
         {canInteract && myStoriesCount > 0 && (
@@ -302,10 +302,10 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
             className="group min-w-16 max-w-16 shrink-0 text-center"
             title="Subir más historias"
           >
-            <div className="mx-auto mb-1.5 grid size-[64px] place-items-center rounded-full border border-dashed border-white/40 bg-white/10 text-2xl text-white transition group-hover:scale-[1.03]">
+            <div className="mx-auto mb-1.5 grid size-[64px] place-items-center rounded-full border border-dashed border-border bg-input text-2xl text-foreground transition group-hover:scale-[1.03]">
               +
             </div>
-            <p className="truncate text-[11px] text-white/90">Agregar</p>
+            <p className="truncate text-[11px] text-foreground/90">Agregar</p>
           </button>
         )}
 
@@ -325,7 +325,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
                 className="relative mx-auto mb-1.5 size-[64px] rounded-full p-[2px] transition group-hover:scale-[1.03]"
                 style={hasStory ? buildStoryRing(user.storyCount, user.seenCount) : undefined}
               >
-                <div className="relative size-full overflow-hidden rounded-full bg-surface ring-[3px] ring-[#050d18]">
+                <div className="relative size-full overflow-hidden rounded-full bg-surface ring-[3px] ring-border">
                   <Image
                     src={user.avatar_url || "/demo-reddit.png"}
                     alt={user.nickname || user.username}
@@ -335,13 +335,13 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
                   />
                 </div>
               </div>
-              <p className={`truncate text-[12px] font-medium ${seenAll ? "text-white/65" : "text-white"}`}>{user.username}</p>
+              <p className={`truncate text-[12px] font-medium ${seenAll ? "text-foreground/65" : "text-foreground"}`}>{user.username}</p>
             </button>
           );
         })}
 
         {sortedStories.length === 0 && (
-          <p className="px-2 py-6 text-sm text-white/70">Aún no hay historias disponibles.</p>
+          <p className="px-2 py-6 text-sm text-foreground/70">Aún no hay historias disponibles.</p>
         )}
       </div>
 

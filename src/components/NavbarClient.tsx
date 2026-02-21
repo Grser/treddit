@@ -305,48 +305,14 @@ export default function NavbarClient({ session }: { session?: SessionUser | null
           </form>
 
           <nav className="ml-auto flex items-center gap-1 sm:gap-2">
-            <button
-              type="button"
-              title={isDarkMode ? strings.navbar.themeToLight : strings.navbar.themeToDark}
-              aria-label={strings.navbar.themeLabel}
-              className="inline-grid place-items-center size-9 rounded-full hover:bg-muted/60 ring-1 ring-transparent hover:ring-border transition"
-              onClick={toggleTheme}
-            >
-              {isDarkMode ? <SunIcon /> : <MoonIcon />}
-            </button>
-            <div className="hidden md:flex items-center gap-2 rounded-full border border-border bg-input px-3 py-1">
-              <label htmlFor="light-palette" className="text-xs opacity-80">
-                Paleta
-              </label>
-              <select
-                id="light-palette"
-                value={selectedLightPalette}
-                onChange={(event) => changeLightPalette(event.target.value as LightPaletteKey)}
-                disabled={isDarkMode}
-                title={isDarkMode ? "Cambia a modo claro para editar colores" : "Paleta de colores"}
-                className="rounded-md bg-surface px-2 py-1 text-xs border border-border disabled:opacity-50"
-              >
-                {LIGHT_PALETTES.map((palette) => (
-                  <option key={palette.key} value={palette.key}>
-                    {palette.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {!isDarkMode && selectedLightPalette === "custom" && (
-              <div className="hidden lg:flex items-center gap-1 rounded-full border border-border bg-input px-2 py-1">
-                {(Object.keys(customPalette) as Array<keyof CustomPalette>).map((key) => (
-                  <label key={key} className="inline-flex items-center" title={`Color ${key}`}>
-                    <input
-                      type="color"
-                      value={customPalette[key]}
-                      onChange={(event) => updateCustomColor(key, event.target.value)}
-                      className="h-6 w-6 cursor-pointer rounded border border-border bg-transparent p-0"
-                    />
-                  </label>
-                ))}
-              </div>
-            )}
+            <AppearanceMenu
+              isDarkMode={isDarkMode}
+              selectedLightPalette={selectedLightPalette}
+              customPalette={customPalette}
+              onToggleTheme={toggleTheme}
+              onChangeLightPalette={changeLightPalette}
+              onUpdateCustomColor={updateCustomColor}
+            />
             <LanguageMenu />
             <IconLink href="/anuncios" title={strings.navbar.ads}>
               <AdIcon />
@@ -527,6 +493,97 @@ function IconLink({
   );
 }
 
+function AppearanceMenu({
+  isDarkMode,
+  selectedLightPalette,
+  customPalette,
+  onToggleTheme,
+  onChangeLightPalette,
+  onUpdateCustomColor,
+}: {
+  isDarkMode: boolean;
+  selectedLightPalette: LightPaletteKey;
+  customPalette: CustomPalette;
+  onToggleTheme: () => void;
+  onChangeLightPalette: (palette: LightPaletteKey) => void;
+  onUpdateCustomColor: (key: keyof CustomPalette, value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (!box.current?.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  return (
+    <div className="relative" ref={box}>
+      <button
+        type="button"
+        title="Apariencia"
+        aria-label="Opciones de apariencia"
+        className="inline-grid place-items-center size-9 rounded-full hover:bg-muted/60 ring-1 ring-transparent hover:ring-border transition"
+        onClick={() => setOpen((value) => !value)}
+      >
+        <PaletteIcon />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 mt-2 w-72 rounded-xl border border-border bg-surface p-3 shadow-lg z-50">
+          <p className="text-xs font-semibold uppercase tracking-wide opacity-70">Apariencia</p>
+
+          <button
+            type="button"
+            onClick={onToggleTheme}
+            className="mt-3 flex w-full items-center justify-between rounded-lg border border-border bg-input px-3 py-2 text-sm hover:brightness-105"
+          >
+            <span>{isDarkMode ? "Modo oscuro" : "Modo claro"}</span>
+            {isDarkMode ? <SunIcon /> : <MoonIcon />}
+          </button>
+
+          <label htmlFor="light-palette" className="mt-3 block text-xs opacity-80">
+            Paleta de modo claro
+          </label>
+          <select
+            id="light-palette"
+            value={selectedLightPalette}
+            onChange={(event) => onChangeLightPalette(event.target.value as LightPaletteKey)}
+            disabled={isDarkMode}
+            className="mt-1 w-full rounded-md border border-border bg-input px-2 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {LIGHT_PALETTES.map((palette) => (
+              <option key={palette.key} value={palette.key}>
+                {palette.label}
+              </option>
+            ))}
+          </select>
+
+          {!isDarkMode && selectedLightPalette === "custom" && (
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              {(Object.keys(customPalette) as Array<keyof CustomPalette>).map((key) => (
+                <label key={key} className="rounded-lg border border-border bg-input p-2 text-center text-[11px] capitalize" title={`Color ${key}`}>
+                  <span className="mb-1 block truncate">{key.replace("_", " ")}</span>
+                  <input
+                    type="color"
+                    value={customPalette[key]}
+                    onChange={(event) => onUpdateCustomColor(key, event.target.value)}
+                    className="h-7 w-full cursor-pointer rounded border border-border bg-transparent p-0"
+                  />
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function LanguageMenu() {
   const { locale, setLocale, strings } = useLocale();
   const [open, setOpen] = useState(false);
@@ -607,6 +664,18 @@ function AdIcon() {
     <svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <rect x="3" y="4" width="18" height="16" rx="2" />
       <path d="M7 8h10M7 12h6M7 16h4" />
+    </svg>
+  );
+}
+
+
+function PaletteIcon() {
+  return (
+    <svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 3a9 9 0 0 0 0 18h1a3 3 0 0 0 0-6h-1a2 2 0 1 1 0-4h4a5 5 0 0 0 0-10h-4z" />
+      <circle cx="6.5" cy="10" r="1" />
+      <circle cx="9" cy="7" r="1" />
+      <circle cx="13" cy="7" r="1" />
     </svg>
   );
 }
