@@ -181,17 +181,29 @@ export default function NavbarClient({ session }: { session?: SessionUser | null
   useEffect(() => {
     let active = true;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let currentRequest: AbortController | null = null;
 
     async function load() {
+      currentRequest?.abort();
+      const controller = new AbortController();
+      currentRequest = controller;
       try {
-        const res = await fetch("/api/messages/summary", { cache: "no-store" });
+        const res = await fetch("/api/messages/summary", {
+          cache: "no-store",
+          signal: controller.signal,
+        });
         if (!res.ok) return;
         const payload = (await res.json().catch(() => ({}))) as { unread?: number };
         if (!active) return;
         setUnreadMessages(Math.max(0, Number(payload.unread) || 0));
       } catch {
+        if (controller.signal.aborted) return;
         if (!active) return;
         setUnreadMessages(0);
+      } finally {
+        if (currentRequest === controller) {
+          currentRequest = null;
+        }
       }
     }
 
@@ -201,6 +213,7 @@ export default function NavbarClient({ session }: { session?: SessionUser | null
     const interval = setInterval(load, 15_000);
     return () => {
       active = false;
+      currentRequest?.abort();
       if (timeoutId) clearTimeout(timeoutId);
       clearInterval(interval);
     };
@@ -230,20 +243,32 @@ export default function NavbarClient({ session }: { session?: SessionUser | null
   useEffect(() => {
     let active = true;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let currentRequest: AbortController | null = null;
 
     async function loadNotifications() {
       if (!resolvedSession?.id) return;
+      currentRequest?.abort();
+      const controller = new AbortController();
+      currentRequest = controller;
       try {
-        const res = await fetch("/api/notifications", { cache: "no-store" });
+        const res = await fetch("/api/notifications", {
+          cache: "no-store",
+          signal: controller.signal,
+        });
         if (!res.ok) return;
         const payload = (await res.json().catch(() => ({}))) as { items?: HeaderNotification[]; unreadCount?: number };
         if (!active) return;
         setNotifications(Array.isArray(payload.items) ? payload.items : []);
         setNotificationUnreadCount(Math.max(0, Number(payload.unreadCount) || 0));
       } catch {
+        if (controller.signal.aborted) return;
         if (!active) return;
         setNotifications([]);
         setNotificationUnreadCount(0);
+      } finally {
+        if (currentRequest === controller) {
+          currentRequest = null;
+        }
       }
     }
 
@@ -253,6 +278,7 @@ export default function NavbarClient({ session }: { session?: SessionUser | null
     const interval = setInterval(loadNotifications, 20_000);
     return () => {
       active = false;
+      currentRequest?.abort();
       if (timeoutId) clearTimeout(timeoutId);
       clearInterval(interval);
     };
