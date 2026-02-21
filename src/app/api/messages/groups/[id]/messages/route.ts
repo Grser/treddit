@@ -35,6 +35,9 @@ export async function POST(req: Request, { params }: Params) {
     const message = await sendGroupMessage(me.id, groupId, text);
     return NextResponse.json({ message }, { status: 201 });
   } catch (error) {
+    if (error instanceof Error && error.message === "NOT_IN_GROUP") {
+      return NextResponse.json({ error: "No perteneces a este grupo" }, { status: 403 });
+    }
     console.error("Failed to send group message", error);
     return NextResponse.json({ error: "No se pudo enviar" }, { status: 500 });
   }
