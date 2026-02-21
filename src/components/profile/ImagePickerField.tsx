@@ -11,6 +11,8 @@ type Props = {
   initialUrl?: string | null;
   accept?: string;
   helpText?: string;
+  minWidth?: number;
+  minHeight?: number;
 };
 
 type Mode = "url" | "upload";
@@ -21,6 +23,8 @@ export default function ImagePickerField({
   initialUrl,
   accept = "image/*",
   helpText,
+  minWidth,
+  minHeight,
 }: Props) {
   const { strings } = useLocale();
   const t = strings.profileEditor;
@@ -41,6 +45,26 @@ export default function ImagePickerField({
   async function handleUpload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
+
+    if (minWidth || minHeight) {
+      const dimensions = await getImageDimensions(file);
+      if (!dimensions) {
+        setError("No se pudo leer el tamaño de la imagen.");
+        setFileKey((k) => k + 1);
+        return;
+      }
+      const widthTooSmall = minWidth ? dimensions.width < minWidth : false;
+      const heightTooSmall = minHeight ? dimensions.height < minHeight : false;
+
+      if (widthTooSmall || heightTooSmall) {
+        const widthText = minWidth ? `${minWidth}px de ancho` : null;
+        const heightText = minHeight ? `${minHeight}px de alto` : null;
+        const requirement = [widthText, heightText].filter(Boolean).join(" y ");
+        setError(`Esta imagen es demasiado pequeña. Usa al menos ${requirement}.`);
+        setFileKey((k) => k + 1);
+        return;
+      }
+    }
 
     const form = new FormData();
     form.append("file", file);
@@ -156,4 +180,19 @@ export default function ImagePickerField({
       )}
     </div>
   );
+}
+
+async function getImageDimensions(file: File) {
+  const imageUrl = URL.createObjectURL(file);
+  try {
+    const dimensions = await new Promise<{ width: number; height: number } | null>((resolve) => {
+      const img = new window.Image();
+      img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+      img.onerror = () => resolve(null);
+      img.src = imageUrl;
+    });
+    return dimensions;
+  } finally {
+    URL.revokeObjectURL(imageUrl);
+  }
 }
