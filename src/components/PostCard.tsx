@@ -106,7 +106,7 @@ export default function PostCard({
                   isVerified={post.is_verified}
                   labels={strings.badges}
                 />
-                <MentionUserLink username={post.username} text={`@${post.username}`} className="opacity-60 hover:underline" />
+                <MentionUserLink username={post.username} text={`@${post.username}`} className="hidden opacity-60 hover:underline sm:inline" />
               </p>
               <p className="text-xs opacity-60">
                 <a href={`/p/${post.id}`} className="hover:underline">

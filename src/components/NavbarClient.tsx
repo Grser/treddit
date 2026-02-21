@@ -314,14 +314,28 @@ export default function NavbarClient({ session }: { session?: SessionUser | null
               onChangeLightPalette={changeLightPalette}
               onUpdateCustomColor={updateCustomColor}
             />
-            <LanguageMenu />
-            <IconLink href="/anuncios" title={strings.navbar.ads}>
-              <AdIcon />
-            </IconLink>
+            <div className="hidden sm:block">
+              <LanguageMenu />
+            </div>
+            <div className="hidden sm:block">
+              <IconLink href="/anuncios" title={strings.navbar.ads}>
+                <AdIcon />
+              </IconLink>
+            </div>
             <IconLink href="/mensajes" title={strings.navbar.messages} badge={unreadMessages}>
               <ChatIcon />
             </IconLink>
             <div className="hidden sm:block h-6 w-px bg-border mx-1" />
+            {resolvedSession ? (
+              <Link
+                href="/crear"
+                className="inline-grid size-9 place-items-center rounded-full bg-brand text-white sm:hidden"
+                title={strings.navbar.create}
+              >
+                <PlusIcon />
+              </Link>
+            ) : null}
+
 
             {resolvedSession ? (
               <Link
@@ -427,7 +441,7 @@ export default function NavbarClient({ session }: { session?: SessionUser | null
                 </Link>
 
                 <form method="POST" action="/api/auth/logout">
-                  <button className="inline-flex h-9 items-center justify-center px-3 rounded-full border border-border text-sm">
+                  <button className="hidden h-9 items-center justify-center rounded-full border border-border px-3 text-sm sm:inline-flex">
                     {strings.navbar.logout}
                   </button>
                 </form>
@@ -436,13 +450,13 @@ export default function NavbarClient({ session }: { session?: SessionUser | null
               <div className="flex items-center gap-2">
                 <Link
                   href="/auth/login"
-                  className="inline-flex h-9 items-center justify-center px-3 rounded-full border border-border text-sm"
+                  className="inline-flex h-9 items-center justify-center rounded-full border border-border px-3 text-sm"
                 >
                   {strings.navbar.login}
                 </Link>
                 <Link
                   href="/auth/registrar"
-                  className="inline-flex h-9 items-center justify-center px-3 rounded-full bg-brand text-white text-sm"
+                  className="hidden h-9 items-center justify-center rounded-full bg-brand px-3 text-sm text-white sm:inline-flex"
                 >
                   {strings.navbar.register}
                 </Link>
