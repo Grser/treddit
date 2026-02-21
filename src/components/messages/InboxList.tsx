@@ -8,6 +8,12 @@ import UserBadges from "@/components/UserBadges";
 import type { InboxEntry } from "@/lib/inbox";
 import { getCompactTime } from "@/lib/time";
 
+type SearchUser = {
+  id: number;
+  username: string;
+  nickname: string | null;
+};
+
 type InboxListProps = {
   entries: InboxEntry[];
   currentUserId: number;
@@ -18,8 +24,12 @@ type InboxListProps = {
 export default function InboxList({ entries, currentUserId, activeUsername, className }: InboxListProps) {
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<"all" | "unread" | "groups">("all");
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [groupName, setGroupName] = useState("");
-  const [groupMembers, setGroupMembers] = useState("");
+  const [groupDescription, setGroupDescription] = useState("");
+  const [memberQuery, setMemberQuery] = useState("");
+  const [memberResults, setMemberResults] = useState<SearchUser[]>([]);
+  const [selectedMembers, setSelectedMembers] = useState<SearchUser[]>([]);
   const [groupError, setGroupError] = useState<string | null>(null);
 
   const normalizedQuery = query.trim().toLowerCase();
@@ -38,6 +48,19 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
     }
     return filteredEntries;
   }, [filteredEntries, tab]);
+
+  async function searchPeople(value: string) {
+    setMemberQuery(value);
+    if (value.trim().length < 2) {
+      setMemberResults([]);
+      return;
+    }
+    const res = await fetch(`/api/users/search?q=${encodeURIComponent(value.trim())}`, { cache: "no-store" });
+    const payload = await res.json().catch(() => ({}));
+    const items = Array.isArray(payload.items) ? (payload.items as SearchUser[]) : [];
+    const selectedSet = new Set(selectedMembers.map((user) => user.id));
+    setMemberResults(items.filter((item) => item.id !== currentUserId && !selectedSet.has(item.id)));
+  }
 
   return (
     <>
@@ -59,33 +82,69 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
         {tab === "groups" && (
           <div className="mt-3 rounded-2xl border border-border/80 bg-background/70 p-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-brand/90">Nuevo grupo</p>
-            <p className="mt-1 text-xs opacity-70">Crea una sala, agrega usuarios por nombre y empieza a chatear.</p>
-            <input
-              value={groupName}
-              onChange={(event) => setGroupName(event.target.value)}
-              className="mt-2 w-full rounded-xl border border-border bg-input px-3 py-2 text-xs outline-none"
-              placeholder="Nombre del grupo"
-            />
-            <input
-              value={groupMembers}
-              onChange={(event) => setGroupMembers(event.target.value)}
-              className="mt-2 w-full rounded-xl border border-border bg-input px-3 py-2 text-xs outline-none"
-              placeholder="Usuarios: ana,carlos,luis"
-            />
+            <p className="mt-1 text-xs opacity-70">Como WhatsApp/Instagram: elige personas desde un selector visual.</p>
+            <button type="button" onClick={() => setShowCreateGroup(true)} className="mt-2 rounded-full bg-brand px-3 py-1.5 text-xs font-semibold text-white">
+              Abrir selector
+            </button>
+          </div>
+        )}
+      </div>
+
+      {showCreateGroup && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-3xl border border-border bg-surface p-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Crear grupo</h2>
+              <button onClick={() => setShowCreateGroup(false)} className="text-sm opacity-70">Cerrar</button>
+            </div>
+            <input value={groupName} onChange={(event) => setGroupName(event.target.value)} placeholder="Nombre del grupo" className="mt-3 w-full rounded-xl border border-border bg-input px-3 py-2 text-sm outline-none" />
+            <input value={groupDescription} onChange={(event) => setGroupDescription(event.target.value)} placeholder="Descripción (opcional)" className="mt-2 w-full rounded-xl border border-border bg-input px-3 py-2 text-sm outline-none" />
+            <input value={memberQuery} onChange={(event) => void searchPeople(event.target.value)} placeholder="Buscar personas" className="mt-2 w-full rounded-xl border border-border bg-input px-3 py-2 text-sm outline-none" />
+
+            {selectedMembers.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {selectedMembers.map((member) => (
+                  <button key={member.id} type="button" onClick={() => setSelectedMembers((prev) => prev.filter((item) => item.id !== member.id))} className="rounded-full border border-brand/30 bg-brand/15 px-2 py-1 text-xs">
+                    {(member.nickname || member.username)} ×
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {memberResults.length > 0 && (
+              <ul className="mt-2 max-h-40 overflow-y-auto rounded-xl border border-border/70">
+                {memberResults.map((item) => (
+                  <li key={item.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedMembers((prev) => [...prev, item]);
+                        setMemberQuery("");
+                        setMemberResults([]);
+                      }}
+                      className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-background/70"
+                    >
+                      <span>{item.nickname || item.username}</span>
+                      <span className="text-xs opacity-70">@{item.username}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
             {groupError && <p className="mt-2 text-xs text-red-500">{groupError}</p>}
             <button
               type="button"
-              className="mt-2 rounded-full bg-brand px-3 py-1.5 text-xs font-semibold text-white shadow-sm shadow-brand/40"
+              className="mt-3 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white"
               onClick={async () => {
                 setGroupError(null);
-                const usernames = groupMembers
-                  .split(",")
-                  .map((value) => value.trim())
-                  .filter(Boolean);
                 const res = await fetch("/api/messages/groups", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ name: groupName, memberUsernames: usernames }),
+                  body: JSON.stringify({
+                    name: groupName,
+                    description: groupDescription,
+                    memberIds: selectedMembers.map((member) => member.id),
+                  }),
                 });
                 const payload = await res.json().catch(() => ({}));
                 if (!res.ok || !payload.groupId) {
@@ -98,8 +157,8 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
               Crear grupo
             </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {visibleEntries.length === 0 ? (
         <div className="p-4 text-sm opacity-70">
@@ -126,7 +185,9 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
                   className={`flex items-center gap-3 border-b border-border/80 px-4 py-3 transition ${isActive ? "bg-brand/10" : "hover:bg-background/70"}`}
                 >
                   {isGroup ? (
-                    <div className="flex size-12 items-center justify-center rounded-full bg-emerald-500/15 text-xl ring-1 ring-emerald-500/40">👥</div>
+                    item.avatar_url ? (
+                      <Image src={avatar} alt={displayName} width={52} height={52} className="size-12 rounded-full object-cover ring-1 ring-border" unoptimized />
+                    ) : <div className="flex size-12 items-center justify-center rounded-full bg-emerald-500/15 text-xl ring-1 ring-emerald-500/40">👥</div>
                   ) : (
                     <Image
                       src={avatar}

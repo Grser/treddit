@@ -44,6 +44,7 @@ export type GroupConversationSummary = {
   id: number;
   name: string;
   avatarUrl: string | null;
+  description: string | null;
   createdAt: string;
   lastMessage: string;
   lastSenderId: number;
@@ -118,12 +119,19 @@ export async function ensureMessageTables() {
     CREATE TABLE IF NOT EXISTS Direct_Message_Groups (
       id INT AUTO_INCREMENT PRIMARY KEY,
       name VARCHAR(120) NOT NULL,
+      description VARCHAR(255) NULL,
       avatar_url VARCHAR(255) NULL,
       created_by INT UNSIGNED NOT NULL,
       created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       CONSTRAINT fk_dm_groups_creator FOREIGN KEY (created_by) REFERENCES Users(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `);
+  const [descriptionColumn] = await db.query<RowDataPacket[]>(
+    "SHOW COLUMNS FROM Direct_Message_Groups LIKE 'description'",
+  );
+  if (!descriptionColumn.length) {
+    await db.execute("ALTER TABLE Direct_Message_Groups ADD COLUMN description VARCHAR(255) NULL");
+  }
   await db.execute(`
     CREATE TABLE IF NOT EXISTS Direct_Message_Group_Members (
       group_id INT NOT NULL,
@@ -688,12 +696,14 @@ export async function setDirectMessageReaction(userId: number, messageId: number
   );
 }
 
-export async function createGroupConversation(creatorId: number, name: string, memberIds: number[]) {
+export async function createGroupConversation(creatorId: number, name: string, memberIds: number[], options?: { description?: string; avatarUrl?: string }) {
   if (!isDatabaseConfigured()) {
     throw new Error("DB_REQUIRED");
   }
   await ensureMessageTables();
   const normalizedName = name.trim().slice(0, 120);
+  const normalizedDescription = options?.description?.trim().slice(0, 255) || null;
+  const normalizedAvatarUrl = options?.avatarUrl?.trim().slice(0, 255) || null;
   if (!normalizedName) throw new Error("INVALID_GROUP_NAME");
 
   const uniqueMembers = [...new Set(memberIds.filter((id) => Number.isFinite(id) && id > 0))];
@@ -701,8 +711,8 @@ export async function createGroupConversation(creatorId: number, name: string, m
   if (allMembers.length < 2) throw new Error("GROUP_NEEDS_MEMBERS");
 
   const [result] = await db.execute<ResultSetHeader>(
-    "INSERT INTO Direct_Message_Groups (name, created_by, created_at) VALUES (?, ?, NOW())",
-    [normalizedName, creatorId],
+    "INSERT INTO Direct_Message_Groups (name, description, avatar_url, created_by, created_at) VALUES (?, ?, ?, ?, NOW())",
+    [normalizedName, normalizedDescription, normalizedAvatarUrl, creatorId],
   );
   const groupId = Number(result.insertId);
 
@@ -723,6 +733,7 @@ export async function fetchGroupConversations(userId: number): Promise<GroupConv
     `SELECT
        g.id,
        g.name,
+       g.description,
        g.avatar_url,
        g.created_at,
        COALESCE(last_message.message, '') AS last_message,
@@ -750,6 +761,7 @@ export async function fetchGroupConversations(userId: number): Promise<GroupConv
   return rows.map((row) => ({
     id: Number(row.id),
     name: String(row.name),
+    description: row.description ? String(row.description) : null,
     avatarUrl: row.avatar_url ? String(row.avatar_url) : null,
     createdAt: new Date(row.created_at).toISOString(),
     lastMessage: String(row.last_message ?? ""),
@@ -835,7 +847,7 @@ export async function fetchGroupDetails(userId: number, groupId: number) {
   if (!isDatabaseConfigured()) return null;
   await ensureMessageTables();
   const [rows] = await db.query<RowDataPacket[]>(
-    `SELECT g.id, g.name, g.avatar_url
+    `SELECT g.id, g.name, g.description, g.avatar_url, g.created_by
      FROM Direct_Message_Groups g
      JOIN Direct_Message_Group_Members gm ON gm.group_id = g.id
      WHERE g.id=? AND gm.user_id=?
@@ -843,5 +855,71 @@ export async function fetchGroupDetails(userId: number, groupId: number) {
     [groupId, userId],
   );
   if (!rows[0]) return null;
-  return { id: Number(rows[0].id), name: String(rows[0].name), avatar_url: rows[0].avatar_url ? String(rows[0].avatar_url) : null };
+  const [members] = await db.query<RowDataPacket[]>(
+    `SELECT u.id, u.username, u.nickname, u.avatar_url
+     FROM Direct_Message_Group_Members gm
+     JOIN Users u ON u.id = gm.user_id
+     WHERE gm.group_id = ?
+     ORDER BY u.username ASC`,
+    [groupId],
+  );
+  return {
+    id: Number(rows[0].id),
+    name: String(rows[0].name),
+    description: rows[0].description ? String(rows[0].description) : null,
+    avatar_url: rows[0].avatar_url ? String(rows[0].avatar_url) : null,
+    createdBy: Number(rows[0].created_by),
+    members: members.map((row) => ({
+      id: Number(row.id),
+      username: String(row.username),
+      nickname: row.nickname ? String(row.nickname) : null,
+      avatar_url: row.avatar_url ? String(row.avatar_url) : null,
+    })),
+  };
+}
+
+export async function updateGroupConversation(
+  userId: number,
+  groupId: number,
+  payload: { name?: string; description?: string; avatarUrl?: string; addMemberIds?: number[]; removeMemberIds?: number[] },
+) {
+  if (!isDatabaseConfigured()) throw new Error("DB_REQUIRED");
+  await ensureMessageTables();
+  const [membership] = await db.query<RowDataPacket[]>(
+    "SELECT group_id FROM Direct_Message_Group_Members WHERE group_id=? AND user_id=? LIMIT 1",
+    [groupId, userId],
+  );
+  if (!membership[0]?.group_id) throw new Error("NOT_IN_GROUP");
+
+  const normalizedName = typeof payload.name === "string" ? payload.name.trim().slice(0, 120) : undefined;
+  const normalizedDescription = typeof payload.description === "string" ? payload.description.trim().slice(0, 255) : undefined;
+  const normalizedAvatarUrl = typeof payload.avatarUrl === "string" ? payload.avatarUrl.trim().slice(0, 255) : undefined;
+
+  if (normalizedName !== undefined && !normalizedName) throw new Error("INVALID_GROUP_NAME");
+
+  if (normalizedName !== undefined || normalizedDescription !== undefined || normalizedAvatarUrl !== undefined) {
+    await db.execute(
+      `UPDATE Direct_Message_Groups
+       SET name = COALESCE(?, name),
+           description = CASE WHEN ? IS NULL THEN description ELSE ? END,
+           avatar_url = CASE WHEN ? IS NULL THEN avatar_url ELSE ? END
+       WHERE id = ?`,
+      [normalizedName ?? null, normalizedDescription ?? null, normalizedDescription ?? null, normalizedAvatarUrl ?? null, normalizedAvatarUrl ?? null, groupId],
+    );
+  }
+
+  const addMemberIds = [...new Set((payload.addMemberIds || []).filter((id) => Number.isFinite(id) && id > 0))];
+  for (const memberId of addMemberIds) {
+    await db.execute(
+      "INSERT IGNORE INTO Direct_Message_Group_Members (group_id, user_id, last_read_message_id, joined_at) VALUES (?, ?, 0, NOW())",
+      [groupId, memberId],
+    );
+  }
+
+  const removeMemberIds = [...new Set((payload.removeMemberIds || []).filter((id) => Number.isFinite(id) && id > 0 && id !== userId))];
+  for (const memberId of removeMemberIds) {
+    await db.execute("DELETE FROM Direct_Message_Group_Members WHERE group_id=? AND user_id=?", [groupId, memberId]);
+  }
+
+  return fetchGroupDetails(userId, groupId);
 }

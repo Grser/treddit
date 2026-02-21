@@ -55,9 +55,9 @@ export default async function GroupConversationPage({ params }: { params: Promis
             <div className="mb-3 border-b border-border/80 pb-3">
               <Link href="/mensajes" className="text-sm text-brand hover:underline lg:hidden">← Volver</Link>
               <h1 className="text-lg font-semibold">{group.name}</h1>
-              <p className="text-xs opacity-70">Grupo</p>
+              <p className="text-xs opacity-70">Grupo · {group.members.length} integrantes</p>
             </div>
-            <GroupConversation groupId={group.id} viewerId={me.id} initialMessages={messages} />
+            <GroupConversation groupId={group.id} viewerId={me.id} initialMessages={messages} initialGroup={group} />
           </section>
         </div>
       </main>
