@@ -56,7 +56,6 @@ export default function DirectConversation({
   const [replyingTo, setReplyingTo] = useState<DirectMessageEntry | null>(null);
   const latestIdRef = useRef(initialMessages[initialMessages.length - 1]?.id ?? 0);
   const [messageMenuId, setMessageMenuId] = useState<number | null>(null);
-  const [messageReactions, setMessageReactions] = useState<Record<number, string>>({});
   const [savedGifs, setSavedGifs] = useState<string[]>([]);
   const [savedStickers, setSavedStickers] = useState<string[]>([]);
   const [isTrayOpen, setIsTrayOpen] = useState(false);
@@ -194,8 +193,22 @@ export default function DirectConversation({
     setAttachments((prev) => [...prev, { url: item.url, type: "image", name: item.label }]);
   }
 
-  function handleReaction(messageId: number, emoji: string) {
-    setMessageReactions((prev) => ({ ...prev, [messageId]: emoji }));
+  async function handleReaction(messageId: number, emoji: string) {
+    try {
+      await fetch("/api/messages/reactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId, emoji }),
+      });
+      setMessages((prev) => prev.map((item) => {
+        if (item.id !== messageId) return item;
+        const reactions = item.reactions || [];
+        const withoutMine = reactions.filter((entry) => entry.userId !== viewerId);
+        return { ...item, reactions: [...withoutMine, { emoji, userId: viewerId, username: "yo" }] };
+      }));
+    } catch {
+      // noop
+    }
     setMessageMenuId(null);
   }
 
@@ -305,7 +318,7 @@ export default function DirectConversation({
             const avatar = !isMine ? msg.sender.avatar_url?.trim() || "/demo-reddit.png" : null;
             return (
               <li key={msg.id} className={`group/message flex ${isMine ? "justify-end" : "justify-start"} ${prevSameSender ? "mt-0.5" : "mt-2.5"}`}>
-                <div className={`flex max-w-[92%] items-end gap-2 md:max-w-[82%] ${isMine ? "flex-row-reverse" : "flex-row"}`}>
+                <div className={`flex max-w-[98%] items-end gap-2 md:max-w-[90%] ${isMine ? "flex-row-reverse" : "flex-row"}`}>
                   {!isMine && (
                     showAvatar ? (
                       <Image
@@ -318,7 +331,7 @@ export default function DirectConversation({
                       />
                     ) : <div className="size-8" />
                   )}
-                  <div className={`rounded-lg px-3 py-2 text-sm shadow-sm ${bubbleClasses}`}>
+                  <div className={`rounded-lg px-4 py-2.5 text-sm shadow-sm ${bubbleClasses}`}>
                     {showHeader && (
                       <p className="mb-1 flex items-center gap-2 font-semibold text-[11px] uppercase tracking-wide opacity-80">
                         {msg.sender.nickname || msg.sender.username}
@@ -374,9 +387,16 @@ export default function DirectConversation({
                         ))}
                       </ul>
                     ) : null}
-                    {messageReactions[msg.id] && (
-                      <div className={`mt-1 w-fit rounded-full border px-2 py-0.5 text-sm shadow transition ${isMine ? "border-white/20 bg-white/10 text-white" : "border-border bg-background/80 text-foreground"}`}>
-                        {messageReactions[msg.id]}
+                    {(msg.reactions?.length ?? 0) > 0 && (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {Object.entries((msg.reactions || []).reduce<Record<string, number>>((acc, reaction) => {
+                          acc[reaction.emoji] = (acc[reaction.emoji] || 0) + 1;
+                          return acc;
+                        }, {})).map(([emoji, total]) => (
+                          <span key={`${msg.id}-${emoji}`} className={`w-fit rounded-full border px-2 py-0.5 text-sm shadow transition ${isMine ? "border-white/20 bg-white/10 text-white" : "border-border bg-background/80 text-foreground"}`}>
+                            {emoji} {total}
+                          </span>
+                        ))}
                       </div>
                     )}
                     <div className={`relative mt-1 flex items-center justify-end gap-3 transition-opacity ${messageMenuId === msg.id ? "opacity-100" : "opacity-0 group-hover/message:opacity-100"}`}>

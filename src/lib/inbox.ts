@@ -1,9 +1,10 @@
 import { getCompactTime } from "@/lib/time";
 import { isDatabaseConfigured } from "@/lib/db";
 import { getDemoInbox } from "@/lib/demoStore";
-import { fetchConversationStarters, fetchConversationSummaries } from "@/lib/messages";
+import { fetchConversationStarters, fetchConversationSummaries, fetchGroupConversations } from "@/lib/messages";
 
 export type InboxEntry = {
+  type?: "direct" | "group";
   userId: number;
   username: string;
   nickname: string | null;
@@ -15,6 +16,7 @@ export type InboxEntry = {
   createdAt: string;
   unreadCount: number;
   isStarter?: boolean;
+  groupId?: number;
 };
 
 export async function loadInbox(userId: number): Promise<InboxEntry[]> {
@@ -33,12 +35,14 @@ export async function loadInbox(userId: number): Promise<InboxEntry[]> {
     }));
   }
 
-  const [rows, starters] = await Promise.all([
+  const [rows, starters, groups] = await Promise.all([
     fetchConversationSummaries(userId, { limit: 25 }),
     fetchConversationStarters(userId, { limit: 25 }),
+    fetchGroupConversations(userId),
   ]);
 
   const conversations = rows.map((row) => ({
+    type: "direct" as const,
     userId: row.userId,
     username: row.username,
     nickname: row.nickname,
@@ -55,6 +59,7 @@ export async function loadInbox(userId: number): Promise<InboxEntry[]> {
   const starterEntries = starters
     .filter((row) => !existing.has(row.userId))
     .map((row) => ({
+      type: "direct" as const,
       userId: row.userId,
       username: row.username,
       nickname: row.nickname,
@@ -68,7 +73,20 @@ export async function loadInbox(userId: number): Promise<InboxEntry[]> {
       isStarter: true,
     }));
 
-  return [...conversations, ...starterEntries];
+  const groupEntries = groups.map((group) => ({
+    type: "group" as const,
+    userId: -group.id,
+    username: `grupo-${group.id}`,
+    nickname: group.name,
+    avatar_url: group.avatarUrl,
+    lastMessage: group.lastMessage || "Grupo creado",
+    lastSenderId: group.lastSenderId,
+    createdAt: group.createdAt,
+    unreadCount: group.unreadCount,
+    groupId: group.id,
+  }));
+
+  return [...groupEntries, ...conversations, ...starterEntries];
 }
 
 export { getCompactTime };
