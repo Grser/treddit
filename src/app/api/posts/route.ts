@@ -178,8 +178,6 @@ export async function GET(req: Request) {
     }
   }
 
-  const viewerAgeVerified = meId && isDatabaseConfigured() ? await isUserAgeVerified(meId) : false;
-
   const shouldPrioritizeFollowed = Boolean(
     meId && !userId && !likesOf && !wantsCommunityFilter && !usernameFilter && !normalizedTag,
   );
@@ -332,6 +330,8 @@ export async function GET(req: Request) {
     );
 
     const list = rows;
+    const hasSensitiveItems = hasSensitiveColumn && list.some((row) => Boolean(row.is_sensitive));
+    const viewerAgeVerified = meId && hasSensitiveItems ? await isUserAgeVerified(meId) : false;
     const items = list.slice(0, limit).map((row) => ({
       ...row,
       likes: Number(row.likes) || 0,
