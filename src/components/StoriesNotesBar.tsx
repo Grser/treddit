@@ -432,7 +432,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
                 setIsStoryMenuOpen(false);
                 setViewerIndex((prev) => (prev !== null && prev > 0 ? prev - 1 : prev));
               }}
-              className="grid size-10 place-items-center rounded-full border border-white/25 bg-black/40 text-xl text-white disabled:opacity-30"
+              className="hidden size-10 place-items-center rounded-full border border-white/25 bg-black/40 text-xl text-white disabled:opacity-30 sm:grid"
               disabled={currentViewerIndex === 0}
             >
               ‹
@@ -512,7 +512,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
                 </button>
               </div>
 
-              <div className="relative h-[72vh] min-h-[420px] w-full bg-black">
+              <div className="relative h-[70vh] min-h-[360px] w-full bg-black sm:min-h-[420px]">
                 {isVideoUrl(activeStory.media_url) ? (
                   <video
                     src={activeStory.media_url || ""}
@@ -565,7 +565,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
                 setIsStoryMenuOpen(false);
                 setViewerIndex((prev) => (prev !== null && prev < sortedStories.length - 1 ? prev + 1 : prev));
               }}
-              className="grid size-10 place-items-center rounded-full border border-white/25 bg-black/40 text-xl text-white disabled:opacity-30"
+              className="hidden size-10 place-items-center rounded-full border border-white/25 bg-black/40 text-xl text-white disabled:opacity-30 sm:grid"
               disabled={currentViewerIndex === sortedStories.length - 1}
             >
               ›

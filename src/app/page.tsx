@@ -167,7 +167,7 @@ export default async function Page() {
   return (
     <div className="min-h-dvh">
       <Navbar session={session} />
-      <div className="mx-auto max-w-7xl px-3 sm:px-4 grid grid-cols-1 md:grid-cols-[16rem_1fr] lg:grid-cols-[16rem_1fr_20rem] gap-4 py-4">
+      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-4 px-3 py-4 sm:px-4 lg:grid-cols-[14rem_1fr] xl:grid-cols-[14rem_1fr_20rem]">
         <SidebarLeft communities={communities.items} />
 
         <main className="space-y-4">
