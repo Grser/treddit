@@ -48,6 +48,7 @@ export default function DirectConversation({
   const [attachments, setAttachments] = useState<DirectMessageAttachment[]>([]);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [replyingTo, setReplyingTo] = useState<DirectMessageEntry | null>(null);
   const latestIdRef = useRef(initialMessages[initialMessages.length - 1]?.id ?? 0);
 
@@ -60,6 +61,10 @@ export default function DirectConversation({
       container.scrollTop = container.scrollHeight;
     });
   }, [initialMessages, recipient.id]);
+
+  useEffect(() => {
+    textareaRef.current?.focus();
+  }, [recipient.id]);
 
   useEffect(() => {
     const container = scrollRef.current;
@@ -207,6 +212,9 @@ export default function DirectConversation({
         setText("");
         setAttachments([]);
         setReplyingTo(null);
+        requestAnimationFrame(() => {
+          textareaRef.current?.focus();
+        });
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -217,22 +225,22 @@ export default function DirectConversation({
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3">
-      <div className="flex min-h-0 flex-1 flex-col rounded-3xl border border-border/80 bg-gradient-to-b from-surface via-surface to-brand/5 p-4 shadow-sm">
+    <div className="flex h-full min-h-0 flex-col gap-2 md:gap-3">
+      <div className="flex min-h-0 flex-1 flex-col rounded-3xl border border-border/80 bg-gradient-to-b from-background/90 via-surface to-background p-3 shadow-sm md:p-4">
         {messages.length === 0 && (
           <p className="text-sm opacity-70">{strings.comments.none || "Aún no hay mensajes. Inicia la conversación."}</p>
         )}
-        <ul ref={scrollRef} className="mt-2 min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
+        <ul ref={scrollRef} className="mt-2 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
           {messages.map((msg) => {
             const isMine = msg.senderId === viewerId;
             const bubbleClasses = isMine
-              ? "bg-gradient-to-br from-brand to-fuchsia-500 text-white"
-              : "border border-border/80 bg-background/80 text-foreground";
+              ? "bg-brand text-white"
+              : "border border-border/80 bg-surface text-foreground";
             const timeLabel = new Date(msg.createdAt).toLocaleString();
             const avatar = !isMine ? msg.sender.avatar_url?.trim() || "/demo-reddit.png" : null;
             return (
               <li key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
-                <div className={`flex max-w-[85%] items-end gap-3 ${isMine ? "flex-row-reverse" : "flex-row"}`}>
+                <div className={`flex max-w-[92%] items-end gap-2 md:max-w-[82%] md:gap-3 ${isMine ? "flex-row-reverse" : "flex-row"}`}>
                   {!isMine && (
                     <Image
                       src={avatar || "/demo-reddit.png"}
@@ -243,7 +251,7 @@ export default function DirectConversation({
                       unoptimized
                     />
                   )}
-                  <div className={`rounded-3xl px-4 py-3 text-sm shadow-sm ${bubbleClasses}`}>
+                  <div className={`rounded-2xl px-3 py-2.5 text-sm shadow-sm md:rounded-3xl md:px-4 md:py-3 ${bubbleClasses}`}>
                     {!isMine && (
                       <p className="mb-1 flex items-center gap-2 font-semibold text-xs uppercase tracking-wide opacity-80">
                         {msg.sender.nickname || msg.sender.username}
@@ -306,7 +314,7 @@ export default function DirectConversation({
         </ul>
       </div>
 
-      <form onSubmit={sendMessage} className="shrink-0 space-y-3 rounded-3xl border border-border bg-surface p-4 shadow-sm">
+      <form onSubmit={sendMessage} className="shrink-0 space-y-3 rounded-2xl border border-border bg-surface p-3 shadow-sm md:rounded-3xl md:p-4">
         {replyingTo && (
           <div className="flex items-start justify-between rounded-xl border border-brand/30 bg-brand/10 px-3 py-2 text-xs">
             <div>
@@ -317,6 +325,7 @@ export default function DirectConversation({
           </div>
         )}
         <textarea
+          ref={textareaRef}
           id="dm-textarea"
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -329,8 +338,8 @@ export default function DirectConversation({
               }
             }
           }}
-          rows={3}
-          className="w-full resize-none rounded-2xl bg-input px-4 py-3 text-sm outline-none ring-1 ring-border transition focus:ring-2 focus:ring-brand/40"
+          rows={1}
+          className="max-h-36 w-full resize-y rounded-2xl bg-input px-4 py-3 text-sm outline-none ring-1 ring-border transition focus:ring-2 focus:ring-brand/40"
           placeholder={strings.comments.replyPlaceholder || "Escribe tu mensaje"}
           disabled={sending || uploading}
         />
