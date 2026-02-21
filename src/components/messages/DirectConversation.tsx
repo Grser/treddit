@@ -399,7 +399,7 @@ export default function DirectConversation({
                         ))}
                       </div>
                     )}
-                    <div className={`relative mt-1 flex items-center justify-end gap-3 transition-opacity ${messageMenuId === msg.id ? "opacity-100" : "opacity-0 group-hover/message:opacity-100"}`}>
+                    <div className={`relative mt-1 flex flex-wrap items-center gap-2 transition-opacity ${isMine ? "justify-end" : "justify-start"} ${messageMenuId === msg.id ? "opacity-100" : "opacity-0 group-hover/message:opacity-100"}`}>
                       <button
                         type="button"
                         onClick={() => setMessageMenuId((prev) => (prev === msg.id ? null : msg.id))}
@@ -419,7 +419,7 @@ export default function DirectConversation({
                         </button>
                       )}
                       {messageMenuId === msg.id && (
-                        <div className="absolute bottom-8 right-0 z-20 w-56 rounded-2xl border border-border bg-surface/95 p-2 shadow-xl backdrop-blur">
+                        <div className={`absolute bottom-8 z-20 w-56 max-w-[min(14rem,calc(100vw-2.5rem))] rounded-2xl border border-border bg-surface/95 p-2 shadow-xl backdrop-blur ${isMine ? "right-0" : "left-0"}`}>
                           <div className="mb-2 flex flex-wrap gap-1 border-b border-border pb-2">
                             {MESSAGE_REACTIONS.map((emoji) => (
                               <button key={`${msg.id}-${emoji}`} type="button" className="rounded-full border border-transparent px-2 py-1 text-base transition hover:border-border hover:bg-muted" onClick={() => handleReaction(msg.id, emoji)}>{emoji}</button>
