@@ -24,6 +24,52 @@ html:not(.dark) {
   --color-input: #f1f5f9;
   --color-border: #e5e7eb;
   --color-foreground: #0b0f19;
+  --color-brand: #A81700;
+}
+
+html:not(.dark)[data-light-palette="official"] {
+  --color-app: #f8fafc;
+  --color-surface: #ffffff;
+  --color-input: #f1f5f9;
+  --color-border: #e5e7eb;
+  --color-foreground: #0b0f19;
+  --color-brand: #A81700;
+}
+
+html:not(.dark)[data-light-palette="purple-night"] {
+  --color-app: #f7f5ff;
+  --color-surface: #ffffff;
+  --color-input: #f1edff;
+  --color-border: #ddd6fe;
+  --color-foreground: #1f1147;
+  --color-brand: #6d28d9;
+}
+
+html:not(.dark)[data-light-palette="ocean"] {
+  --color-app: #f0f9ff;
+  --color-surface: #ffffff;
+  --color-input: #e0f2fe;
+  --color-border: #bae6fd;
+  --color-foreground: #082f49;
+  --color-brand: #0369a1;
+}
+
+html:not(.dark)[data-light-palette="graphite"] {
+  --color-app: #f5f5f5;
+  --color-surface: #ffffff;
+  --color-input: #ebebeb;
+  --color-border: #d4d4d4;
+  --color-foreground: #111827;
+  --color-brand: #111111;
+}
+
+html:not(.dark)[data-light-palette="custom"] {
+  --color-app: var(--custom-app, #f8fafc);
+  --color-surface: var(--custom-surface, #ffffff);
+  --color-input: var(--custom-input, #f1f5f9);
+  --color-border: var(--custom-border, #e5e7eb);
+  --color-foreground: var(--custom-foreground, #0b0f19);
+  --color-brand: var(--custom-brand, #A81700);
 }
 
 /* utilidades abreviadas mapeadas a tokens */

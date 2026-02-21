@@ -18,11 +18,41 @@ type HeaderNotification = {
   text: string | null;
 };
 
+type LightPaletteKey = "official" | "purple-night" | "ocean" | "graphite" | "custom";
+
+type CustomPalette = {
+  app: string;
+  surface: string;
+  input: string;
+  border: string;
+  foreground: string;
+  brand: string;
+};
+
+const CUSTOM_PALETTE_DEFAULT: CustomPalette = {
+  app: "#f8fafc",
+  surface: "#ffffff",
+  input: "#f1f5f9",
+  border: "#e5e7eb",
+  foreground: "#0b0f19",
+  brand: "#a81700",
+};
+
+const LIGHT_PALETTES: Array<{ key: LightPaletteKey; label: string }> = [
+  { key: "official", label: "Oficial" },
+  { key: "purple-night", label: "Morado Noche" },
+  { key: "ocean", label: "Azul Océano" },
+  { key: "graphite", label: "Negro Grafito" },
+  { key: "custom", label: "Personalizado" },
+];
+
 export default function NavbarClient({ session }: { session?: SessionUser | null }) {
   const { strings } = useLocale();
   const [resolvedSession, setResolvedSession] = useState<SessionUser | null | undefined>(session);
   const avatar = resolvedSession?.avatar_url?.trim() || "/demo-reddit.png";
   const [isDarkMode, setIsDarkMode] = useState(true);
+  const [selectedLightPalette, setSelectedLightPalette] = useState<LightPaletteKey>("official");
+  const [customPalette, setCustomPalette] = useState<CustomPalette>(CUSTOM_PALETTE_DEFAULT);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [notifications, setNotifications] = useState<HeaderNotification[]>([]);
   const [notificationUnreadCount, setNotificationUnreadCount] = useState(0);
@@ -36,6 +66,40 @@ export default function NavbarClient({ session }: { session?: SessionUser | null
       (savedTheme !== "light" && document.documentElement.classList.contains("dark"));
     document.documentElement.classList.toggle("dark", shouldUseDark);
     setIsDarkMode(shouldUseDark);
+
+    const savedPalette = window.localStorage.getItem("treddit-light-palette");
+    const palette: LightPaletteKey =
+      savedPalette === "official" ||
+      savedPalette === "purple-night" ||
+      savedPalette === "ocean" ||
+      savedPalette === "graphite" ||
+      savedPalette === "custom"
+        ? savedPalette
+        : "official";
+    setSelectedLightPalette(palette);
+    document.documentElement.dataset.lightPalette = palette;
+
+    const savedCustomPalette = window.localStorage.getItem("treddit-light-custom");
+    if (savedCustomPalette) {
+      try {
+        const parsed = JSON.parse(savedCustomPalette) as Partial<CustomPalette>;
+        const nextCustom: CustomPalette = {
+          app: parsed.app ?? CUSTOM_PALETTE_DEFAULT.app,
+          surface: parsed.surface ?? CUSTOM_PALETTE_DEFAULT.surface,
+          input: parsed.input ?? CUSTOM_PALETTE_DEFAULT.input,
+          border: parsed.border ?? CUSTOM_PALETTE_DEFAULT.border,
+          foreground: parsed.foreground ?? CUSTOM_PALETTE_DEFAULT.foreground,
+          brand: parsed.brand ?? CUSTOM_PALETTE_DEFAULT.brand,
+        };
+        setCustomPalette(nextCustom);
+        applyCustomPalette(nextCustom);
+      } catch {
+        setCustomPalette(CUSTOM_PALETTE_DEFAULT);
+        applyCustomPalette(CUSTOM_PALETTE_DEFAULT);
+      }
+    } else {
+      applyCustomPalette(CUSTOM_PALETTE_DEFAULT);
+    }
   }, []);
 
   function toggleTheme() {
@@ -43,6 +107,35 @@ export default function NavbarClient({ session }: { session?: SessionUser | null
     setIsDarkMode(next);
     document.documentElement.classList.toggle("dark", next);
     window.localStorage.setItem("treddit-theme", next ? "dark" : "light");
+  }
+
+  function applyCustomPalette(palette: CustomPalette) {
+    const root = document.documentElement;
+    root.style.setProperty("--custom-app", palette.app);
+    root.style.setProperty("--custom-surface", palette.surface);
+    root.style.setProperty("--custom-input", palette.input);
+    root.style.setProperty("--custom-border", palette.border);
+    root.style.setProperty("--custom-foreground", palette.foreground);
+    root.style.setProperty("--custom-brand", palette.brand);
+  }
+
+  function changeLightPalette(palette: LightPaletteKey) {
+    setSelectedLightPalette(palette);
+    document.documentElement.dataset.lightPalette = palette;
+    window.localStorage.setItem("treddit-light-palette", palette);
+  }
+
+  function updateCustomColor(key: keyof CustomPalette, value: string) {
+    setCustomPalette((prev) => {
+      const next = { ...prev, [key]: value };
+      applyCustomPalette(next);
+      window.localStorage.setItem("treddit-light-custom", JSON.stringify(next));
+      return next;
+    });
+
+    if (selectedLightPalette !== "custom") {
+      changeLightPalette("custom");
+    }
   }
 
   useEffect(() => {
@@ -221,6 +314,39 @@ export default function NavbarClient({ session }: { session?: SessionUser | null
             >
               {isDarkMode ? <SunIcon /> : <MoonIcon />}
             </button>
+            <div className="hidden md:flex items-center gap-2 rounded-full border border-border bg-input px-3 py-1">
+              <label htmlFor="light-palette" className="text-xs opacity-80">
+                Paleta
+              </label>
+              <select
+                id="light-palette"
+                value={selectedLightPalette}
+                onChange={(event) => changeLightPalette(event.target.value as LightPaletteKey)}
+                disabled={isDarkMode}
+                title={isDarkMode ? "Cambia a modo claro para editar colores" : "Paleta de colores"}
+                className="rounded-md bg-surface px-2 py-1 text-xs border border-border disabled:opacity-50"
+              >
+                {LIGHT_PALETTES.map((palette) => (
+                  <option key={palette.key} value={palette.key}>
+                    {palette.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {!isDarkMode && selectedLightPalette === "custom" && (
+              <div className="hidden lg:flex items-center gap-1 rounded-full border border-border bg-input px-2 py-1">
+                {(Object.keys(customPalette) as Array<keyof CustomPalette>).map((key) => (
+                  <label key={key} className="inline-flex items-center" title={`Color ${key}`}>
+                    <input
+                      type="color"
+                      value={customPalette[key]}
+                      onChange={(event) => updateCustomColor(key, event.target.value)}
+                      className="h-6 w-6 cursor-pointer rounded border border-border bg-transparent p-0"
+                    />
+                  </label>
+                ))}
+              </div>
+            )}
             <LanguageMenu />
             <IconLink href="/anuncios" title={strings.navbar.ads}>
               <AdIcon />
