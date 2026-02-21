@@ -141,7 +141,7 @@ export default function Composer({ enabled }: { enabled: boolean }) {
       } finally {
         if (active) setMentionsLoading(false);
       }
-    }, 250);
+    }, 120);
 
     return () => {
       active = false;
