@@ -53,10 +53,21 @@ export async function POST(req: Request) {
           ? data.type
           : "file";
       const name = typeof data.name === "string" ? data.name : null;
+      const durationSecondsRaw = Number(data.durationSeconds);
+      const durationSeconds = Number.isFinite(durationSecondsRaw)
+        ? Math.max(0, Math.min(Math.round(durationSecondsRaw), 3600))
+        : null;
       if (!url) return null;
-      return { url, type, name } satisfies DirectMessageAttachment;
+      return { url, type, name, durationSeconds } satisfies DirectMessageAttachment;
     })
     .filter(Boolean) as DirectMessageAttachment[];
+
+  const hasAudioOverLimit = attachments.some(
+    (item) => item.type === "audio" && typeof item.durationSeconds === "number" && item.durationSeconds > 60,
+  );
+  if (hasAudioOverLimit) {
+    return NextResponse.json({ error: "El audio no puede durar más de 1 minuto" }, { status: 400 });
+  }
 
   if (!recipientId || recipientId <= 0) {
     return NextResponse.json({ error: "Destinatario inválido" }, { status: 400 });
