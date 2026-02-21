@@ -90,3 +90,6 @@ MAIL_FROM="Treddit <no-reply@tu-dominio.com>"
 ```
 
 Opcionalmente puedes definir `APP_NAME` y `NEXT_PUBLIC_BASE_URL` para personalizar los mensajes enviados al usuario.
+
+> Nota: la verificación activa de SMTP (`transporter.verify`) se desactiva por defecto para evitar errores en entornos sin shell del sistema (`/bin/sh`).
+> Si quieres forzarla al iniciar, define `SMTP_VERIFY_ON_START=true`.
