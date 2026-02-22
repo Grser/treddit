@@ -17,6 +17,14 @@ export type ConversationParticipant = {
   is_verified?: boolean;
 };
 
+type SharedPostPreview = {
+  id: number;
+  username: string;
+  nickname: string;
+  description: string | null;
+  mediaUrl: string | null;
+};
+
 const QUICK_EMOJIS = ["😀", "😂", "🔥", "❤️", "👏", "😮", "🙏", "🎉"] as const;
 const MESSAGE_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"] as const;
 
@@ -55,6 +63,27 @@ function mergeById(current: DirectMessageEntry[], incoming: DirectMessageEntry[]
   return [...map.values()].sort((a, b) => a.id - b.id);
 }
 
+function parseSharedPostText(text: string | null | undefined) {
+  if (!text) return null;
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+  const lines = trimmed.split("\n").map((line) => line.trim()).filter(Boolean);
+  if (!lines.length) return null;
+
+  const urlCandidate = lines[lines.length - 1];
+  const match = urlCandidate.match(/\/p\/(\d+)(?:[/?#]|$)/i);
+  if (!match) return null;
+
+  const postId = Number(match[1]);
+  if (!Number.isFinite(postId) || postId <= 0) return null;
+
+  return {
+    postId,
+    url: urlCandidate,
+    intro: lines.slice(0, -1).join(" "),
+  };
+}
+
 export default function DirectConversation({
   initialMessages,
   viewerId,
@@ -81,6 +110,7 @@ export default function DirectConversation({
   const [savedGifs, setSavedGifs] = useState<string[]>([]);
   const [savedStickers, setSavedStickers] = useState<string[]>([]);
   const [isTrayOpen, setIsTrayOpen] = useState(false);
+  const [sharedPostPreviews, setSharedPostPreviews] = useState<Record<number, SharedPostPreview | null>>({});
 
   useEffect(() => {
     setMessages(initialMessages);
@@ -152,6 +182,52 @@ export default function DirectConversation({
     };
     markRead();
   }, [messages, recipient.id]);
+
+
+  useEffect(() => {
+    const sharedPostIds = [...new Set(messages
+      .map((message) => parseSharedPostText(message.text)?.postId)
+      .filter((id): id is number => Boolean(id)))];
+
+    const missing = sharedPostIds.filter((id) => !(id in sharedPostPreviews));
+    if (!missing.length) return;
+
+    let active = true;
+
+    const loadSharedPosts = async () => {
+      const results = await Promise.all(missing.map(async (id) => {
+        try {
+          const res = await fetch(`/api/posts/${id}`, { cache: "no-store" });
+          const payload = await res.json().catch(() => ({}));
+          if (!res.ok || !payload.item) return [id, null] as const;
+          const item = payload.item;
+          return [id, {
+            id,
+            username: String(item.username || ""),
+            nickname: String(item.nickname || item.username || "Publicación"),
+            description: item.description ? String(item.description) : null,
+            mediaUrl: item.mediaUrl ? String(item.mediaUrl) : null,
+          }] as const;
+        } catch {
+          return [id, null] as const;
+        }
+      }));
+
+      if (!active) return;
+      setSharedPostPreviews((prev) => {
+        const next = { ...prev };
+        results.forEach(([id, data]) => {
+          next[id] = data;
+        });
+        return next;
+      });
+    };
+
+    loadSharedPosts();
+    return () => {
+      active = false;
+    };
+  }, [messages, sharedPostPreviews]);
 
 
   useEffect(() => {
@@ -385,7 +461,48 @@ export default function DirectConversation({
                         <p className="line-clamp-2 opacity-80">{msg.replyTo.text || "Mensaje"}</p>
                       </div>
                     )}
-                    {msg.text && <p className="whitespace-pre-wrap break-words">{msg.text}</p>}
+                    {(() => {
+                      const sharedPost = parseSharedPostText(msg.text);
+                      if (!sharedPost) {
+                        return msg.text ? <p className="whitespace-pre-wrap break-words">{msg.text}</p> : null;
+                      }
+
+                      const preview = sharedPostPreviews[sharedPost.postId];
+                      return (
+                        <div className="space-y-2">
+                          {sharedPost.intro ? <p className="text-xs opacity-85">{sharedPost.intro}</p> : null}
+                          <a
+                            href={sharedPost.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className={`block overflow-hidden rounded-2xl border shadow-sm transition hover:scale-[1.01] ${isMine ? "border-white/25 bg-white/10" : "border-border bg-background/80"}`}
+                          >
+                            <div className={`px-3 py-2 text-[11px] font-medium uppercase tracking-wide ${isMine ? "bg-black/20 text-white/85" : "bg-muted/70 text-foreground/75"}`}>
+                              Publicación compartida
+                            </div>
+                            {preview?.mediaUrl ? (
+                              <Image
+                                src={preview.mediaUrl}
+                                alt={preview.description || "Post compartido"}
+                                width={360}
+                                height={220}
+                                className="h-[200px] w-full object-cover"
+                                unoptimized
+                              />
+                            ) : (
+                              <div className={`h-[90px] w-full ${isMine ? "bg-white/10" : "bg-muted/50"}`} />
+                            )}
+                            <div className="space-y-1 px-3 py-2.5">
+                              <p className="text-xs font-semibold">{preview?.nickname || "Publicación"}</p>
+                              <p className={`text-xs ${isMine ? "text-white/80" : "text-foreground/75"}`}>@{preview?.username || "usuario"}</p>
+                              <p className={`line-clamp-2 text-xs ${isMine ? "text-white/85" : "text-foreground/85"}`}>
+                                {preview?.description || "Mira la publicación que te compartieron."}
+                              </p>
+                            </div>
+                          </a>
+                        </div>
+                      );
+                    })()}
                     {msg.attachments?.length ? (
                       <ul className="mt-3 space-y-2">
                         {msg.attachments.map((file) => (
