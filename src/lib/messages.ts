@@ -63,6 +63,11 @@ export type GroupMessageEntry = {
     nickname: string | null;
     avatar_url: string | null;
   };
+  reactions?: Array<{
+    emoji: string;
+    userId: number;
+    username: string;
+  }>;
 };
 
 export type GroupMemberRole = "owner" | "admin" | "member";
@@ -184,6 +189,18 @@ export async function ensureMessageTables() {
       INDEX idx_dm_group_messages_group (group_id, created_at),
       CONSTRAINT fk_dm_group_messages_group FOREIGN KEY (group_id) REFERENCES Direct_Message_Groups(id) ON DELETE CASCADE,
       CONSTRAINT fk_dm_group_messages_sender FOREIGN KEY (sender_id) REFERENCES Users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS Direct_Message_Group_Reactions (
+      message_id INT NOT NULL,
+      user_id INT UNSIGNED NOT NULL,
+      emoji VARCHAR(16) NOT NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (message_id, user_id),
+      INDEX idx_dm_group_reactions_message (message_id),
+      CONSTRAINT fk_dm_group_reactions_message FOREIGN KEY (message_id) REFERENCES Direct_Message_Group_Messages(id) ON DELETE CASCADE,
+      CONSTRAINT fk_dm_group_reactions_user FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `);
   const [attachmentsColumn] = await db.query<RowDataPacket[]>(
@@ -862,6 +879,34 @@ export async function setDirectMessageReaction(userId: number, messageId: number
   );
 }
 
+export async function setGroupMessageReaction(userId: number, groupId: number, messageId: number, emoji: string) {
+  if (!isDatabaseConfigured()) return;
+  await ensureMessageTables();
+  const normalized = emoji.trim().slice(0, 16);
+  if (!normalized) throw new Error("INVALID_EMOJI");
+
+  const [rows] = await db.query<RowDataPacket[]>(
+    `SELECT msg.id
+     FROM Direct_Message_Group_Messages msg
+     JOIN Direct_Message_Group_Members gm ON gm.group_id = msg.group_id
+     WHERE msg.id = ?
+       AND msg.group_id = ?
+       AND gm.user_id = ?
+     LIMIT 1`,
+    [messageId, groupId, userId],
+  );
+  if (!rows[0]?.id) {
+    throw new Error("MESSAGE_NOT_FOUND");
+  }
+
+  await db.execute(
+    `INSERT INTO Direct_Message_Group_Reactions (message_id, user_id, emoji, created_at)
+     VALUES (?, ?, ?, NOW())
+     ON DUPLICATE KEY UPDATE emoji=VALUES(emoji), created_at=NOW()`,
+    [messageId, userId, normalized],
+  );
+}
+
 export async function createGroupConversation(creatorId: number, name: string, memberIds: number[], options?: { description?: string; avatarUrl?: string }) {
   if (!isDatabaseConfigured()) {
     throw new Error("DB_REQUIRED");
@@ -970,7 +1015,15 @@ export async function fetchGroupMessages(userId: number, groupId: number, afterI
 
   const [rows] = await db.query<RowDataPacket[]>(
     `SELECT msg.id, msg.group_id, msg.sender_id, msg.message, msg.created_at,
-            u.id AS user_id, u.username, u.nickname, u.avatar_url
+            u.id AS user_id, u.username, u.nickname, u.avatar_url,
+            (
+              SELECT JSON_ARRAYAGG(
+                JSON_OBJECT('emoji', reactions.emoji, 'userId', reactions.user_id, 'username', reaction_user.username)
+              )
+              FROM Direct_Message_Group_Reactions reactions
+              JOIN Users reaction_user ON reaction_user.id = reactions.user_id
+              WHERE reactions.message_id = msg.id
+            ) AS reactions_json
      FROM Direct_Message_Group_Messages msg
      JOIN Users u ON u.id = msg.sender_id
      WHERE msg.group_id=? AND msg.id > ?
@@ -991,7 +1044,34 @@ export async function fetchGroupMessages(userId: number, groupId: number, afterI
       nickname: row.nickname ? String(row.nickname) : null,
       avatar_url: row.avatar_url ? String(row.avatar_url) : null,
     },
+    reactions: parseReactions(typeof row.reactions_json === "string" ? row.reactions_json : null),
   }));
+}
+
+export async function deleteDirectMessage(userId: number, messageId: number) {
+  if (!isDatabaseConfigured()) return false;
+  await ensureMessageTables();
+  const [result] = await db.execute<ResultSetHeader>(
+    "DELETE FROM Direct_Messages WHERE id = ? AND sender_id = ? LIMIT 1",
+    [messageId, userId],
+  );
+  return result.affectedRows > 0;
+}
+
+export async function deleteGroupMessage(userId: number, groupId: number, messageId: number) {
+  if (!isDatabaseConfigured()) return false;
+  await ensureMessageTables();
+  const [result] = await db.execute<ResultSetHeader>(
+    `DELETE msg
+     FROM Direct_Message_Group_Messages msg
+     JOIN Direct_Message_Group_Members gm ON gm.group_id = msg.group_id AND gm.user_id = ?
+     WHERE msg.id = ?
+       AND msg.group_id = ?
+       AND msg.sender_id = ?
+     LIMIT 1`,
+    [userId, messageId, groupId, userId],
+  );
+  return result.affectedRows > 0;
 }
 
 export async function sendGroupMessage(userId: number, groupId: number, text: string): Promise<GroupMessageEntry> {

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireUser } from "@/lib/auth";
-import { fetchGroupMessages, sendGroupMessage } from "@/lib/messages";
+import { deleteGroupMessage, fetchGroupMessages, sendGroupMessage } from "@/lib/messages";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -40,5 +40,29 @@ export async function POST(req: Request, { params }: Params) {
     }
     console.error("Failed to send group message", error);
     return NextResponse.json({ error: "No se pudo enviar" }, { status: 500 });
+  }
+}
+
+
+export async function DELETE(req: Request, { params }: Params) {
+  const me = await requireUser();
+  const { id } = await params;
+  const groupId = Number(id);
+  const payload = await req.json().catch(() => null) as { messageId?: unknown } | null;
+  const messageId = Number(payload?.messageId);
+
+  if (!Number.isFinite(groupId) || groupId <= 0 || !Number.isFinite(messageId) || messageId <= 0) {
+    return NextResponse.json({ error: "Datos inválidos" }, { status: 400 });
+  }
+
+  try {
+    const deleted = await deleteGroupMessage(me.id, groupId, messageId);
+    if (!deleted) {
+      return NextResponse.json({ error: "No se pudo eliminar el mensaje" }, { status: 404 });
+    }
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error("Failed to delete group message", error);
+    return NextResponse.json({ error: "No se pudo eliminar" }, { status: 500 });
   }
 }

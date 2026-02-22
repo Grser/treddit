@@ -20,6 +20,8 @@ type SearchUser = {
   nickname: string | null;
 };
 
+const MESSAGE_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"] as const;
+
 type SharedPostPreview = {
   id: number;
   username: string;
@@ -101,6 +103,7 @@ export default function GroupConversation({
   const [settingsError, setSettingsError] = useState<string | null>(null);
   const [sharedPostPreviews, setSharedPostPreviews] = useState<Record<number, SharedPostPreview | null>>({});
   const [revealedSensitivePosts, setRevealedSensitivePosts] = useState<Record<number, boolean>>({});
+  const [messageMenuId, setMessageMenuId] = useState<number | null>(null);
   const groupAvatar = avatarUrl || "/demo-reddit.png";
 
   useEffect(() => {
@@ -152,6 +155,41 @@ export default function GroupConversation({
     };
     void markRead();
   }, [groupId, messages]);
+
+
+  async function handleReaction(messageId: number, emoji: string) {
+    try {
+      await fetch("/api/messages/reactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ groupId, messageId, emoji }),
+      });
+      setMessages((prev) => prev.map((item) => {
+        if (item.id !== messageId) return item;
+        const reactions = item.reactions || [];
+        const withoutMine = reactions.filter((entry) => entry.userId !== viewerId);
+        return { ...item, reactions: [...withoutMine, { emoji, userId: viewerId, username: "yo" }] };
+      }));
+    } catch {
+      // noop
+    }
+    setMessageMenuId(null);
+  }
+
+  async function handleDeleteMessage(messageId: number) {
+    try {
+      const res = await fetch(`/api/messages/groups/${groupId}/messages`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId }),
+      });
+      if (!res.ok) return;
+      setMessages((prev) => prev.filter((item) => item.id !== messageId));
+    } catch {
+      // noop
+    }
+    setMessageMenuId(null);
+  }
 
   useEffect(() => {
     const sharedPostIds = [
@@ -488,7 +526,7 @@ export default function GroupConversation({
           const avatar = msg.sender.avatar_url?.trim() || "/demo-reddit.png";
 
           return (
-            <li key={msg.id} className={`flex ${mine ? "justify-end" : "justify-start"} ${prevSameSender ? "mt-0.5" : "mt-2.5"}`}>
+            <li key={msg.id} className={`group/message flex ${mine ? "justify-end" : "justify-start"} ${prevSameSender ? "mt-0.5" : "mt-2.5"}`}>
               <div className={`flex max-w-[98%] items-end gap-2 md:max-w-[92%] ${mine ? "flex-row-reverse" : "flex-row"}`}>
                 {!mine && (
                   showAvatar ? (
@@ -503,10 +541,18 @@ export default function GroupConversation({
                   ) : <div className="size-8" />
                 )}
                 <div
-                  className={`max-w-[92%] rounded-2xl px-4 py-2 text-sm shadow-sm ${
+                  className={`relative max-w-[92%] rounded-2xl px-4 py-2 text-sm shadow-sm ${
                     mine ? "bg-brand text-white" : "bg-input text-foreground"
                   }`}
                 >
+                  <button
+                    type="button"
+                    onClick={() => setMessageMenuId((prev) => (prev === msg.id ? null : msg.id))}
+                    className={`absolute right-2 top-2 inline-flex size-6 items-center justify-center rounded-full text-xs transition ${mine ? "bg-white/10 text-white/90 hover:bg-white/20" : "bg-background/80 text-foreground/80 hover:bg-muted"}`}
+                    aria-label="Abrir menú"
+                  >
+                    ▾
+                  </button>
                   {showHeader && (
                     <p className="mb-1 text-[11px] font-semibold text-brand/90">
                       <Link href={`/u/${msg.sender.username}`} className="hover:underline">{msg.sender.nickname || msg.sender.username}</Link>
@@ -527,7 +573,7 @@ export default function GroupConversation({
                         {shouldShowMedia ? (
                           <Image
                             src={preview?.mediaUrl || ""}
-                            alt={preview.description || "Post compartido"}
+                            alt={preview?.description || "Post compartido"}
                             width={420}
                             height={260}
                             className="mt-2 max-h-52 w-full rounded-xl object-cover"
@@ -573,6 +619,30 @@ export default function GroupConversation({
                   {mine ? (
                     <p className="mt-1 text-[10px] text-white/70">{new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
                   ) : null}
+                  {(msg.reactions?.length ?? 0) > 0 && (
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {Object.entries((msg.reactions || []).reduce<Record<string, number>>((acc, reaction) => {
+                        acc[reaction.emoji] = (acc[reaction.emoji] || 0) + 1;
+                        return acc;
+                      }, {})).map(([emoji, total]) => (
+                        <span key={`${msg.id}-${emoji}`} className={`w-fit rounded-full border px-2 py-0.5 text-sm shadow transition ${mine ? "border-white/20 bg-white/10 text-white" : "border-border bg-background/80 text-foreground"}`}>
+                          {emoji} {total}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <div className={`relative mt-1 flex flex-wrap items-center gap-2 pr-8 transition-opacity ${mine ? "justify-end" : "justify-start"} ${messageMenuId === msg.id ? "opacity-100" : "opacity-0 group-hover/message:opacity-100"}`}>
+                    {messageMenuId === msg.id && (
+                      <div className={`absolute bottom-8 z-20 w-56 max-w-[min(14rem,calc(100vw-2.5rem))] rounded-2xl border border-border bg-surface/95 p-2 shadow-xl backdrop-blur ${mine ? "right-0" : "left-0"}`}>
+                        <div className="mb-2 flex flex-wrap gap-1 border-b border-border pb-2">
+                          {MESSAGE_REACTIONS.map((emoji) => (
+                            <button key={`${msg.id}-${emoji}`} type="button" className="rounded-full border border-transparent px-2 py-1 text-base transition hover:border-border hover:bg-muted" onClick={() => handleReaction(msg.id, emoji)}>{emoji}</button>
+                          ))}
+                        </div>
+                        {mine ? <button type="button" className="block w-full rounded px-2 py-1 text-left text-xs text-rose-300 hover:bg-rose-500/10" onClick={() => handleDeleteMessage(msg.id)}>Eliminar mensaje</button> : null}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </li>
