@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { fetchGroupDetails, updateGroupConversation } from "@/lib/messages";
+import { fetchGroupDetails, leaveGroupConversation, updateGroupConversation } from "@/lib/messages";
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const me = await requireUser();
@@ -87,5 +87,25 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
     console.error("Failed to update group", error);
     return NextResponse.json({ error: "No se pudo actualizar el grupo" }, { status: 500 });
+  }
+}
+
+export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
+  const me = await requireUser();
+  const { id } = await params;
+  const groupId = Number(id);
+  if (!Number.isFinite(groupId) || groupId <= 0) {
+    return NextResponse.json({ error: "Grupo inválido" }, { status: 400 });
+  }
+
+  try {
+    await leaveGroupConversation(me.id, groupId);
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    if (error instanceof Error && error.message === "NOT_IN_GROUP") {
+      return NextResponse.json({ error: "Sin acceso" }, { status: 404 });
+    }
+    console.error("Failed to leave group", error);
+    return NextResponse.json({ error: "No se pudo salir del grupo" }, { status: 500 });
   }
 }
