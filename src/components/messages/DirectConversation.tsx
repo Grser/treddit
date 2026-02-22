@@ -113,6 +113,7 @@ export default function DirectConversation({
   const [savedStickers, setSavedStickers] = useState<string[]>([]);
   const [isTrayOpen, setIsTrayOpen] = useState(false);
   const [sharedPostPreviews, setSharedPostPreviews] = useState<Record<number, SharedPostPreview | null>>({});
+  const [revealedSensitivePosts, setRevealedSensitivePosts] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     setMessages(initialMessages);
@@ -472,6 +473,10 @@ export default function DirectConversation({
                       }
 
                       const preview = sharedPostPreviews[sharedPost.postId];
+                      const isSensitiveBlocked = Boolean(preview?.isSensitive && !preview?.canViewSensitive);
+                      const canRevealSensitive = Boolean(preview?.isSensitive && preview?.canViewSensitive);
+                      const isSensitiveRevealed = Boolean(revealedSensitivePosts[sharedPost.postId]);
+                      const shouldShowMedia = Boolean(preview?.mediaUrl) && (!preview?.isSensitive || isSensitiveRevealed);
                       return (
                         <div className="space-y-2">
                           {sharedPost.intro ? <p className="text-xs opacity-85">{sharedPost.intro}</p> : null}
@@ -484,9 +489,9 @@ export default function DirectConversation({
                             <div className={`px-3 py-2 text-[11px] font-medium uppercase tracking-wide ${isMine ? "bg-black/20 text-white/85" : "bg-muted/70 text-foreground/75"}`}>
                               Publicación compartida
                             </div>
-                            {preview?.mediaUrl && (!preview.isSensitive || preview.canViewSensitive) ? (
+                            {shouldShowMedia ? (
                               <Image
-                                src={preview.mediaUrl}
+                                src={preview?.mediaUrl || ""}
                                 alt={preview.description || "Post compartido"}
                                 width={360}
                                 height={220}
@@ -494,16 +499,34 @@ export default function DirectConversation({
                                 unoptimized
                               />
                             ) : (
-                              <div className={`h-[90px] w-full ${isMine ? "bg-white/10" : "bg-muted/50"}`} />
+                              <div className={`flex h-[90px] w-full items-center justify-center px-3 text-center text-xs ${isMine ? "bg-white/10 text-white/85" : "bg-muted/50 text-foreground/75"}`}>
+                                {isSensitiveBlocked
+                                  ? "Contenido sensible bloqueado. Debes verificar tu edad para verlo."
+                                  : canRevealSensitive
+                                    ? "Contenido sensible. Toca “Ver contenido” para mostrarlo."
+                                    : "Vista previa no disponible."}
+                              </div>
                             )}
                             <div className="space-y-1 px-3 py-2.5">
                               <p className="text-xs font-semibold">{preview?.nickname || "Publicación"}</p>
                               <p className={`text-xs ${isMine ? "text-white/80" : "text-foreground/75"}`}>@{preview?.username || "usuario"}</p>
                               <p className={`line-clamp-2 text-xs ${isMine ? "text-white/85" : "text-foreground/85"}`}>
-                                {preview?.isSensitive && !preview?.canViewSensitive
+                                {isSensitiveBlocked
                                   ? "Contenido sensible bloqueado. Debes verificar tu edad para verlo."
                                   : preview?.description || "Mira la publicación que te compartieron."}
                               </p>
+                              {canRevealSensitive && !isSensitiveRevealed ? (
+                                <button
+                                  type="button"
+                                  onClick={(event) => {
+                                    event.preventDefault();
+                                    setRevealedSensitivePosts((prev) => ({ ...prev, [sharedPost.postId]: true }));
+                                  }}
+                                  className={`mt-1 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wide transition ${isMine ? "border-white/35 bg-white/15 text-white hover:bg-white/25" : "border-border bg-background/80 text-foreground hover:bg-muted"}`}
+                                >
+                                  Ver contenido
+                                </button>
+                              ) : null}
                             </div>
                           </a>
                         </div>
