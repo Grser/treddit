@@ -41,6 +41,28 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
     setLocalEntries(entries);
   }, [entries]);
 
+  useEffect(() => {
+    if (!activeUsername) return;
+    setLocalEntries((prev) => prev.map((entry) => (
+      entry.username === activeUsername
+        ? { ...entry, unreadCount: 0 }
+        : entry
+    )));
+  }, [activeUsername]);
+
+  useEffect(() => {
+    function handleMessagesRead() {
+      if (!activeUsername) return;
+      setLocalEntries((prev) => prev.map((entry) => (
+        entry.username === activeUsername
+          ? { ...entry, unreadCount: 0 }
+          : entry
+      )));
+    }
+    window.addEventListener("treddit:messages-read", handleMessagesRead);
+    return () => window.removeEventListener("treddit:messages-read", handleMessagesRead);
+  }, [activeUsername]);
+
   const orderedEntries = useMemo(() => {
     return [...localEntries].sort((left, right) => {
       if (Boolean(right.isPinned) !== Boolean(left.isPinned)) {
@@ -333,7 +355,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
             : "No encontramos contactos con ese término."}
         </div>
       ) : (
-        <ul className={className || "h-[calc(100dvh-18rem)] min-h-[360px] overflow-y-auto"}>
+        <ul className={className || "hide-scrollbar h-[calc(100dvh-18rem)] min-h-[360px] overflow-y-auto"}>
           {visibleEntries.map((item) => {
             const avatar = item.avatar_url?.trim() || "/demo-reddit.png";
             const displayName = item.nickname || item.username;

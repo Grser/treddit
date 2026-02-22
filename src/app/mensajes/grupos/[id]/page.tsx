@@ -49,7 +49,7 @@ export default async function GroupConversationPage({ params }: { params: Promis
       <main className="mx-auto w-full max-w-6xl px-4 py-6">
         <div className="grid h-[calc(100dvh-7rem)] min-h-[560px] overflow-hidden rounded-3xl border border-border/80 bg-surface shadow-xl lg:grid-cols-[360px_minmax(0,1fr)]">
           <aside className="hidden border-r border-border/80 lg:block">
-            <InboxList entries={inbox} currentUserId={me.id} activeUsername={`grupo-${group.id}`} className="h-[calc(100dvh-18rem)] min-h-[360px] overflow-y-auto" />
+            <InboxList entries={inbox} currentUserId={me.id} activeUsername={`grupo-${group.id}`} className="hide-scrollbar h-[calc(100dvh-18rem)] min-h-[360px] overflow-y-auto" />
           </aside>
           <section className="flex h-full min-h-0 flex-col">
             <div className="mb-3 px-3 pt-3 md:px-4">
