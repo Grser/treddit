@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -32,6 +32,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
   const [selectedMembers, setSelectedMembers] = useState<SearchUser[]>([]);
   const [groupError, setGroupError] = useState<string | null>(null);
   const [deletingUsername, setDeletingUsername] = useState<string | null>(null);
+  const [searchStarters, setSearchStarters] = useState<InboxEntry[]>([]);
 
   const normalizedQuery = query.trim().toLowerCase();
   const filteredEntries = useMemo(() => {
@@ -42,13 +43,57 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
     });
   }, [entries, normalizedQuery]);
 
-  const visibleEntries = useMemo(() => {
-    if (tab === "unread") return filteredEntries.filter((entry) => entry.unreadCount > 0);
-    if (tab === "groups") {
-      return filteredEntries.filter((entry) => entry.type === "group");
+  useEffect(() => {
+    if (normalizedQuery.length < 2) {
+      setSearchStarters([]);
+      return;
     }
-    return filteredEntries;
-  }, [filteredEntries, tab]);
+
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/messages/starters?q=${encodeURIComponent(normalizedQuery)}`, {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        if (!res.ok) {
+          setSearchStarters([]);
+          return;
+        }
+        const payload = await res.json().catch(() => ({}));
+        const items = Array.isArray(payload.items) ? (payload.items as InboxEntry[]) : [];
+        setSearchStarters(items);
+      } catch {
+        setSearchStarters([]);
+      }
+    }, 250);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timeoutId);
+    };
+  }, [normalizedQuery]);
+
+  const combinedEntries = useMemo(() => {
+    if (!normalizedQuery) return filteredEntries;
+    const byUserId = new Map(filteredEntries.map((entry) => [entry.userId, entry]));
+    for (const starter of searchStarters) {
+      if (!byUserId.has(starter.userId)) {
+        byUserId.set(starter.userId, starter);
+      }
+    }
+    return Array.from(byUserId.values());
+  }, [filteredEntries, normalizedQuery, searchStarters]);
+
+  const visibleEntries = useMemo(() => {
+    if (tab === "groups") {
+      return combinedEntries.filter((entry) => entry.type === "group");
+    }
+    if (tab === "unread") {
+      return combinedEntries.filter((entry) => entry.unreadCount > 0);
+    }
+    return combinedEntries;
+  }, [combinedEntries, tab]);
 
   async function removeConversation(username: string) {
     const confirmDelete = window.confirm("¿Eliminar este chat de tu lista? Podrás volver a escribirle cuando quieras.");
