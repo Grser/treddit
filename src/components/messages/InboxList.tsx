@@ -22,6 +22,7 @@ type InboxListProps = {
 };
 
 export default function InboxList({ entries, currentUserId, activeUsername, className }: InboxListProps) {
+  const [localEntries, setLocalEntries] = useState(entries);
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<"all" | "archived" | "groups">("all");
   const [showCreateGroup, setShowCreateGroup] = useState(false);
@@ -36,8 +37,12 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
   const [menuActionLoading, setMenuActionLoading] = useState<string | null>(null);
   const [searchStarters, setSearchStarters] = useState<InboxEntry[]>([]);
 
+  useEffect(() => {
+    setLocalEntries(entries);
+  }, [entries]);
+
   const orderedEntries = useMemo(() => {
-    return [...entries].sort((left, right) => {
+    return [...localEntries].sort((left, right) => {
       if (Boolean(right.isPinned) !== Boolean(left.isPinned)) {
         return Number(Boolean(right.isPinned)) - Number(Boolean(left.isPinned));
       }
@@ -48,7 +53,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
       }
       return left.userId - right.userId;
     });
-  }, [entries]);
+  }, [localEntries]);
 
   const normalizedQuery = query.trim().toLowerCase();
   const filteredEntries = useMemo(() => {
@@ -93,7 +98,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
   const combinedEntries = useMemo(() => {
     if (!normalizedQuery) return filteredEntries;
     const existingConversationUserIds = new Set(
-      entries.filter((entry) => !entry.isStarter && entry.type !== "group").map((entry) => entry.userId),
+      localEntries.filter((entry) => !entry.isStarter && entry.type !== "group").map((entry) => entry.userId),
     );
     const byUserId = new Map(filteredEntries.map((entry) => [entry.userId, entry]));
     for (const starter of searchStarters) {
@@ -113,7 +118,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
       const rightTime = new Date(right.createdAt).getTime();
       return rightTime - leftTime;
     });
-  }, [entries, filteredEntries, normalizedQuery, searchStarters]);
+  }, [localEntries, filteredEntries, normalizedQuery, searchStarters]);
 
   const hasArchivedUnread = useMemo(
     () => combinedEntries.some((entry) => entry.type !== "group" && !entry.isStarter && entry.isArchived && entry.unreadCount > 0),
@@ -142,7 +147,22 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
         const payload = await res.json().catch(() => ({}));
         throw new Error(typeof payload.error === "string" ? payload.error : "No se pudo actualizar el chat");
       }
-      window.location.reload();
+      setLocalEntries((current) =>
+        current.map((entry) => {
+          if (entry.username !== username) {
+            return entry;
+          }
+          if (action === "markUnread") {
+            return { ...entry, unreadCount: Math.max(entry.unreadCount, 1) };
+          }
+
+          const nextValue = enabled;
+          if (action === "archive") return { ...entry, isArchived: nextValue };
+          if (action === "mute") return { ...entry, isMuted: nextValue };
+          if (action === "pin") return { ...entry, isPinned: nextValue };
+          return entry;
+        }),
+      );
     } catch (error) {
       window.alert(error instanceof Error ? error.message : "No se pudo actualizar el chat");
     } finally {
@@ -161,7 +181,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
         const message = typeof payload.error === "string" ? payload.error : "No se pudo borrar el chat";
         throw new Error(message);
       }
-      window.location.reload();
+      setLocalEntries((current) => current.filter((entry) => entry.username !== username));
     } catch (error) {
       const message = error instanceof Error ? error.message : "No se pudo borrar el chat";
       window.alert(message);
@@ -391,9 +411,6 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
                           { key: "mute", label: item.isMuted ? "Activar notificaciones" : "Silenciar notificaciones", enabled: !item.isMuted },
                           { key: "pin", label: item.isPinned ? "Desfijar chat" : "Fijar chat", enabled: !item.isPinned },
                           { key: "markUnread", label: "Marcar como no leído", enabled: true },
-                          { key: "favorite", label: item.isFavorite ? "Quitar de favoritos" : "Añadir a Favoritos", enabled: !item.isFavorite },
-                          { key: "list", label: item.isListed ? "Quitar de la lista" : "Añadir a la lista", enabled: !item.isListed },
-                          { key: "block", label: item.isBlocked ? "Desbloquear" : "Bloquear", enabled: !item.isBlocked },
                         ].map((action) => (
                           <button
                             key={action.key}
