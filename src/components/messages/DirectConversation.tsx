@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import UserBadges from "@/components/UserBadges";
@@ -499,10 +500,8 @@ export default function DirectConversation({
                       return (
                         <div className="space-y-2">
                           {sharedPost.intro ? <p className="text-xs opacity-85">{sharedPost.intro}</p> : null}
-                          <a
-                            href={sharedPost.url}
-                            target="_blank"
-                            rel="noreferrer"
+                          <Link
+                            href={`/p/${sharedPost.postId}`}
                             className={`block overflow-hidden rounded-2xl border shadow-sm transition hover:scale-[1.01] ${isMine ? "border-white/25 bg-white/10" : "border-border bg-background/80"}`}
                           >
                             <div className={`px-3 py-2 text-[11px] font-medium uppercase tracking-wide ${isMine ? "bg-black/20 text-white/85" : "bg-muted/70 text-foreground/75"}`}>
@@ -551,7 +550,7 @@ export default function DirectConversation({
                                 </button>
                               ) : null}
                             </div>
-                          </a>
+                          </Link>
                         </div>
                       );
                     })()}

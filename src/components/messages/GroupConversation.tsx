@@ -98,6 +98,7 @@ export default function GroupConversation({
   const [userQuery, setUserQuery] = useState("");
   const [userResults, setUserResults] = useState<SearchUser[]>([]);
   const [savingChanges, setSavingChanges] = useState(false);
+  const [leavingGroup, setLeavingGroup] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [settingsError, setSettingsError] = useState<string | null>(null);
@@ -467,43 +468,69 @@ export default function GroupConversation({
             ))}
           </div>
 
-          {canManage && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {canManage && (
+              <button
+                type="button"
+                className="rounded-full bg-brand px-3 py-1.5 text-xs font-semibold text-white"
+                onClick={async () => {
+                  setSettingsError(null);
+                  setSavingChanges(true);
+                  try {
+                    const res = await fetch(`/api/messages/groups/${groupId}`, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ name, description, avatarUrl }),
+                    });
+                    const payload = await res.json().catch(() => ({}));
+                    if (res.ok && payload.group) {
+                      setName(payload.group.name as string);
+                      setDescription((payload.group.description as string | null) || "");
+                      setAvatarUrl((payload.group.avatar_url as string | null) || "");
+                      setMembers((payload.group.members as GroupMember[]) || []);
+                      setCanManage(Boolean(payload.group.canManage));
+                      setMyRole((payload.group.myRole as "owner" | "admin" | "member") || "member");
+                    } else {
+                      setSettingsError(
+                        typeof payload.error === "string" ? payload.error : "No se pudo guardar el grupo",
+                      );
+                    }
+                  } catch {
+                    setSettingsError("No se pudo guardar el grupo");
+                  } finally {
+                    setSavingChanges(false);
+                  }
+                }}
+                disabled={savingChanges || uploadingAvatar || leavingGroup}
+              >
+                {savingChanges ? "Guardando…" : "Guardar cambios"}
+              </button>
+            )}
             <button
               type="button"
-              className="mt-3 rounded-full bg-brand px-3 py-1.5 text-xs font-semibold text-white"
+              className="rounded-full border border-rose-400/50 px-3 py-1.5 text-xs font-semibold text-rose-300"
+              disabled={leavingGroup || savingChanges || uploadingAvatar}
               onClick={async () => {
+                const confirmLeave = window.confirm("¿Seguro que quieres salir de este grupo?");
+                if (!confirmLeave) return;
                 setSettingsError(null);
-                setSavingChanges(true);
+                setLeavingGroup(true);
                 try {
-                  const res = await fetch(`/api/messages/groups/${groupId}`, {
-                    method: "PATCH",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ name, description, avatarUrl }),
-                  });
+                  const res = await fetch(`/api/messages/groups/${groupId}`, { method: "DELETE" });
                   const payload = await res.json().catch(() => ({}));
-                  if (res.ok && payload.group) {
-                    setName(payload.group.name as string);
-                    setDescription((payload.group.description as string | null) || "");
-                    setAvatarUrl((payload.group.avatar_url as string | null) || "");
-                    setMembers((payload.group.members as GroupMember[]) || []);
-                    setCanManage(Boolean(payload.group.canManage));
-                    setMyRole((payload.group.myRole as "owner" | "admin" | "member") || "member");
-                  } else {
-                    setSettingsError(
-                      typeof payload.error === "string" ? payload.error : "No se pudo guardar el grupo",
-                    );
+                  if (!res.ok) {
+                    throw new Error(typeof payload.error === "string" ? payload.error : "No se pudo salir del grupo");
                   }
-                } catch {
-                  setSettingsError("No se pudo guardar el grupo");
-                } finally {
-                  setSavingChanges(false);
+                  window.location.href = "/mensajes";
+                } catch (error) {
+                  setSettingsError(error instanceof Error ? error.message : "No se pudo salir del grupo");
+                  setLeavingGroup(false);
                 }
               }}
-              disabled={savingChanges || uploadingAvatar}
             >
-              {savingChanges ? "Guardando…" : "Guardar cambios"}
+              {leavingGroup ? "Saliendo…" : "Salir del grupo"}
             </button>
-          )}
+          </div>
           {settingsError && <p className="mt-2 text-xs text-rose-400">{settingsError}</p>}
         </div>
       )}
@@ -563,10 +590,8 @@ export default function GroupConversation({
                   ) : (
                     <div className="space-y-2">
                       {sharedPost.intro ? <p className="text-xs opacity-85">{sharedPost.intro}</p> : null}
-                      <a
-                        href={sharedPost.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <Link
+                        href={`/p/${sharedPost.postId}`}
                         className="block rounded-2xl border border-white/20 bg-black/10 p-2 hover:bg-black/20"
                       >
                         <p className="text-[11px] uppercase tracking-wide opacity-70">Publicación compartida</p>
@@ -610,7 +635,7 @@ export default function GroupConversation({
                             Ver contenido
                           </button>
                         ) : null}
-                      </a>
+                      </Link>
                     </div>
                   )}
                   {!mine && !nextSameSender ? (

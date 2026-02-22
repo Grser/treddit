@@ -1225,3 +1225,52 @@ export async function updateGroupConversation(
 
   return fetchGroupDetails(userId, groupId);
 }
+
+export async function leaveGroupConversation(userId: number, groupId: number) {
+  if (!isDatabaseConfigured()) throw new Error("DB_REQUIRED");
+  await ensureMessageTables();
+
+  const [membershipRows] = await db.query<RowDataPacket[]>(
+    "SELECT role FROM Direct_Message_Group_Members WHERE group_id=? AND user_id=? LIMIT 1",
+    [groupId, userId],
+  );
+  if (!membershipRows[0]) {
+    throw new Error("NOT_IN_GROUP");
+  }
+
+  const myRole = String(membershipRows[0].role || "member") as GroupMemberRole;
+
+  if (myRole === "owner") {
+    const [replacementRows] = await db.query<RowDataPacket[]>(
+      `SELECT user_id, role
+       FROM Direct_Message_Group_Members
+       WHERE group_id = ?
+         AND user_id <> ?
+       ORDER BY FIELD(role, 'admin', 'member'), joined_at ASC
+       LIMIT 1`,
+      [groupId, userId],
+    );
+
+    if (replacementRows[0]?.user_id) {
+      await db.execute(
+        "UPDATE Direct_Message_Group_Members SET role='owner' WHERE group_id=? AND user_id=?",
+        [groupId, Number(replacementRows[0].user_id)],
+      );
+      await db.execute(
+        "UPDATE Direct_Message_Groups SET created_by=? WHERE id=?",
+        [Number(replacementRows[0].user_id), groupId],
+      );
+    }
+  }
+
+  await db.execute("DELETE FROM Direct_Message_Group_Members WHERE group_id=? AND user_id=?", [groupId, userId]);
+
+  const [remainingRows] = await db.query<RowDataPacket[]>(
+    "SELECT user_id FROM Direct_Message_Group_Members WHERE group_id=? LIMIT 1",
+    [groupId],
+  );
+
+  if (!remainingRows[0]?.user_id) {
+    await db.execute("DELETE FROM Direct_Message_Groups WHERE id=?", [groupId]);
+  }
+}
