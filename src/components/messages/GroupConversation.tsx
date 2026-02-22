@@ -65,6 +65,14 @@ function roleLabel(role: GroupMember["role"]) {
   return "Miembro";
 }
 
+function formatMessageTime(dateInput: string) {
+  return new Intl.DateTimeFormat("es-AR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date(dateInput));
+}
+
 export default function GroupConversation({
   groupId,
   viewerId,
@@ -638,12 +646,8 @@ export default function GroupConversation({
                       </Link>
                     </div>
                   )}
-                  {!mine && !nextSameSender ? (
-                    <p className="mt-1 text-[10px] opacity-65">{new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
-                  ) : null}
-                  {mine ? (
-                    <p className="mt-1 text-[10px] text-white/70">{new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
-                  ) : null}
+                  {!mine && !nextSameSender ? <p className="mt-1 text-[10px] opacity-65">{formatMessageTime(msg.createdAt)}</p> : null}
+                  {mine ? <p className="mt-1 text-[10px] text-white/70">{formatMessageTime(msg.createdAt)}</p> : null}
                   {(msg.reactions?.length ?? 0) > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
                       {Object.entries((msg.reactions || []).reduce<Record<string, number>>((acc, reaction) => {
