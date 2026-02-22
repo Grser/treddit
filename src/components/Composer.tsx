@@ -44,6 +44,10 @@ export default function Composer({ enabled }: { enabled: boolean }) {
   const [options, setOptions] = useState<string[]>(["", ""]);
   const [days, setDays] = useState(1);
 
+  function normalizePollDays(value: number) {
+    return Number.isFinite(value) ? Math.max(1, Math.min(7, Math.trunc(value))) : 1;
+  }
+
   const errorMessage = useMemo(() => {
     if (errorKey) return t.errors[errorKey];
     if (serverError) return serverError;
@@ -251,7 +255,7 @@ export default function Composer({ enabled }: { enabled: boolean }) {
       payload.poll = {
         question: question.trim(),
         options: opts,
-        days: Math.max(1, Math.min(7, days)),
+        days: normalizePollDays(days),
       };
     }
 
@@ -445,7 +449,7 @@ export default function Composer({ enabled }: { enabled: boolean }) {
                 min={1}
                 max={7}
                 value={days}
-                onChange={(e) => setDays(parseInt(e.target.value || "1", 10))}
+                onChange={(e) => setDays(normalizePollDays(Number(e.target.value)))}
                 className="ml-2 w-16 h-8 px-2 rounded-md bg-input outline-none ring-1 ring-border focus:ring-2"
                 disabled={!enabled}
               />
