@@ -473,6 +473,7 @@ export default function DirectConversation({
                       }
 
                       const preview = sharedPostPreviews[sharedPost.postId];
+                      const isPostUnavailable = preview === null;
                       const isSensitiveBlocked = Boolean(preview?.isSensitive && !preview?.canViewSensitive);
                       const canRevealSensitive = Boolean(preview?.isSensitive && preview?.canViewSensitive);
                       const isSensitiveRevealed = Boolean(revealedSensitivePosts[sharedPost.postId]);
@@ -504,16 +505,20 @@ export default function DirectConversation({
                                   ? "Contenido sensible bloqueado. Debes verificar tu edad para verlo."
                                   : canRevealSensitive
                                     ? "Contenido sensible. Toca “Ver contenido” para mostrarlo."
-                                    : "Vista previa no disponible."}
+                                    : isPostUnavailable
+                                      ? "Publicación no disponible, ya no existe."
+                                      : "Vista previa no disponible."}
                               </div>
                             )}
                             <div className="space-y-1 px-3 py-2.5">
-                              <p className="text-xs font-semibold">{preview?.nickname || "Publicación"}</p>
-                              <p className={`text-xs ${isMine ? "text-white/80" : "text-foreground/75"}`}>@{preview?.username || "usuario"}</p>
+                              <p className="text-xs font-semibold">{preview?.nickname || "Publicación no disponible"}</p>
+                              {preview?.username ? <p className={`text-xs ${isMine ? "text-white/80" : "text-foreground/75"}`}>@{preview.username}</p> : null}
                               <p className={`line-clamp-2 text-xs ${isMine ? "text-white/85" : "text-foreground/85"}`}>
                                 {isSensitiveBlocked
                                   ? "Contenido sensible bloqueado. Debes verificar tu edad para verlo."
-                                  : preview?.description || "Mira la publicación que te compartieron."}
+                                  : isPostUnavailable
+                                    ? "Publicación no disponible, ya no existe."
+                                    : preview?.description || "Mira la publicación que te compartieron."}
                               </p>
                               {canRevealSensitive && !isSensitiveRevealed ? (
                                 <button

@@ -346,6 +346,7 @@ export default function GroupConversation({
           const mine = msg.senderId === viewerId;
           const sharedPost = parseSharedPostText(msg.text);
           const preview = sharedPost ? sharedPostPreviews[sharedPost.postId] : null;
+          const isPostUnavailable = preview === null;
           const isSensitiveBlocked = Boolean(preview?.isSensitive && !preview?.canViewSensitive);
           const canRevealSensitive = Boolean(preview?.isSensitive && preview?.canViewSensitive);
           const isSensitiveRevealed = Boolean(sharedPost && revealedSensitivePosts[sharedPost.postId]);
@@ -390,14 +391,18 @@ export default function GroupConversation({
                             ? "Contenido sensible bloqueado. Debes verificar tu edad para verlo."
                             : canRevealSensitive
                               ? "Contenido sensible. Toca “Ver contenido” para mostrarlo."
-                              : "Vista previa no disponible."}
+                              : isPostUnavailable
+                                ? "Publicación no disponible, ya no existe."
+                                : "Vista previa no disponible."}
                         </div>
                       )}
-                      <p className="mt-2 text-sm font-semibold">{preview?.nickname || "Ver publicación"}</p>
+                      <p className="mt-2 text-sm font-semibold">{preview?.nickname || "Publicación no disponible"}</p>
                       <p className="text-xs opacity-80">
                         {isSensitiveBlocked
                           ? "Contenido sensible bloqueado. Debes verificar tu edad para verlo."
-                          : preview?.description || "Mira la publicación que te compartieron."}
+                          : isPostUnavailable
+                            ? "Publicación no disponible, ya no existe."
+                            : preview?.description || "Mira la publicación que te compartieron."}
                       </p>
                       {canRevealSensitive && sharedPost && !isSensitiveRevealed ? (
                         <button
