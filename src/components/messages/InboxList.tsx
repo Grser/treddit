@@ -33,19 +33,15 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
   const [groupError, setGroupError] = useState<string | null>(null);
   const [deletingUsername, setDeletingUsername] = useState<string | null>(null);
   const [searchStarters, setSearchStarters] = useState<InboxEntry[]>([]);
-  const [orderedEntries, setOrderedEntries] = useState<InboxEntry[]>(entries);
 
-  useEffect(() => {
-    setOrderedEntries((previous) => {
-      const nextByUserId = new Map(entries.map((entry) => [entry.userId, entry]));
-      const preserved = previous
-        .filter((entry) => nextByUserId.has(entry.userId))
-        .map((entry) => nextByUserId.get(entry.userId) as InboxEntry);
-
-      const knownIds = new Set(preserved.map((entry) => entry.userId));
-      const appended = entries.filter((entry) => !knownIds.has(entry.userId));
-
-      return [...preserved, ...appended];
+  const orderedEntries = useMemo(() => {
+    return [...entries].sort((left, right) => {
+      const leftTime = new Date(left.createdAt).getTime();
+      const rightTime = new Date(right.createdAt).getTime();
+      if (rightTime !== leftTime) {
+        return rightTime - leftTime;
+      }
+      return left.userId - right.userId;
     });
   }, [entries]);
 
@@ -97,7 +93,17 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
         byUserId.set(starter.userId, starter);
       }
     }
-    return Array.from(byUserId.values());
+
+    return Array.from(byUserId.values()).sort((left, right) => {
+      if (left.isStarter && !right.isStarter) return 1;
+      if (!left.isStarter && right.isStarter) return -1;
+      if (left.isStarter && right.isStarter) {
+        return (left.nickname || left.username).localeCompare(right.nickname || right.username, "es");
+      }
+      const leftTime = new Date(left.createdAt).getTime();
+      const rightTime = new Date(right.createdAt).getTime();
+      return rightTime - leftTime;
+    });
   }, [filteredEntries, normalizedQuery, searchStarters]);
 
   const visibleEntries = useMemo(() => {
