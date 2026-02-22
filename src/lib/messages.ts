@@ -65,6 +65,8 @@ export type GroupMessageEntry = {
   };
 };
 
+export type GroupMemberRole = "owner" | "admin" | "member";
+
 export async function ensureMessageTables() {
   if (tablesReady || !isDatabaseConfigured()) return;
   await db.execute(`
@@ -147,6 +149,7 @@ export async function ensureMessageTables() {
     CREATE TABLE IF NOT EXISTS Direct_Message_Group_Members (
       group_id INT NOT NULL,
       user_id INT UNSIGNED NOT NULL,
+      role ENUM('owner','admin','member') NOT NULL DEFAULT 'member',
       last_read_message_id INT NOT NULL DEFAULT 0,
       joined_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY (group_id, user_id),
@@ -190,6 +193,22 @@ export async function ensureMessageTables() {
   if (!replyIndex.length) {
     await db.execute("ALTER TABLE Direct_Messages ADD INDEX idx_direct_reply (reply_to_message_id)");
   }
+
+  const [memberRoleColumn] = await db.query<RowDataPacket[]>(
+    "SHOW COLUMNS FROM Direct_Message_Group_Members LIKE 'role'",
+  );
+  if (!memberRoleColumn.length) {
+    await db.execute(
+      "ALTER TABLE Direct_Message_Group_Members ADD COLUMN role ENUM('owner','admin','member') NOT NULL DEFAULT 'member' AFTER user_id",
+    );
+  }
+  await db.execute(
+    `UPDATE Direct_Message_Group_Members gm
+     JOIN Direct_Message_Groups g ON g.id = gm.group_id
+     SET gm.role = 'owner'
+     WHERE gm.user_id = g.created_by
+       AND gm.role <> 'owner'`,
+  );
 
   tablesReady = true;
 }
@@ -754,6 +773,11 @@ export async function createGroupConversation(creatorId: number, name: string, m
     );
   }
 
+  await db.execute(
+    "UPDATE Direct_Message_Group_Members SET role='owner' WHERE group_id=? AND user_id=?",
+    [groupId, creatorId],
+  );
+
   return groupId;
 }
 
@@ -896,7 +920,7 @@ export async function fetchGroupDetails(userId: number, groupId: number) {
   if (!isDatabaseConfigured()) return null;
   await ensureMessageTables();
   const [rows] = await db.query<RowDataPacket[]>(
-    `SELECT g.id, g.name, g.description, g.avatar_url, g.created_by
+    `SELECT g.id, g.name, g.description, g.avatar_url, g.created_by, gm.role AS my_role
      FROM Direct_Message_Groups g
      JOIN Direct_Message_Group_Members gm ON gm.group_id = g.id
      WHERE g.id=? AND gm.user_id=?
@@ -905,24 +929,29 @@ export async function fetchGroupDetails(userId: number, groupId: number) {
   );
   if (!rows[0]) return null;
   const [members] = await db.query<RowDataPacket[]>(
-    `SELECT u.id, u.username, u.nickname, u.avatar_url
+    `SELECT u.id, u.username, u.nickname, u.avatar_url, gm.role
      FROM Direct_Message_Group_Members gm
      JOIN Users u ON u.id = gm.user_id
      WHERE gm.group_id = ?
-     ORDER BY u.username ASC`,
+     ORDER BY FIELD(gm.role,'owner','admin','member'), u.username ASC`,
     [groupId],
   );
+  const myRole = String(rows[0].my_role || "member") as GroupMemberRole;
+  const canManage = myRole === "owner" || myRole === "admin";
   return {
     id: Number(rows[0].id),
     name: String(rows[0].name),
     description: rows[0].description ? String(rows[0].description) : null,
     avatar_url: rows[0].avatar_url ? String(rows[0].avatar_url) : null,
     createdBy: Number(rows[0].created_by),
+    myRole,
+    canManage,
     members: members.map((row) => ({
       id: Number(row.id),
       username: String(row.username),
       nickname: row.nickname ? String(row.nickname) : null,
       avatar_url: row.avatar_url ? String(row.avatar_url) : null,
+      role: String(row.role || "member") as GroupMemberRole,
     })),
   };
 }
@@ -930,15 +959,27 @@ export async function fetchGroupDetails(userId: number, groupId: number) {
 export async function updateGroupConversation(
   userId: number,
   groupId: number,
-  payload: { name?: string; description?: string; avatarUrl?: string; addMemberIds?: number[]; removeMemberIds?: number[] },
+  payload: {
+    name?: string;
+    description?: string;
+    avatarUrl?: string;
+    addMemberIds?: number[];
+    removeMemberIds?: number[];
+    promoteMemberIds?: number[];
+    demoteMemberIds?: number[];
+  },
 ) {
   if (!isDatabaseConfigured()) throw new Error("DB_REQUIRED");
   await ensureMessageTables();
   const [membership] = await db.query<RowDataPacket[]>(
-    "SELECT group_id FROM Direct_Message_Group_Members WHERE group_id=? AND user_id=? LIMIT 1",
+    "SELECT group_id, role FROM Direct_Message_Group_Members WHERE group_id=? AND user_id=? LIMIT 1",
     [groupId, userId],
   );
   if (!membership[0]?.group_id) throw new Error("NOT_IN_GROUP");
+  const actorRole = String(membership[0].role || "member") as GroupMemberRole;
+  if (actorRole !== "owner" && actorRole !== "admin") {
+    throw new Error("NOT_GROUP_ADMIN");
+  }
 
   const normalizedName = typeof payload.name === "string" ? payload.name.trim().slice(0, 120) : undefined;
   const normalizedDescription = typeof payload.description === "string" ? payload.description.trim().slice(0, 255) : undefined;
@@ -961,6 +1002,26 @@ export async function updateGroupConversation(
   for (const memberId of addMemberIds) {
     await db.execute(
       "INSERT IGNORE INTO Direct_Message_Group_Members (group_id, user_id, last_read_message_id, joined_at) VALUES (?, ?, 0, NOW())",
+      [groupId, memberId],
+    );
+  }
+
+  const promoteMemberIds = [...new Set((payload.promoteMemberIds || []).filter((id) => Number.isFinite(id) && id > 0))];
+  for (const memberId of promoteMemberIds) {
+    await db.execute(
+      `UPDATE Direct_Message_Group_Members
+       SET role = 'admin'
+       WHERE group_id=? AND user_id=? AND role <> 'owner'`,
+      [groupId, memberId],
+    );
+  }
+
+  const demoteMemberIds = [...new Set((payload.demoteMemberIds || []).filter((id) => Number.isFinite(id) && id > 0 && id !== userId))];
+  for (const memberId of demoteMemberIds) {
+    await db.execute(
+      `UPDATE Direct_Message_Group_Members
+       SET role = 'member'
+       WHERE group_id=? AND user_id=? AND role = 'admin'`,
       [groupId, memberId],
     );
   }

@@ -87,8 +87,12 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
 
   const combinedEntries = useMemo(() => {
     if (!normalizedQuery) return filteredEntries;
+    const existingConversationUserIds = new Set(
+      entries.filter((entry) => !entry.isStarter && entry.type !== "group").map((entry) => entry.userId),
+    );
     const byUserId = new Map(filteredEntries.map((entry) => [entry.userId, entry]));
     for (const starter of searchStarters) {
+      if (existingConversationUserIds.has(starter.userId)) continue;
       if (!byUserId.has(starter.userId)) {
         byUserId.set(starter.userId, starter);
       }
@@ -104,7 +108,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
       const rightTime = new Date(right.createdAt).getTime();
       return rightTime - leftTime;
     });
-  }, [filteredEntries, normalizedQuery, searchStarters]);
+  }, [entries, filteredEntries, normalizedQuery, searchStarters]);
 
   const visibleEntries = useMemo(() => {
     if (tab === "groups") {
