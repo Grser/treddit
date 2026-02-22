@@ -507,7 +507,7 @@ export default function GroupConversation({
           {settingsError && <p className="mt-2 text-xs text-rose-400">{settingsError}</p>}
         </div>
       )}
-      <ul ref={messagesListRef} className="flex-1 space-y-2 overflow-y-auto rounded-2xl border border-border bg-surface/90 p-3">
+      <ul ref={messagesListRef} className="hide-scrollbar flex-1 space-y-2 overflow-y-auto rounded-2xl border border-border bg-surface/90 p-3">
         {messages.map((msg, index) => {
           const mine = msg.senderId === viewerId;
           const previous = messages[index - 1];

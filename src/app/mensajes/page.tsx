@@ -47,7 +47,7 @@ export default async function MessagesPage() {
               <MessagesRealtimeSync />
               <div className="grid h-[calc(100dvh-7rem)] min-h-[500px] lg:grid-cols-[360px_minmax(0,1fr)]">
               <aside className="border-b border-border/80 lg:border-b-0 lg:border-r">
-                <InboxList entries={entries} currentUserId={me.id} className="h-[calc(100dvh-16rem)] min-h-[360px] overflow-y-auto" />
+                <InboxList entries={entries} currentUserId={me.id} className="hide-scrollbar h-[calc(100dvh-16rem)] min-h-[360px] overflow-y-auto" />
               </aside>
 
               <section className="hidden h-full lg:flex lg:flex-col lg:items-center lg:justify-center lg:bg-surface lg:p-8">

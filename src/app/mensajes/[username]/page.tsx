@@ -73,7 +73,7 @@ function ConversationLayout({
               entries={inbox}
               currentUserId={viewerId}
               activeUsername={participant.username}
-              className="h-[calc(100dvh-18rem)] min-h-[360px] overflow-y-auto"
+              className="hide-scrollbar h-[calc(100dvh-18rem)] min-h-[360px] overflow-y-auto"
             />
           </aside>
 
