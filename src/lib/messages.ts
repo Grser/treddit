@@ -557,16 +557,10 @@ export async function fetchConversationStarters(
     WHERE outgoing.follower = ?
       AND u.id <> ?
       AND (? = '' OR u.username LIKE ? OR u.nickname LIKE ?)
-      AND NOT EXISTS (
-        SELECT 1
-        FROM Direct_Messages dm
-        WHERE LEAST(dm.sender_id, dm.recipient_id) = LEAST(?, u.id)
-          AND GREATEST(dm.sender_id, dm.recipient_id) = GREATEST(?, u.id)
-      )
     ORDER BY u.username ASC
     LIMIT ?
     `,
-    [userId, userId, searchQuery, searchLike, searchLike, userId, userId, limit],
+    [userId, userId, searchQuery, searchLike, searchLike, limit],
   );
 
   const createdAt = new Date(0).toISOString();
