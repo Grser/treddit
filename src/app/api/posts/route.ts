@@ -440,7 +440,7 @@ export async function POST(req: Request) {
       ? optionsRaw.map((opt) => (typeof opt === "string" ? opt.trim() : "")).filter(Boolean)
       : [];
     const daysRaw = Number(pollObject["days"]);
-    const days = Number.isFinite(daysRaw) ? Math.min(Math.max(daysRaw, 1), 7) : 1;
+    const days = Number.isFinite(daysRaw) ? Math.min(Math.max(Math.trunc(daysRaw), 1), 7) : 1;
 
     if (!question || options.length < 2) {
       return NextResponse.json({ error: "Encuesta inválida" }, { status: 400 });
