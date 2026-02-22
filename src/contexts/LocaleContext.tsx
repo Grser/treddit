@@ -1062,6 +1062,11 @@ type LocaleContextValue = {
 };
 
 const LocaleContext = createContext<LocaleContextValue | undefined>(undefined);
+const FALLBACK_LOCALE_CONTEXT: LocaleContextValue = {
+  locale: "es",
+  setLocale: () => {},
+  strings: translations.es,
+};
 
 const STORAGE_KEY = "treddit_locale";
 
@@ -1103,8 +1108,7 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
 
 export function useLocale() {
   const ctx = useContext(LocaleContext);
-  if (!ctx) throw new Error("useLocale must be used within LocaleProvider");
-  return ctx;
+  return ctx ?? FALLBACK_LOCALE_CONTEXT;
 }
 
 export const supportedLocales: { code: Locale; label: string }[] = [
