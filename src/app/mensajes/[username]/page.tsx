@@ -63,11 +63,11 @@ function ConversationLayout({
   return (
     <div className="min-h-dvh bg-background text-foreground">
       <Navbar session={me} />
-      <main className="mx-auto w-full max-w-6xl px-4 py-6 space-y-4">
+      <main className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-6xl flex-col gap-4 px-4 py-6">
         <NotesBar notes={notes} me={me} />
         <MessagesRealtimeSync />
 
-        <div className="grid h-[calc(100dvh-7rem)] min-h-[560px] overflow-hidden rounded-3xl border border-border/80 bg-surface shadow-xl lg:grid-cols-[360px_minmax(0,1fr)]">
+        <div className="grid min-h-0 flex-1 overflow-hidden rounded-3xl border border-border/80 bg-surface shadow-xl lg:grid-cols-[360px_minmax(0,1fr)]">
           <aside className="hidden border-r border-border/80 lg:block">
             <InboxList
               entries={inbox}
