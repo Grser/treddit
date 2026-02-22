@@ -4,8 +4,10 @@ import type { RowDataPacket } from "mysql2";
 import { NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/lib/db";
 import { getSessionUser, requireUser } from "@/lib/auth";
+import { isUserAgeVerified } from "@/lib/ageVerification";
 import { getDemoFeed } from "@/lib/demoStore";
 import { estimatePostViews } from "@/lib/postStats";
+import { getPostsSensitiveColumn } from "@/lib/postSensitivity";
 
 type AuthenticatedUser = Awaited<ReturnType<typeof requireUser>>;
 
@@ -28,6 +30,7 @@ type PostDetailsRow = RowDataPacket & {
   hasPoll: number;
   likedByMe: number;
   repostedByMe: number;
+  is_sensitive: number | boolean | null;
 };
 
 type PostPatchBody = {
@@ -53,6 +56,9 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     return NextResponse.json({ item });
   }
 
+  const sensitiveColumn = await getPostsSensitiveColumn();
+  const sensitiveSelect = sensitiveColumn ? `p.${sensitiveColumn}` : "0";
+
   const [rows] = await db.query<PostDetailsRow[]>(
     `
     SELECT
@@ -71,7 +77,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       (SELECT COUNT(*) FROM Reposts rp WHERE rp.post_id = p.id) AS reposts,
       (SELECT COUNT(*) FROM Polls po WHERE po.post_id = p.id) AS hasPoll,
       (SELECT COUNT(*) FROM Like_Posts lp2 WHERE lp2.post = p.id AND lp2.user = ?) AS likedByMe,
-      (SELECT COUNT(*) FROM Reposts rp2 WHERE rp2.post_id = p.id AND rp2.user_id = ?) AS repostedByMe
+      (SELECT COUNT(*) FROM Reposts rp2 WHERE rp2.post_id = p.id AND rp2.user_id = ?) AS repostedByMe,
+      ${sensitiveSelect} AS is_sensitive
     FROM Posts p
     JOIN Users u ON u.id = p.user
     WHERE p.id = ?
@@ -84,6 +91,9 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   if (!row) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
+
+  const isSensitive = Boolean(row.is_sensitive);
+  const canViewSensitive = me?.id && isSensitive ? await isUserAgeVerified(me.id) : false;
 
   return NextResponse.json({
     item: {
@@ -104,6 +114,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       hasPoll: Number(row.hasPoll) > 0,
       likedByMe: Number(row.likedByMe) > 0,
       repostedByMe: Number(row.repostedByMe) > 0,
+      is_sensitive: isSensitive,
+      can_view_sensitive: canViewSensitive,
     },
   });
 }
