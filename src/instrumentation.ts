@@ -1,4 +1,5 @@
 const SHELL_MISSING_REGEX = /spawn\s+\/bin\/sh\s+ENOENT/i;
+const WINDOWS_PATH_PERMISSION_REGEX = /EPERM: operation not permitted, open ['"](?:[A-Za-z]:\\[^'"]+)['"]/i;
 
 function isMissingShellError(error: unknown): boolean {
   if (error instanceof Error && SHELL_MISSING_REGEX.test(error.message)) {
@@ -19,6 +20,28 @@ function isMissingShellError(error: unknown): boolean {
   return Boolean(cause) && isMissingShellError(cause);
 }
 
+function isWindowsPathPermissionError(error: unknown): boolean {
+  if (error instanceof Error && WINDOWS_PATH_PERMISSION_REGEX.test(error.message)) {
+    return true;
+  }
+
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const code = "code" in error ? error.code : undefined;
+  const path = "path" in error ? error.path : undefined;
+  if (code !== "EPERM" || typeof path !== "string") {
+    return false;
+  }
+
+  return /^[A-Za-z]:\\/.test(path);
+}
+
+function isIgnoredEnvironmentError(error: unknown): boolean {
+  return isMissingShellError(error) || isWindowsPathPermissionError(error);
+}
+
 const globalForShellGuard = globalThis as typeof globalThis & {
   __tredditShellErrorGuardsRegistered?: boolean;
 };
@@ -31,18 +54,25 @@ export async function register() {
   globalForShellGuard.__tredditShellErrorGuardsRegistered = true;
 
   process.on("uncaughtException", (error) => {
-    if (isMissingShellError(error)) {
-      console.warn("Se ignoró un error de entorno por falta de /bin/sh.", error);
+    if (isIgnoredEnvironmentError(error)) {
+      console.warn("Se ignoró un error de entorno no crítico.", error);
       return;
     }
-    throw error;
+
+    // Re-throwing inside this handler can trigger recursive uncaughtException cycles.
+    process.nextTick(() => {
+      throw error;
+    });
   });
 
   process.on("unhandledRejection", (reason) => {
-    if (isMissingShellError(reason)) {
-      console.warn("Se ignoró una promesa rechazada por falta de /bin/sh.", reason);
+    if (isIgnoredEnvironmentError(reason)) {
+      console.warn("Se ignoró una promesa rechazada por un error de entorno no crítico.", reason);
       return;
     }
-    throw reason;
+
+    process.nextTick(() => {
+      throw reason;
+    });
   });
 }
