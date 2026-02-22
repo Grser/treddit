@@ -358,6 +358,12 @@ function conversationKey(a: number, b: number) {
   return [Math.min(a, b), Math.max(a, b)].join(":");
 }
 
+
+export function deleteDemoConversation(userId: number, otherUserId: number) {
+  const store = ensureStore();
+  store.conversations.delete(conversationKey(userId, otherUserId));
+}
+
 export function getDemoConversation(viewerId: number, otherId: number): DirectMessageEntry[] {
   const store = ensureStore();
   const key = conversationKey(viewerId, otherId);

@@ -104,6 +104,17 @@ export async function ensureMessageTables() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `);
   await db.execute(`
+    CREATE TABLE IF NOT EXISTS Direct_Message_Hidden_Conversations (
+      user_id INT UNSIGNED NOT NULL,
+      other_user_id INT UNSIGNED NOT NULL,
+      hidden_until_message_id INT NOT NULL DEFAULT 0,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (user_id, other_user_id),
+      CONSTRAINT fk_dm_hidden_user FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
+      CONSTRAINT fk_dm_hidden_other_user FOREIGN KEY (other_user_id) REFERENCES Users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+  await db.execute(`
     CREATE TABLE IF NOT EXISTS Direct_Message_Reactions (
       message_id INT NOT NULL,
       user_id INT UNSIGNED NOT NULL,
@@ -462,14 +473,22 @@ export async function fetchConversationSummaries(
         LEFT JOIN Direct_Message_Read_State dmrs
           ON dmrs.user_id = ?
          AND dmrs.other_user_id = other.id
+        LEFT JOIN Direct_Message_Hidden_Conversations dmhc
+          ON dmhc.user_id = ?
+         AND dmhc.other_user_id = other.id
         WHERE unread.sender_id = other.id
           AND unread.recipient_id = ?
+          AND unread.id > COALESCE(dmhc.hidden_until_message_id, 0)
           AND unread.id > COALESCE(dmrs.last_read_message_id, 0)
       ) AS unreadCount
     FROM (
       SELECT MAX(id) AS id
-      FROM Direct_Messages
-      WHERE sender_id = ? OR recipient_id = ?
+      FROM Direct_Messages dm
+      LEFT JOIN Direct_Message_Hidden_Conversations dmhc
+        ON dmhc.user_id = ?
+       AND dmhc.other_user_id = CASE WHEN dm.sender_id = ? THEN dm.recipient_id ELSE dm.sender_id END
+      WHERE (sender_id = ? OR recipient_id = ?)
+        AND dm.id > COALESCE(dmhc.hidden_until_message_id, 0)
       GROUP BY LEAST(sender_id, recipient_id), GREATEST(sender_id, recipient_id)
     ) latest
     JOIN Direct_Messages dm ON dm.id = latest.id
@@ -477,7 +496,7 @@ export async function fetchConversationSummaries(
     ORDER BY dm.created_at DESC
     LIMIT ?
     `,
-    [userId, userId, userId, userId, userId, userId, limit],
+    [userId, userId, userId, userId, userId, userId, userId, userId, userId, limit],
   );
 
   return rows.map((row) => ({
@@ -492,6 +511,21 @@ export async function fetchConversationSummaries(
     createdAt: new Date(row.created_at).toISOString(),
     unreadCount: Number(row.unreadCount ?? 0),
   }));
+}
+
+export async function hideConversation(userId: number, otherUserId: number) {
+  if (!isDatabaseConfigured()) return;
+  await ensureMessageTables();
+  await db.execute(
+    `INSERT INTO Direct_Message_Hidden_Conversations (user_id, other_user_id, hidden_until_message_id, updated_at)
+     SELECT ?, ?, COALESCE(MAX(id), 0), NOW()
+     FROM Direct_Messages
+     WHERE (sender_id = ? AND recipient_id = ?) OR (sender_id = ? AND recipient_id = ?)
+     ON DUPLICATE KEY UPDATE
+      hidden_until_message_id = VALUES(hidden_until_message_id),
+      updated_at = NOW()`,
+    [userId, otherUserId, userId, otherUserId, otherUserId, userId],
+  );
 }
 
 export async function fetchConversationStarters(

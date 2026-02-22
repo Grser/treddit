@@ -31,6 +31,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
   const [memberResults, setMemberResults] = useState<SearchUser[]>([]);
   const [selectedMembers, setSelectedMembers] = useState<SearchUser[]>([]);
   const [groupError, setGroupError] = useState<string | null>(null);
+  const [deletingUsername, setDeletingUsername] = useState<string | null>(null);
 
   const normalizedQuery = query.trim().toLowerCase();
   const filteredEntries = useMemo(() => {
@@ -48,6 +49,26 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
     }
     return filteredEntries;
   }, [filteredEntries, tab]);
+
+  async function removeConversation(username: string) {
+    const confirmDelete = window.confirm("¿Eliminar este chat de tu lista? Podrás volver a escribirle cuando quieras.");
+    if (!confirmDelete) return;
+    setDeletingUsername(username);
+    try {
+      const res = await fetch(`/api/messages/conversation/${encodeURIComponent(username)}`, { method: "DELETE" });
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        const message = typeof payload.error === "string" ? payload.error : "No se pudo borrar el chat";
+        throw new Error(message);
+      }
+      window.location.href = "/mensajes";
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "No se pudo borrar el chat";
+      window.alert(message);
+    } finally {
+      setDeletingUsername(null);
+    }
+  }
 
   async function searchPeople(value: string) {
     setMemberQuery(value);
@@ -179,10 +200,10 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
             const isGroup = item.type === "group";
 
             return (
-              <li key={item.userId}>
+              <li key={item.userId} className="group relative">
                 <Link
                   href={href}
-                  className={`flex items-center gap-3 border-b border-border/80 px-4 py-3 transition ${isActive ? "bg-brand/10" : "hover:bg-background/70"}`}
+                  className={`flex items-center gap-3 border-b border-border/80 px-4 py-3 pr-14 transition ${isActive ? "bg-brand/10" : "hover:bg-background/70"}`}
                 >
                   {isGroup ? (
                     item.avatar_url ? (
@@ -218,6 +239,21 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
                     </span>
                   )}
                 </Link>
+                {!isGroup && !item.isStarter && (
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      void removeConversation(item.username);
+                    }}
+                    disabled={deletingUsername === item.username}
+                    className="absolute right-4 top-1/2 z-10 -translate-y-1/2 rounded-full border border-border/80 bg-surface px-2 py-1 text-xs opacity-0 transition group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-100"
+                    aria-label={`Eliminar chat con ${displayName}`}
+                  >
+                    {deletingUsername === item.username ? "..." : "Borrar"}
+                  </button>
+                )}
               </li>
             );
           })}

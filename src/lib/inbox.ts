@@ -36,7 +36,7 @@ export async function loadInbox(userId: number): Promise<InboxEntry[]> {
   }
 
   const [rows, starters, groups] = await Promise.all([
-    fetchConversationSummaries(userId, { limit: 25 }),
+    fetchConversationSummaries(userId, { limit: 200 }),
     fetchConversationStarters(userId, { limit: 25 }),
     fetchGroupConversations(userId),
   ]);
