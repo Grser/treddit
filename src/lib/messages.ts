@@ -610,36 +610,32 @@ export async function updateConversationSettings(
 ) {
   if (!isDatabaseConfigured()) return;
   await ensureMessageTables();
+
   await db.execute(
-    `INSERT INTO Direct_Message_Conversation_Settings (
-      user_id,
-      other_user_id,
-      is_archived,
-      is_muted,
-      is_pinned,
-      is_favorite,
-      is_listed,
-      is_blocked,
-      updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
-    ON DUPLICATE KEY UPDATE
-      is_archived = COALESCE(VALUES(is_archived), is_archived),
-      is_muted = COALESCE(VALUES(is_muted), is_muted),
-      is_pinned = COALESCE(VALUES(is_pinned), is_pinned),
-      is_favorite = COALESCE(VALUES(is_favorite), is_favorite),
-      is_listed = COALESCE(VALUES(is_listed), is_listed),
-      is_blocked = COALESCE(VALUES(is_blocked), is_blocked),
-      updated_at = NOW()`,
-    [
-      userId,
-      otherUserId,
-      changes.isArchived == null ? null : changes.isArchived ? 1 : 0,
-      changes.isMuted == null ? null : changes.isMuted ? 1 : 0,
-      changes.isPinned == null ? null : changes.isPinned ? 1 : 0,
-      changes.isFavorite == null ? null : changes.isFavorite ? 1 : 0,
-      changes.isListed == null ? null : changes.isListed ? 1 : 0,
-      changes.isBlocked == null ? null : changes.isBlocked ? 1 : 0,
-    ],
+    `INSERT INTO Direct_Message_Conversation_Settings (user_id, other_user_id, updated_at)
+     VALUES (?, ?, NOW())
+     ON DUPLICATE KEY UPDATE updated_at = NOW()`,
+    [userId, otherUserId],
+  );
+
+  const updates: Array<{ column: string; value: boolean | undefined }> = [
+    { column: "is_archived", value: changes.isArchived },
+    { column: "is_muted", value: changes.isMuted },
+    { column: "is_pinned", value: changes.isPinned },
+    { column: "is_favorite", value: changes.isFavorite },
+    { column: "is_listed", value: changes.isListed },
+    { column: "is_blocked", value: changes.isBlocked },
+  ];
+  const changed = updates.filter((entry) => entry.value !== undefined);
+  if (!changed.length) return;
+
+  const setClause = changed.map((entry) => `${entry.column} = ?`).join(", ");
+  const values = changed.map((entry) => (entry.value ? 1 : 0));
+  await db.execute(
+    `UPDATE Direct_Message_Conversation_Settings
+     SET ${setClause}, updated_at = NOW()
+     WHERE user_id = ? AND other_user_id = ?`,
+    [...values, userId, otherUserId],
   );
 }
 
