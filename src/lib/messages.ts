@@ -767,6 +767,7 @@ export async function fetchGroupConversations(userId: number): Promise<GroupConv
        g.description,
        g.avatar_url,
        g.created_at,
+       COALESCE(last_message.created_at, g.created_at) AS activity_at,
        COALESCE(last_message.message, '') AS last_message,
        COALESCE(last_message.sender_id, 0) AS last_sender_id,
        (
@@ -794,11 +795,28 @@ export async function fetchGroupConversations(userId: number): Promise<GroupConv
     name: String(row.name),
     description: row.description ? String(row.description) : null,
     avatarUrl: row.avatar_url ? String(row.avatar_url) : null,
-    createdAt: new Date(row.created_at).toISOString(),
+    createdAt: new Date(row.activity_at ?? row.created_at).toISOString(),
     lastMessage: String(row.last_message ?? ""),
     lastSenderId: Number(row.last_sender_id ?? 0),
     unreadCount: Number(row.unread_count ?? 0),
   }));
+}
+
+export async function markGroupConversationRead(userId: number, groupId: number) {
+  if (!isDatabaseConfigured()) return;
+  await ensureMessageTables();
+  await db.execute(
+    `UPDATE Direct_Message_Group_Members gm
+     JOIN (
+       SELECT COALESCE(MAX(id), 0) AS max_message_id
+       FROM Direct_Message_Group_Messages
+       WHERE group_id = ?
+     ) latest ON 1 = 1
+     SET gm.last_read_message_id = GREATEST(gm.last_read_message_id, latest.max_message_id)
+     WHERE gm.group_id = ?
+       AND gm.user_id = ?`,
+    [groupId, groupId, userId],
+  );
 }
 
 export async function fetchGroupMessages(userId: number, groupId: number, afterId = 0): Promise<GroupMessageEntry[]> {

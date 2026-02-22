@@ -49,6 +49,12 @@ function parseSharedPostText(text: string | null | undefined) {
   };
 }
 
+function mergeMessagesById(current: GroupMessageEntry[], incoming: GroupMessageEntry[]) {
+  const map = new Map<number, GroupMessageEntry>();
+  [...current, ...incoming].forEach((item) => map.set(item.id, item));
+  return [...map.values()].sort((a, b) => a.id - b.id);
+}
+
 export default function GroupConversation({
   groupId,
   viewerId,
@@ -68,6 +74,8 @@ export default function GroupConversation({
   const [messages, setMessages] = useState(initialMessages);
   const [text, setText] = useState("");
   const latestIdRef = useRef(initialMessages[initialMessages.length - 1]?.id ?? 0);
+  const messagesListRef = useRef<HTMLUListElement | null>(null);
+  const sendingRef = useRef(false);
   const [showSettings, setShowSettings] = useState(false);
   const [name, setName] = useState(initialGroup.name);
   const [description, setDescription] = useState(initialGroup.description || "");
@@ -89,14 +97,48 @@ export default function GroupConversation({
       });
       const payload = await res.json().catch(() => ({}));
       if (!Array.isArray(payload.messages) || payload.messages.length === 0) return;
-      setMessages((prev) => [...prev, ...(payload.messages as GroupMessageEntry[])]);
+      setMessages((prev) => mergeMessagesById(prev, payload.messages as GroupMessageEntry[]));
     }, 1500);
     return () => clearInterval(id);
   }, [groupId]);
 
   useEffect(() => {
+    const container = messagesListRef.current;
+    const distanceToBottom = container
+      ? container.scrollHeight - container.scrollTop - container.clientHeight
+      : 0;
+    const shouldStickBottom = distanceToBottom < 120;
     latestIdRef.current = messages[messages.length - 1]?.id ?? 0;
+    if (container && shouldStickBottom) {
+      requestAnimationFrame(() => {
+        container.scrollTop = container.scrollHeight;
+      });
+    }
   }, [messages]);
+
+  useEffect(() => {
+    const container = messagesListRef.current;
+    if (!container) return;
+    requestAnimationFrame(() => {
+      container.scrollTop = container.scrollHeight;
+    });
+  }, [groupId]);
+
+  useEffect(() => {
+    const markRead = async () => {
+      try {
+        await fetch("/api/messages/read", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ groupId }),
+        });
+        window.dispatchEvent(new CustomEvent("treddit:messages-read"));
+      } catch {
+        // noop
+      }
+    };
+    void markRead();
+  }, [groupId, messages]);
 
   useEffect(() => {
     const sharedPostIds = [
@@ -341,7 +383,7 @@ export default function GroupConversation({
           {settingsError && <p className="mt-2 text-xs text-rose-400">{settingsError}</p>}
         </div>
       )}
-      <ul className="flex-1 space-y-2 overflow-y-auto rounded-2xl border border-border bg-surface/90 p-3">
+      <ul ref={messagesListRef} className="flex-1 space-y-2 overflow-y-auto rounded-2xl border border-border bg-surface/90 p-3">
         {messages.map((msg) => {
           const mine = msg.senderId === viewerId;
           const sharedPost = parseSharedPostText(msg.text);
@@ -429,19 +471,24 @@ export default function GroupConversation({
         onSubmit={async (event) => {
           event.preventDefault();
           const trimmed = text.trim();
-          if (!trimmed) return;
+          if (!trimmed || sendingRef.current) return;
+          sendingRef.current = true;
           setSendError(null);
-          const res = await fetch(`/api/messages/groups/${groupId}/messages`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ text: trimmed }),
-          });
-          const payload = await res.json().catch(() => ({}));
-          if (res.ok && payload.message) {
-            setMessages((prev) => [...prev, payload.message as GroupMessageEntry]);
-            setText("");
-          } else {
-            setSendError(typeof payload.error === "string" ? payload.error : "No se pudo enviar el mensaje");
+          try {
+            const res = await fetch(`/api/messages/groups/${groupId}/messages`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ text: trimmed }),
+            });
+            const payload = await res.json().catch(() => ({}));
+            if (res.ok && payload.message) {
+              setMessages((prev) => mergeMessagesById(prev, [payload.message as GroupMessageEntry]));
+              setText("");
+            } else {
+              setSendError(typeof payload.error === "string" ? payload.error : "No se pudo enviar el mensaje");
+            }
+          } finally {
+            sendingRef.current = false;
           }
         }}
       >
