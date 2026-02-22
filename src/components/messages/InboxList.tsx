@@ -32,6 +32,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
   const [selectedMembers, setSelectedMembers] = useState<SearchUser[]>([]);
   const [groupError, setGroupError] = useState<string | null>(null);
   const [deletingUsername, setDeletingUsername] = useState<string | null>(null);
+  const [openMenuUsername, setOpenMenuUsername] = useState<string | null>(null);
   const [searchStarters, setSearchStarters] = useState<InboxEntry[]>([]);
 
   const orderedEntries = useMemo(() => {
@@ -139,6 +140,28 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
       setDeletingUsername(null);
     }
   }
+
+  useEffect(() => {
+    if (!openMenuUsername) return;
+
+    function closeMenu() {
+      setOpenMenuUsername(null);
+    }
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        closeMenu();
+      }
+    }
+
+    window.addEventListener("click", closeMenu);
+    window.addEventListener("keydown", closeOnEscape);
+
+    return () => {
+      window.removeEventListener("click", closeMenu);
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [openMenuUsername]);
 
   async function searchPeople(value: string) {
     setMemberQuery(value);
@@ -310,19 +333,45 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
                   )}
                 </Link>
                 {!isGroup && !item.isStarter && (
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      void removeConversation(item.username);
-                    }}
-                    disabled={deletingUsername === item.username}
-                    className="absolute right-4 top-1/2 z-10 -translate-y-1/2 rounded-full border border-border/80 bg-surface px-2 py-1 text-xs opacity-0 transition group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-100"
-                    aria-label={`Eliminar chat con ${displayName}`}
-                  >
-                    {deletingUsername === item.username ? "..." : "Borrar"}
-                  </button>
+                  <div className="absolute right-3 top-1/2 z-20 -translate-y-1/2" onClick={(event) => event.stopPropagation()}>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        setOpenMenuUsername((current) => (current === item.username ? null : item.username));
+                      }}
+                      className="inline-flex size-7 items-center justify-center rounded-full border border-border/70 bg-surface/95 text-white/70 opacity-0 transition hover:text-white group-hover:opacity-100"
+                      aria-label={`Opciones de chat con ${displayName}`}
+                    >
+                      <svg viewBox="0 0 20 20" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.8">
+                        <path d="m5 8 5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </button>
+
+                    {openMenuUsername === item.username && (
+                      <div className="absolute right-0 top-9 w-48 overflow-hidden rounded-2xl border border-white/10 bg-[#1f2a2f]/95 p-1 shadow-2xl backdrop-blur">
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            setOpenMenuUsername(null);
+                            void removeConversation(item.username);
+                          }}
+                          disabled={deletingUsername === item.username}
+                          className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-red-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <svg viewBox="0 0 20 20" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.7">
+                            <path d="M3.5 5h13" strokeLinecap="round" />
+                            <path d="M7.5 5V3.8c0-.7.6-1.3 1.3-1.3h2.4c.7 0 1.3.6 1.3 1.3V5" strokeLinecap="round" />
+                            <path d="M6 7.2v8.3c0 1 .8 1.8 1.8 1.8h4.4c1 0 1.8-.8 1.8-1.8V7.2" strokeLinecap="round" />
+                          </svg>
+                          {deletingUsername === item.username ? "Eliminando..." : "Eliminar chat"}
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 )}
               </li>
             );
