@@ -530,7 +530,7 @@ export async function hideConversation(userId: number, otherUserId: number) {
 
 export async function fetchConversationStarters(
   userId: number,
-  options: { limit?: number } = {},
+  options: { limit?: number; query?: string } = {},
 ): Promise<ConversationSummary[]> {
   if (!isDatabaseConfigured()) {
     return [];
@@ -538,6 +538,8 @@ export async function fetchConversationStarters(
 
   await ensureMessageTables();
   const limit = Math.max(1, Math.min(options.limit ?? 20, 100));
+  const searchQuery = options.query?.trim() ?? "";
+  const searchLike = `%${searchQuery}%`;
   const [rows] = await db.query<ConversationStarterRow[]>(
     `
     SELECT
@@ -554,6 +556,7 @@ export async function fetchConversationStarters(
     JOIN Users u ON u.id = outgoing.followed
     WHERE outgoing.follower = ?
       AND u.id <> ?
+      AND (? = '' OR u.username LIKE ? OR u.nickname LIKE ?)
       AND NOT EXISTS (
         SELECT 1
         FROM Direct_Messages dm
@@ -563,7 +566,7 @@ export async function fetchConversationStarters(
     ORDER BY u.username ASC
     LIMIT ?
     `,
-    [userId, userId, userId, userId, limit],
+    [userId, userId, searchQuery, searchLike, searchLike, userId, userId, limit],
   );
 
   const createdAt = new Date(0).toISOString();
