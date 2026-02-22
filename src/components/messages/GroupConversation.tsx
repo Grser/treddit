@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
 import type { GroupMessageEntry } from "@/lib/messages";
@@ -17,7 +18,51 @@ type SearchUser = {
   nickname: string | null;
 };
 
-export default function GroupConversation({ groupId, viewerId, initialMessages, initialGroup }: { groupId: number; viewerId: number; initialMessages: GroupMessageEntry[]; initialGroup: { name: string; description: string | null; avatar_url: string | null; members: GroupMember[] } }) {
+type SharedPostPreview = {
+  id: number;
+  username: string;
+  nickname: string;
+  description: string | null;
+  mediaUrl: string | null;
+};
+
+function parseSharedPostText(text: string | null | undefined) {
+  if (!text) return null;
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+  const lines = trimmed.split("\n").map((line) => line.trim()).filter(Boolean);
+  if (!lines.length) return null;
+
+  const urlCandidate = lines[lines.length - 1];
+  const match = urlCandidate.match(/\/p\/(\d+)(?:[/?#]|$)/i);
+  if (!match) return null;
+
+  const postId = Number(match[1]);
+  if (!Number.isFinite(postId) || postId <= 0) return null;
+
+  return {
+    postId,
+    url: urlCandidate,
+    intro: lines.slice(0, -1).join(" "),
+  };
+}
+
+export default function GroupConversation({
+  groupId,
+  viewerId,
+  initialMessages,
+  initialGroup,
+}: {
+  groupId: number;
+  viewerId: number;
+  initialMessages: GroupMessageEntry[];
+  initialGroup: {
+    name: string;
+    description: string | null;
+    avatar_url: string | null;
+    members: GroupMember[];
+  };
+}) {
   const [messages, setMessages] = useState(initialMessages);
   const [text, setText] = useState("");
   const latestIdRef = useRef(initialMessages[initialMessages.length - 1]?.id ?? 0);
@@ -32,10 +77,13 @@ export default function GroupConversation({ groupId, viewerId, initialMessages, 
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [settingsError, setSettingsError] = useState<string | null>(null);
+  const [sharedPostPreviews, setSharedPostPreviews] = useState<Record<number, SharedPostPreview | null>>({});
 
   useEffect(() => {
     const id = setInterval(async () => {
-      const res = await fetch(`/api/messages/groups/${groupId}/messages?afterId=${latestIdRef.current}`, { cache: "no-store" });
+      const res = await fetch(`/api/messages/groups/${groupId}/messages?afterId=${latestIdRef.current}`, {
+        cache: "no-store",
+      });
       const payload = await res.json().catch(() => ({}));
       if (!Array.isArray(payload.messages) || payload.messages.length === 0) return;
       setMessages((prev) => [...prev, ...(payload.messages as GroupMessageEntry[])]);
@@ -47,6 +95,60 @@ export default function GroupConversation({ groupId, viewerId, initialMessages, 
     latestIdRef.current = messages[messages.length - 1]?.id ?? 0;
   }, [messages]);
 
+  useEffect(() => {
+    const sharedPostIds = [
+      ...new Set(
+        messages
+          .map((message) => parseSharedPostText(message.text)?.postId)
+          .filter((id): id is number => Boolean(id)),
+      ),
+    ];
+
+    const missing = sharedPostIds.filter((id) => !(id in sharedPostPreviews));
+    if (!missing.length) return;
+
+    let active = true;
+
+    const loadSharedPosts = async () => {
+      const results = await Promise.all(
+        missing.map(async (id) => {
+          try {
+            const res = await fetch(`/api/posts/${id}`, { cache: "no-store" });
+            const payload = await res.json().catch(() => ({}));
+            if (!res.ok || !payload.item) return [id, null] as const;
+            const item = payload.item;
+            return [
+              id,
+              {
+                id,
+                username: String(item.username || ""),
+                nickname: String(item.nickname || item.username || "Publicación"),
+                description: item.description ? String(item.description) : null,
+                mediaUrl: item.mediaUrl ? String(item.mediaUrl) : null,
+              },
+            ] as const;
+          } catch {
+            return [id, null] as const;
+          }
+        }),
+      );
+
+      if (!active) return;
+      setSharedPostPreviews((prev) => {
+        const next = { ...prev };
+        results.forEach(([id, data]) => {
+          next[id] = data;
+        });
+        return next;
+      });
+    };
+
+    void loadSharedPosts();
+    return () => {
+      active = false;
+    };
+  }, [messages, sharedPostPreviews]);
+
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-start justify-between gap-3 rounded-2xl border border-border/70 bg-background/40 px-3 py-2">
@@ -55,13 +157,29 @@ export default function GroupConversation({ groupId, viewerId, initialMessages, 
           <p className="text-xs opacity-70">Grupo · {members.length} integrantes</p>
           {description && <p className="mt-1 whitespace-pre-wrap text-sm opacity-85">{description}</p>}
         </div>
-        <button type="button" onClick={() => setShowSettings((prev) => !prev)} className="shrink-0 rounded-full border border-border px-3 py-1 text-xs">Editar grupo</button>
+        <button
+          type="button"
+          onClick={() => setShowSettings((prev) => !prev)}
+          className="shrink-0 rounded-full border border-border px-3 py-1 text-xs"
+        >
+          Editar grupo
+        </button>
       </div>
       {showSettings && (
         <div className="rounded-2xl border border-border/80 bg-background/60 p-3">
           <p className="text-xs font-semibold uppercase tracking-wide opacity-70">Personalización del grupo</p>
-          <input value={name} onChange={(event) => setName(event.target.value)} className="mt-2 w-full rounded-xl border border-border bg-input px-3 py-2 text-sm" placeholder="Nombre" />
-          <input value={description} onChange={(event) => setDescription(event.target.value)} className="mt-2 w-full rounded-xl border border-border bg-input px-3 py-2 text-sm" placeholder="Descripción" />
+          <input
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            className="mt-2 w-full rounded-xl border border-border bg-input px-3 py-2 text-sm"
+            placeholder="Nombre"
+          />
+          <input
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+            className="mt-2 w-full rounded-xl border border-border bg-input px-3 py-2 text-sm"
+            placeholder="Descripción"
+          />
           <div className="mt-2 rounded-xl border border-border bg-input/60 p-2 text-xs">
             <p className="text-[11px] font-semibold uppercase tracking-wide opacity-70">Foto del grupo</p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -83,7 +201,11 @@ export default function GroupConversation({ groupId, viewerId, initialMessages, 
                       const res = await fetch("/api/upload", { method: "POST", body: form });
                       const payload = await res.json().catch(() => ({}));
                       if (!res.ok || typeof payload.url !== "string") {
-                        throw new Error(typeof payload.error === "string" ? payload.error : "No se pudo subir la imagen");
+                        throw new Error(
+                          typeof payload.error === "string"
+                            ? payload.error
+                            : "No se pudo subir la imagen",
+                        );
                       }
                       setAvatarUrl(payload.url);
                     } catch (error) {
@@ -96,7 +218,13 @@ export default function GroupConversation({ groupId, viewerId, initialMessages, 
                 />
               </label>
               {avatarUrl && (
-                <button type="button" className="rounded-full border border-border px-3 py-1.5 text-xs" onClick={() => setAvatarUrl("")}>Quitar</button>
+                <button
+                  type="button"
+                  className="rounded-full border border-border px-3 py-1.5 text-xs"
+                  onClick={() => setAvatarUrl("")}
+                >
+                  Quitar
+                </button>
               )}
             </div>
             {avatarUrl && <p className="mt-2 truncate opacity-70">{avatarUrl}</p>}
@@ -111,11 +239,12 @@ export default function GroupConversation({ groupId, viewerId, initialMessages, 
                 setUserResults([]);
                 return;
               }
-              const res = await fetch(`/api/users/search?q=${encodeURIComponent(value.trim())}`, { cache: "no-store" });
+              const res = await fetch(`/api/users/search?q=${encodeURIComponent(value.trim())}`);
               const payload = await res.json().catch(() => ({}));
-              const memberIds = new Set(members.map((member) => member.id));
-              const results = Array.isArray(payload.items) ? (payload.items as SearchUser[]) : [];
-              setUserResults(results.filter((item) => !memberIds.has(item.id)));
+              if (res.ok && Array.isArray(payload.items)) {
+                const existing = new Set(members.map((member) => member.id));
+                setUserResults((payload.items as SearchUser[]).filter((item) => !existing.has(item.id)));
+              }
             }}
             className="mt-2 w-full rounded-xl border border-border bg-input px-3 py-2 text-sm"
             placeholder="Agregar personas"
@@ -190,7 +319,9 @@ export default function GroupConversation({ groupId, viewerId, initialMessages, 
                   setAvatarUrl((payload.group.avatar_url as string | null) || "");
                   setMembers((payload.group.members as GroupMember[]) || []);
                 } else {
-                  setSettingsError(typeof payload.error === "string" ? payload.error : "No se pudo guardar el grupo");
+                  setSettingsError(
+                    typeof payload.error === "string" ? payload.error : "No se pudo guardar el grupo",
+                  );
                 }
               } catch {
                 setSettingsError("No se pudo guardar el grupo");
@@ -208,11 +339,50 @@ export default function GroupConversation({ groupId, viewerId, initialMessages, 
       <ul className="flex-1 space-y-2 overflow-y-auto rounded-2xl border border-border bg-surface/90 p-3">
         {messages.map((msg) => {
           const mine = msg.senderId === viewerId;
+          const sharedPost = parseSharedPostText(msg.text);
+          const preview = sharedPost ? sharedPostPreviews[sharedPost.postId] : null;
+
           return (
             <li key={msg.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-[92%] rounded-2xl px-4 py-2 text-sm shadow-sm ${mine ? "bg-brand text-white" : "bg-input text-foreground"}`}>
-                {!mine && <p className="text-[11px] font-semibold text-brand/90">{msg.sender.nickname || msg.sender.username}</p>}
-                <p className="whitespace-pre-wrap">{msg.text}</p>
+              <div
+                className={`max-w-[92%] rounded-2xl px-4 py-2 text-sm shadow-sm ${
+                  mine ? "bg-brand text-white" : "bg-input text-foreground"
+                }`}
+              >
+                {!mine && (
+                  <p className="text-[11px] font-semibold text-brand/90">
+                    {msg.sender.nickname || msg.sender.username}
+                  </p>
+                )}
+                {!sharedPost ? (
+                  <p className="whitespace-pre-wrap">{msg.text}</p>
+                ) : (
+                  <div className="space-y-2">
+                    {sharedPost.intro ? <p className="text-xs opacity-85">{sharedPost.intro}</p> : null}
+                    <a
+                      href={sharedPost.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block rounded-2xl border border-white/20 bg-black/10 p-2 hover:bg-black/20"
+                    >
+                      <p className="text-[11px] uppercase tracking-wide opacity-70">Publicación compartida</p>
+                      {preview?.mediaUrl ? (
+                        <Image
+                          src={preview.mediaUrl}
+                          alt={preview.description || "Post compartido"}
+                          width={420}
+                          height={260}
+                          className="mt-2 max-h-52 w-full rounded-xl object-cover"
+                          unoptimized
+                        />
+                      ) : null}
+                      <p className="mt-2 text-sm font-semibold">{preview?.nickname || "Ver publicación"}</p>
+                      <p className="text-xs opacity-80">
+                        {preview?.description || "Mira la publicación que te compartieron."}
+                      </p>
+                    </a>
+                  </div>
+                )}
               </div>
             </li>
           );
@@ -239,8 +409,15 @@ export default function GroupConversation({ groupId, viewerId, initialMessages, 
           }
         }}
       >
-        <input value={text} onChange={(event) => setText(event.target.value)} className="flex-1 rounded-full bg-background/70 px-4 py-2 text-sm outline-none" placeholder="Escribe un mensaje" />
-        <button type="submit" className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white">Enviar</button>
+        <input
+          value={text}
+          onChange={(event) => setText(event.target.value)}
+          className="flex-1 rounded-full bg-background/70 px-4 py-2 text-sm outline-none"
+          placeholder="Escribe un mensaje"
+        />
+        <button type="submit" className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white">
+          Enviar
+        </button>
       </form>
       {sendError && <p className="text-xs text-rose-400">{sendError}</p>}
     </div>
