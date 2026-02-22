@@ -57,6 +57,12 @@ function mergeMessagesById(current: GroupMessageEntry[], incoming: GroupMessageE
   return [...map.values()].sort((a, b) => a.id - b.id);
 }
 
+function roleLabel(role: GroupMember["role"]) {
+  if (role === "owner") return "Creador";
+  if (role === "admin") return "Admin. del grupo";
+  return "Miembro";
+}
+
 export default function GroupConversation({
   groupId,
   viewerId,
@@ -95,6 +101,7 @@ export default function GroupConversation({
   const [settingsError, setSettingsError] = useState<string | null>(null);
   const [sharedPostPreviews, setSharedPostPreviews] = useState<Record<number, SharedPostPreview | null>>({});
   const [revealedSensitivePosts, setRevealedSensitivePosts] = useState<Record<number, boolean>>({});
+  const groupAvatar = avatarUrl || "/demo-reddit.png";
 
   useEffect(() => {
     const id = setInterval(async () => {
@@ -204,134 +211,165 @@ export default function GroupConversation({
 
   return (
     <div className="flex h-full flex-col gap-3">
-      <div className="flex items-start justify-between gap-3 rounded-2xl border border-border/70 bg-background/40 px-3 py-2">
-        <div className="min-w-0">
-          <h1 className="truncate text-lg font-semibold">{name}</h1>
-          <p className="text-xs opacity-70">Grupo · {members.length} integrantes · Rol: {myRole}</p>
-          {description && <p className="mt-1 whitespace-pre-wrap text-sm opacity-85">{description}</p>}
+      <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background/40 px-3 py-2">
+        <div className="flex min-w-0 items-center gap-3">
+          <Image
+            src={groupAvatar}
+            alt={name}
+            width={42}
+            height={42}
+            className="size-10 rounded-full object-cover"
+            unoptimized
+          />
+          <div className="min-w-0">
+            <h1 className="truncate text-lg font-semibold">{name}</h1>
+            <p className="text-xs opacity-70">Grupo · {members.length} integrantes · Tu rol: {roleLabel(myRole)}</p>
+          </div>
         </div>
-        {canManage && (
-          <button
-            type="button"
-            onClick={() => setShowSettings((prev) => !prev)}
-            className="shrink-0 rounded-full border border-border px-3 py-1 text-xs"
-          >
-            Editar grupo
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => setShowSettings((prev) => !prev)}
+          className="shrink-0 rounded-full border border-border px-3 py-1 text-xs"
+        >
+          Info del grupo
+        </button>
       </div>
       {showSettings && (
         <div className="rounded-2xl border border-border/80 bg-background/60 p-3">
-          <p className="text-xs font-semibold uppercase tracking-wide opacity-70">Personalización del grupo</p>
-          <input
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            className="mt-2 w-full rounded-xl border border-border bg-input px-3 py-2 text-sm"
-            placeholder="Nombre"
-          />
-          <input
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-            className="mt-2 w-full rounded-xl border border-border bg-input px-3 py-2 text-sm"
-            placeholder="Descripción"
-          />
-          <div className="mt-2 rounded-xl border border-border bg-input/60 p-2 text-xs">
-            <p className="text-[11px] font-semibold uppercase tracking-wide opacity-70">Foto del grupo</p>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <label className="cursor-pointer rounded-full border border-border px-3 py-1.5 text-xs">
-                {uploadingAvatar ? "Subiendo…" : "Subir imagen"}
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  disabled={uploadingAvatar}
-                  onChange={async (event) => {
-                    const file = event.target.files?.[0];
-                    if (!file) return;
-                    setSettingsError(null);
-                    setUploadingAvatar(true);
-                    try {
-                      const form = new FormData();
-                      form.append("file", file);
-                      const res = await fetch("/api/upload", { method: "POST", body: form });
-                      const payload = await res.json().catch(() => ({}));
-                      if (!res.ok || typeof payload.url !== "string") {
-                        throw new Error(
-                          typeof payload.error === "string"
-                            ? payload.error
-                            : "No se pudo subir la imagen",
-                        );
-                      }
-                      setAvatarUrl(payload.url);
-                    } catch (error) {
-                      setSettingsError(error instanceof Error ? error.message : "No se pudo subir la imagen");
-                    } finally {
-                      setUploadingAvatar(false);
-                      event.target.value = "";
-                    }
-                  }}
-                />
-              </label>
-              {avatarUrl && (
-                <button
-                  type="button"
-                  className="rounded-full border border-border px-3 py-1.5 text-xs"
-                  onClick={() => setAvatarUrl("")}
-                >
-                  Quitar
-                </button>
-              )}
+          <div className="rounded-2xl border border-border/80 bg-input/40 p-3">
+            <div className="flex items-center gap-3">
+              <Image
+                src={groupAvatar}
+                alt={name}
+                width={56}
+                height={56}
+                className="size-14 rounded-full object-cover"
+                unoptimized
+              />
+              <div className="min-w-0">
+                <p className="truncate text-base font-semibold">{name}</p>
+                <p className="text-xs opacity-70">Grupo · {members.length} miembros</p>
+                {description && <p className="mt-1 line-clamp-2 text-xs opacity-80">{description}</p>}
+              </div>
             </div>
-            {avatarUrl && <p className="mt-2 truncate opacity-70">{avatarUrl}</p>}
           </div>
 
-          <input
-            value={userQuery}
-            onChange={async (event) => {
-              const value = event.target.value;
-              setUserQuery(value);
-              if (value.trim().length < 2) {
-                setUserResults([]);
-                return;
-              }
-              const res = await fetch(`/api/users/search?q=${encodeURIComponent(value.trim())}`);
-              const payload = await res.json().catch(() => ({}));
-              if (res.ok && Array.isArray(payload.items)) {
-                const existing = new Set(members.map((member) => member.id));
-                setUserResults((payload.items as SearchUser[]).filter((item) => !existing.has(item.id)));
-              }
-            }}
-            className="mt-2 w-full rounded-xl border border-border bg-input px-3 py-2 text-sm"
-            placeholder="Agregar personas"
-          />
-          {userResults.length > 0 && (
-            <div className="mt-2 max-h-32 overflow-y-auto rounded-xl border border-border/70">
-              {userResults.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  className="block w-full px-3 py-2 text-left text-sm hover:bg-background/70"
-                  onClick={async () => {
-                    const res = await fetch(`/api/messages/groups/${groupId}`, {
-                      method: "PATCH",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ addMemberIds: [item.id] }),
-                    });
-                    const payload = await res.json().catch(() => ({}));
-                    if (res.ok && payload.group?.members) {
-                      setMembers(payload.group.members as GroupMember[]);
-                      setCanManage(Boolean(payload.group.canManage));
-                      setMyRole((payload.group.myRole as "owner" | "admin" | "member") || "member");
-                    }
+          {canManage && (
+            <>
+              <p className="mt-3 text-xs font-semibold uppercase tracking-wide opacity-70">Ajustes de admin</p>
+              <input
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                className="mt-2 w-full rounded-xl border border-border bg-input px-3 py-2 text-sm"
+                placeholder="Nombre"
+              />
+              <input
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                className="mt-2 w-full rounded-xl border border-border bg-input px-3 py-2 text-sm"
+                placeholder="Descripción"
+              />
+              <div className="mt-2 rounded-xl border border-border bg-input/60 p-2 text-xs">
+                <p className="text-[11px] font-semibold uppercase tracking-wide opacity-70">Foto del grupo</p>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <label className="cursor-pointer rounded-full border border-border px-3 py-1.5 text-xs">
+                    {uploadingAvatar ? "Subiendo…" : "Subir imagen"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={uploadingAvatar}
+                      onChange={async (event) => {
+                        const file = event.target.files?.[0];
+                        if (!file) return;
+                        setSettingsError(null);
+                        setUploadingAvatar(true);
+                        try {
+                          const form = new FormData();
+                          form.append("file", file);
+                          const res = await fetch("/api/upload", { method: "POST", body: form });
+                          const payload = await res.json().catch(() => ({}));
+                          if (!res.ok || typeof payload.url !== "string") {
+                            throw new Error(
+                              typeof payload.error === "string"
+                                ? payload.error
+                                : "No se pudo subir la imagen",
+                            );
+                          }
+                          setAvatarUrl(payload.url);
+                        } catch (error) {
+                          setSettingsError(error instanceof Error ? error.message : "No se pudo subir la imagen");
+                        } finally {
+                          setUploadingAvatar(false);
+                          event.target.value = "";
+                        }
+                      }}
+                    />
+                  </label>
+                  {avatarUrl && (
+                    <button
+                      type="button"
+                      className="rounded-full border border-border px-3 py-1.5 text-xs"
+                      onClick={() => setAvatarUrl("")}
+                    >
+                      Quitar
+                    </button>
+                  )}
+                </div>
+                {avatarUrl && <p className="mt-2 truncate opacity-70">{avatarUrl}</p>}
+              </div>
+
+              <input
+                value={userQuery}
+                onChange={async (event) => {
+                  const value = event.target.value;
+                  setUserQuery(value);
+                  if (value.trim().length < 2) {
                     setUserResults([]);
-                    setUserQuery("");
-                  }}
-                >
-                  {item.nickname || item.username} <span className="opacity-70">@{item.username}</span>
-                </button>
-              ))}
-            </div>
+                    return;
+                  }
+                  const res = await fetch(`/api/users/search?q=${encodeURIComponent(value.trim())}`);
+                  const payload = await res.json().catch(() => ({}));
+                  if (res.ok && Array.isArray(payload.items)) {
+                    const existing = new Set(members.map((member) => member.id));
+                    setUserResults((payload.items as SearchUser[]).filter((item) => !existing.has(item.id)));
+                  }
+                }}
+                className="mt-2 w-full rounded-xl border border-border bg-input px-3 py-2 text-sm"
+                placeholder="Agregar personas"
+              />
+              {userResults.length > 0 && (
+                <div className="mt-2 max-h-32 overflow-y-auto rounded-xl border border-border/70">
+                  {userResults.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className="block w-full px-3 py-2 text-left text-sm hover:bg-background/70"
+                      onClick={async () => {
+                        const res = await fetch(`/api/messages/groups/${groupId}`, {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ addMemberIds: [item.id] }),
+                        });
+                        const payload = await res.json().catch(() => ({}));
+                        if (res.ok && payload.group?.members) {
+                          setMembers(payload.group.members as GroupMember[]);
+                          setCanManage(Boolean(payload.group.canManage));
+                          setMyRole((payload.group.myRole as "owner" | "admin" | "member") || "member");
+                        }
+                        setUserResults([]);
+                        setUserQuery("");
+                      }}
+                    >
+                      {item.nickname || item.username} <span className="opacity-70">@{item.username}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
           )}
+
+          <p className="mt-3 text-xs font-semibold uppercase tracking-wide opacity-70">Miembros</p>
 
           <div className="mt-3 space-y-2">
             {members.map((member) => (
@@ -347,7 +385,7 @@ export default function GroupConversation({
                 <Link href={`/u/${member.username}`} className="min-w-0 flex-1 truncate hover:underline">
                   {member.nickname || member.username} <span className="opacity-65">@{member.username}</span>
                 </Link>
-                <span className="rounded-full border border-brand/30 bg-brand/10 px-2 py-0.5 uppercase">{member.role}</span>
+                <span className="rounded-full border border-brand/30 bg-brand/10 px-2 py-0.5">{roleLabel(member.role)}</span>
                 {canManage && member.id !== viewerId && member.role !== "owner" && (
                   <>
                     <button
@@ -391,41 +429,43 @@ export default function GroupConversation({
             ))}
           </div>
 
-          <button
-            type="button"
-            className="mt-3 rounded-full bg-brand px-3 py-1.5 text-xs font-semibold text-white"
-            onClick={async () => {
-              setSettingsError(null);
-              setSavingChanges(true);
-              try {
-                const res = await fetch(`/api/messages/groups/${groupId}`, {
-                  method: "PATCH",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ name, description, avatarUrl }),
-                });
-                const payload = await res.json().catch(() => ({}));
-                if (res.ok && payload.group) {
-                  setName(payload.group.name as string);
-                  setDescription((payload.group.description as string | null) || "");
-                  setAvatarUrl((payload.group.avatar_url as string | null) || "");
-                  setMembers((payload.group.members as GroupMember[]) || []);
-                  setCanManage(Boolean(payload.group.canManage));
-                  setMyRole((payload.group.myRole as "owner" | "admin" | "member") || "member");
-                } else {
-                  setSettingsError(
-                    typeof payload.error === "string" ? payload.error : "No se pudo guardar el grupo",
-                  );
+          {canManage && (
+            <button
+              type="button"
+              className="mt-3 rounded-full bg-brand px-3 py-1.5 text-xs font-semibold text-white"
+              onClick={async () => {
+                setSettingsError(null);
+                setSavingChanges(true);
+                try {
+                  const res = await fetch(`/api/messages/groups/${groupId}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ name, description, avatarUrl }),
+                  });
+                  const payload = await res.json().catch(() => ({}));
+                  if (res.ok && payload.group) {
+                    setName(payload.group.name as string);
+                    setDescription((payload.group.description as string | null) || "");
+                    setAvatarUrl((payload.group.avatar_url as string | null) || "");
+                    setMembers((payload.group.members as GroupMember[]) || []);
+                    setCanManage(Boolean(payload.group.canManage));
+                    setMyRole((payload.group.myRole as "owner" | "admin" | "member") || "member");
+                  } else {
+                    setSettingsError(
+                      typeof payload.error === "string" ? payload.error : "No se pudo guardar el grupo",
+                    );
+                  }
+                } catch {
+                  setSettingsError("No se pudo guardar el grupo");
+                } finally {
+                  setSavingChanges(false);
                 }
-              } catch {
-                setSettingsError("No se pudo guardar el grupo");
-              } finally {
-                setSavingChanges(false);
-              }
-            }}
-            disabled={savingChanges || uploadingAvatar}
-          >
-            {savingChanges ? "Guardando…" : "Guardar cambios"}
-          </button>
+              }}
+              disabled={savingChanges || uploadingAvatar}
+            >
+              {savingChanges ? "Guardando…" : "Guardar cambios"}
+            </button>
+          )}
           {settingsError && <p className="mt-2 text-xs text-rose-400">{settingsError}</p>}
         </div>
       )}
