@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import UserBadges from "@/components/UserBadges";
+import UserHoverPreview from "@/components/UserHoverPreview";
 import { useLocale } from "@/contexts/LocaleContext";
 
 import type { DirectMessageAttachment, DirectMessageEntry } from "@/lib/messages";
@@ -450,14 +451,16 @@ export default function DirectConversation({
                 <div className={`flex max-w-[98%] items-end gap-2 md:max-w-[90%] ${isMine ? "flex-row-reverse" : "flex-row"}`}>
                   {!isMine && (
                     showAvatar ? (
-                      <Image
-                        src={avatar || "/demo-reddit.png"}
-                        alt={msg.sender.nickname || msg.sender.username}
-                        width={32}
-                        height={32}
-                        className="size-8 rounded-full object-cover"
-                        unoptimized
-                      />
+                      <UserHoverPreview username={msg.sender.username}>
+                        <Image
+                          src={avatar || "/demo-reddit.png"}
+                          alt={msg.sender.nickname || msg.sender.username}
+                          width={32}
+                          height={32}
+                          className="size-8 rounded-full object-cover"
+                          unoptimized
+                        />
+                      </UserHoverPreview>
                     ) : <div className="size-8" />
                   )}
                   <div className={`relative rounded-2xl px-4 py-2 text-sm shadow-sm ${bubbleClasses}`}>

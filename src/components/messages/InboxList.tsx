@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import UserBadges from "@/components/UserBadges";
+import UserHoverPreview from "@/components/UserHoverPreview";
 import type { InboxEntry } from "@/lib/inbox";
 import { getCompactTime } from "@/lib/time";
 
@@ -235,14 +236,34 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
       }
     }
 
-    window.addEventListener("click", closeMenu);
+    function closeOnPointerDown(event: PointerEvent) {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("[data-chat-menu-root=\"true\"]")) {
+        return;
+      }
+      closeMenu();
+    }
+
+    window.addEventListener("pointerdown", closeOnPointerDown);
     window.addEventListener("keydown", closeOnEscape);
 
     return () => {
-      window.removeEventListener("click", closeMenu);
+      window.removeEventListener("pointerdown", closeOnPointerDown);
       window.removeEventListener("keydown", closeOnEscape);
     };
   }, [openMenuUsername]);
+
+
+  function resetLocalChatData() {
+    if (typeof window === "undefined") return;
+    const storage = window.localStorage;
+    const keysToRemove = [
+      ...Object.keys(storage).filter((key) => key.startsWith("treddit_dm_saved_")),
+      ...Object.keys(storage).filter((key) => key.startsWith("treddit_messages_")),
+    ];
+    keysToRemove.forEach((key) => storage.removeItem(key));
+    window.location.reload();
+  }
 
   async function searchPeople(value: string) {
     setMemberQuery(value);
@@ -277,6 +298,17 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
           </button>
           <button type="button" onClick={() => setTab("groups")} className={`rounded-full border px-3 py-1.5 transition ${tab === "groups" ? "border-brand bg-brand/20 text-foreground" : "border-border text-foreground/80 hover:bg-background/70"}`}>Grupos</button>
         </div>
+
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={resetLocalChatData}
+            className="text-xs text-foreground/65 underline decoration-dotted underline-offset-4 transition hover:text-foreground"
+          >
+            ¿Chat bugueado? Limpiar registros locales
+          </button>
+        </div>
+
         {tab === "groups" && (
           <div className="mt-3 rounded-2xl border border-border/80 bg-background/70 p-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-brand/90">Nuevo grupo</p>
@@ -388,14 +420,16 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
                       <Image src={avatar} alt={displayName} width={52} height={52} className="size-12 rounded-full object-cover ring-1 ring-border" unoptimized />
                     ) : <div className="flex size-12 items-center justify-center rounded-full bg-emerald-500/15 text-xl ring-1 ring-emerald-500/40">👥</div>
                   ) : (
-                    <Image
-                      src={avatar}
-                      alt={displayName}
-                      width={52}
-                      height={52}
-                      className="size-12 rounded-full object-cover ring-1 ring-border"
-                      unoptimized
-                    />
+                    <UserHoverPreview username={item.username}>
+                      <Image
+                        src={avatar}
+                        alt={displayName}
+                        width={52}
+                        height={52}
+                        className="size-12 rounded-full object-cover ring-1 ring-border"
+                        unoptimized
+                      />
+                    </UserHoverPreview>
                   )}
                   <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex items-center gap-1.5 text-sm">
@@ -422,7 +456,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
                   )}
                 </Link>
                 {!isGroup && !isStarter && (
-                  <div className="absolute right-3 top-1/2 z-20 -translate-y-1/2" onClick={(event) => event.stopPropagation()}>
+                  <div data-chat-menu-root="true" className="absolute right-3 top-1/2 z-20 -translate-y-1/2" onClick={(event) => event.stopPropagation()}>
                     <button
                       type="button"
                       onClick={(event) => {
