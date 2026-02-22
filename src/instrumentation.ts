@@ -18,7 +18,16 @@ function isMissingShellError(error: unknown): boolean {
   }
 
   const cause = "cause" in error ? error.cause : undefined;
-  return Boolean(cause) && isMissingShellError(cause);
+  if (cause && isMissingShellError(cause)) {
+    return true;
+  }
+
+  const errors = "errors" in error ? error.errors : undefined;
+  if (Array.isArray(errors)) {
+    return errors.some((entry) => isMissingShellError(entry));
+  }
+
+  return false;
 }
 
 function isWindowsPathPermissionError(error: unknown): boolean {
