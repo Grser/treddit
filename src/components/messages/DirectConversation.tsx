@@ -315,6 +315,21 @@ export default function DirectConversation({
     setMessageMenuId(null);
   }
 
+  async function handleDeleteMessage(messageId: number) {
+    try {
+      const res = await fetch("/api/messages", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId }),
+      });
+      if (!res.ok) return;
+      setMessages((prev) => prev.filter((item) => item.id !== messageId));
+    } catch {
+      // noop
+    }
+    setMessageMenuId(null);
+  }
+
   async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -445,7 +460,7 @@ export default function DirectConversation({
                       />
                     ) : <div className="size-8" />
                   )}
-                  <div className={`relative rounded-lg px-4 py-2.5 text-sm shadow-sm ${bubbleClasses}`}>
+                  <div className={`relative rounded-2xl px-4 py-2 text-sm shadow-sm ${bubbleClasses}`}>
                     <button
                       type="button"
                       onClick={() => setMessageMenuId((prev) => (prev === msg.id ? null : msg.id))}
@@ -493,7 +508,7 @@ export default function DirectConversation({
                             {shouldShowMedia ? (
                               <Image
                                 src={preview?.mediaUrl || ""}
-                                alt={preview.description || "Post compartido"}
+                                alt={preview?.description || "Post compartido"}
                                 width={360}
                                 height={220}
                                 className="h-[200px] w-full object-cover"
@@ -612,6 +627,9 @@ export default function DirectConversation({
                           <button type="button" className="block w-full rounded px-2 py-1 text-left text-xs hover:bg-muted" onClick={() => selectLatestMessageFromSender(msg)}>Responder</button>
                           <button type="button" className="block w-full rounded px-2 py-1 text-left text-xs hover:bg-muted" onClick={async () => { if (msg.text) await navigator.clipboard.writeText(msg.text); setMessageMenuId(null); }}>Copiar</button>
                           <button type="button" className="block w-full rounded px-2 py-1 text-left text-xs opacity-70">Reenviar (pronto)</button>
+                          {isMine ? (
+                            <button type="button" className="mt-1 block w-full rounded px-2 py-1 text-left text-xs text-rose-300 hover:bg-rose-500/10" onClick={() => handleDeleteMessage(msg.id)}>Eliminar mensaje</button>
+                          ) : null}
                         </div>
                       )}
                     </div>

@@ -7,6 +7,7 @@ import {
   createDirectMessage,
   ensureMessageTables,
   fetchConversationMessages,
+  deleteDirectMessage,
   type DirectMessageAttachment,
 } from "@/lib/messages";
 
@@ -136,5 +137,27 @@ export async function GET(req: Request) {
   } catch (error) {
     console.error("Failed to fetch direct messages", error);
     return NextResponse.json({ error: "No se pudo cargar la conversación" }, { status: 500 });
+  }
+}
+
+
+export async function DELETE(req: Request) {
+  const me = await requireUser();
+  const payload = await req.json().catch(() => null) as { messageId?: unknown } | null;
+  const messageId = Number(payload?.messageId);
+
+  if (!Number.isFinite(messageId) || messageId <= 0) {
+    return NextResponse.json({ error: "Mensaje inválido" }, { status: 400 });
+  }
+
+  try {
+    const deleted = await deleteDirectMessage(me.id, messageId);
+    if (!deleted) {
+      return NextResponse.json({ error: "No se pudo eliminar el mensaje" }, { status: 404 });
+    }
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error("Failed to delete direct message", error);
+    return NextResponse.json({ error: "No se pudo eliminar el mensaje" }, { status: 500 });
   }
 }
