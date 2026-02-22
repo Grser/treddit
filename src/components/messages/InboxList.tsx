@@ -21,8 +21,18 @@ type InboxListProps = {
   className?: string;
 };
 
+function normalizeStarterEntry(entry: InboxEntry): InboxEntry {
+  if (!entry.isStarter) return entry;
+
+  const preview = entry.lastMessage?.trim() || "";
+  const hasMessages = entry.lastSenderId > 0 && preview.length > 0 && preview !== "Inicia una conversación";
+  if (!hasMessages) return entry;
+
+  return { ...entry, isStarter: false };
+}
+
 export default function InboxList({ entries, currentUserId, activeUsername, className }: InboxListProps) {
-  const [localEntries, setLocalEntries] = useState(entries);
+  const [localEntries, setLocalEntries] = useState(() => entries.map(normalizeStarterEntry));
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<"all" | "archived" | "groups">("all");
   const [showCreateGroup, setShowCreateGroup] = useState(false);
@@ -38,7 +48,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
   const [searchStarters, setSearchStarters] = useState<InboxEntry[]>([]);
 
   useEffect(() => {
-    setLocalEntries(entries);
+    setLocalEntries(entries.map(normalizeStarterEntry));
   }, [entries]);
 
   const orderedEntries = useMemo(() => {
@@ -335,9 +345,10 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
       ) : (
         <ul className={className || "h-[calc(100dvh-18rem)] min-h-[360px] overflow-y-auto"}>
           {visibleEntries.map((item) => {
+            const isStarter = Boolean(item.isStarter);
             const avatar = item.avatar_url?.trim() || "/demo-reddit.png";
             const displayName = item.nickname || item.username;
-            const preview = item.isStarter ? "Síguense mutuamente · toca para iniciar chat" : item.lastMessage?.trim() || "Archivo adjunto";
+            const preview = isStarter ? "Síguense mutuamente · toca para iniciar chat" : item.lastMessage?.trim() || "Archivo adjunto";
             const unread = item.unreadCount > 0;
             const isMine = item.lastSenderId === currentUserId;
             const isActive = activeUsername === item.username;
@@ -368,16 +379,17 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
                     <div className="flex items-center gap-1.5 text-sm">
                       <span className="line-clamp-1 font-semibold">{displayName}</span>
                       {!isGroup && <UserBadges size="sm" isAdmin={item.is_admin} isVerified={item.is_verified} />}
+                      {item.isPinned && <span className="opacity-80" title="Chat fijado">📌</span>}
                       {item.isFavorite && <span className="text-amber-300">★</span>}
                       {item.isMuted && <span className="opacity-70">🔕</span>}
                       {item.isBlocked && <span className="opacity-70">🚫</span>}
-                      <span className="ml-auto text-xs opacity-60">{item.isStarter ? "Nuevo" : getCompactTime(item.createdAt)}</span>
+                      <span className="ml-auto text-xs opacity-60">{isStarter ? "Nuevo" : getCompactTime(item.createdAt)}</span>
                     </div>
                     <p className={`line-clamp-1 text-sm ${unread ? "font-semibold" : "opacity-70"}`}>
-                      {isGroup ? "Grupo · " : item.isStarter ? "" : isMine ? "Tú: " : ""}
+                      {isGroup ? "Grupo · " : isStarter ? "" : isMine ? "Tú: " : ""}
                       {preview}
                     </p>
-                    {item.isStarter && (
+                    {isStarter && (
                       <p className="text-xs font-medium text-brand/90">Contacto disponible para nuevo chat</p>
                     )}
                   </div>
@@ -387,7 +399,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
                     </span>
                   )}
                 </Link>
-                {!isGroup && !item.isStarter && (
+                {!isGroup && !isStarter && (
                   <div className="absolute right-3 top-1/2 z-20 -translate-y-1/2" onClick={(event) => event.stopPropagation()}>
                     <button
                       type="button"
