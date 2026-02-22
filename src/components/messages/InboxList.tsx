@@ -33,15 +33,30 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
   const [groupError, setGroupError] = useState<string | null>(null);
   const [deletingUsername, setDeletingUsername] = useState<string | null>(null);
   const [searchStarters, setSearchStarters] = useState<InboxEntry[]>([]);
+  const [orderedEntries, setOrderedEntries] = useState<InboxEntry[]>(entries);
+
+  useEffect(() => {
+    setOrderedEntries((previous) => {
+      const nextByUserId = new Map(entries.map((entry) => [entry.userId, entry]));
+      const preserved = previous
+        .filter((entry) => nextByUserId.has(entry.userId))
+        .map((entry) => nextByUserId.get(entry.userId) as InboxEntry);
+
+      const knownIds = new Set(preserved.map((entry) => entry.userId));
+      const appended = entries.filter((entry) => !knownIds.has(entry.userId));
+
+      return [...preserved, ...appended];
+    });
+  }, [entries]);
 
   const normalizedQuery = query.trim().toLowerCase();
   const filteredEntries = useMemo(() => {
-    if (!normalizedQuery) return entries;
-    return entries.filter((entry) => {
+    if (!normalizedQuery) return orderedEntries;
+    return orderedEntries.filter((entry) => {
       const haystack = [entry.username, entry.nickname || "", entry.lastMessage || ""].join(" ").toLowerCase();
       return haystack.includes(normalizedQuery);
     });
-  }, [entries, normalizedQuery]);
+  }, [orderedEntries, normalizedQuery]);
 
   useEffect(() => {
     if (normalizedQuery.length < 2) {
