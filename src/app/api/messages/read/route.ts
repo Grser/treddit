@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 
 import { requireUser } from "@/lib/auth";
-import { markConversationRead } from "@/lib/messages";
+import { markConversationRead, markGroupConversationRead } from "@/lib/messages";
 
 type ReadPayload = {
   recipientId?: unknown;
+  groupId?: unknown;
 };
 
 export async function POST(req: Request) {
@@ -18,10 +19,16 @@ export async function POST(req: Request) {
   }
 
   const recipientId = Number(payload.recipientId);
-  if (!Number.isFinite(recipientId) || recipientId <= 0 || recipientId === me.id) {
-    return NextResponse.json({ ok: false, error: "Destinatario inválido" }, { status: 400 });
+  if (Number.isFinite(recipientId) && recipientId > 0 && recipientId !== me.id) {
+    await markConversationRead(me.id, recipientId);
+    return NextResponse.json({ ok: true });
   }
 
-  await markConversationRead(me.id, recipientId);
-  return NextResponse.json({ ok: true });
+  const groupId = Number(payload.groupId);
+  if (Number.isFinite(groupId) && groupId > 0) {
+    await markGroupConversationRead(me.id, groupId);
+    return NextResponse.json({ ok: true });
+  }
+
+  return NextResponse.json({ ok: false, error: "Destino inválido" }, { status: 400 });
 }
