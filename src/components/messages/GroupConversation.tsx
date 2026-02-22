@@ -49,11 +49,13 @@ export default function GroupConversation({ groupId, viewerId, initialMessages, 
 
   return (
     <div className="flex h-full flex-col gap-3">
-      <div className="flex items-center justify-between px-1 text-xs">
-        <div>
-          <p className="opacity-70">{description || "Sin descripción"}</p>
+      <div className="flex items-start justify-between gap-3 rounded-2xl border border-border/70 bg-background/40 px-3 py-2">
+        <div className="min-w-0">
+          <h1 className="truncate text-lg font-semibold">{name}</h1>
+          <p className="text-xs opacity-70">Grupo · {members.length} integrantes</p>
+          {description && <p className="mt-1 whitespace-pre-wrap text-sm opacity-85">{description}</p>}
         </div>
-        <button type="button" onClick={() => setShowSettings((prev) => !prev)} className="rounded-full border border-border px-3 py-1 text-xs">Editar grupo</button>
+        <button type="button" onClick={() => setShowSettings((prev) => !prev)} className="shrink-0 rounded-full border border-border px-3 py-1 text-xs">Editar grupo</button>
       </div>
       {showSettings && (
         <div className="rounded-2xl border border-border/80 bg-background/60 p-3">
