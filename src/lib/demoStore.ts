@@ -36,6 +36,7 @@ type DemoStore = {
   posts: Post[];
   nextPostId: number;
   conversations: Map<string, DemoConversation>;
+  hiddenConversationCutoffs: Map<string, number>;
 };
 
 const globalForDemo = globalThis as unknown as { __tredditDemoStore?: DemoStore };
@@ -156,6 +157,7 @@ function createInitialStore(): DemoStore {
     posts: seededPosts,
     nextPostId: seededPosts.reduce((acc, post) => Math.max(acc, post.id), 100) + 1,
     conversations,
+    hiddenConversationCutoffs: new Map<string, number>(),
   };
 }
 
@@ -303,7 +305,9 @@ export function getDemoInbox(userId: number, since?: number): DemoInboxEntry[] {
     const otherId = a === userId ? b : a;
     const participant = store.users.get(otherId);
     if (!participant) return;
+    const cutoff = getHiddenCutoff(store, userId, otherId);
     const messages = conversation.messages
+      .filter((message) => message.id > cutoff)
       .slice()
       .sort((left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime());
     const last = messages[messages.length - 1];
@@ -339,7 +343,10 @@ export function getDemoUnreadCount(userId: number, since?: number): number {
     if (a !== userId && b !== userId) {
       return;
     }
+    const otherId = a === userId ? b : a;
+    const cutoff = getHiddenCutoff(store, userId, otherId);
     conversation.messages.forEach((msg) => {
+      if (msg.id <= cutoff) return;
       if (msg.recipientId !== userId) return;
       if (msg.senderId === userId) return;
       if (!since) {
@@ -358,17 +365,29 @@ function conversationKey(a: number, b: number) {
   return [Math.min(a, b), Math.max(a, b)].join(":");
 }
 
+function hiddenConversationKey(userId: number, otherUserId: number) {
+  return `${userId}:${otherUserId}`;
+}
+
+function getHiddenCutoff(store: DemoStore, userId: number, otherUserId: number) {
+  return store.hiddenConversationCutoffs.get(hiddenConversationKey(userId, otherUserId)) ?? 0;
+}
+
 
 export function deleteDemoConversation(userId: number, otherUserId: number) {
   const store = ensureStore();
-  store.conversations.delete(conversationKey(userId, otherUserId));
+  const key = conversationKey(userId, otherUserId);
+  const convo = store.conversations.get(key);
+  const lastMessageId = convo?.messages[convo.messages.length - 1]?.id ?? 0;
+  store.hiddenConversationCutoffs.set(hiddenConversationKey(userId, otherUserId), lastMessageId);
 }
 
 export function getDemoConversation(viewerId: number, otherId: number): DirectMessageEntry[] {
   const store = ensureStore();
   const key = conversationKey(viewerId, otherId);
   const convo = store.conversations.get(key);
-  return convo ? convo.messages.slice().sort((a, b) => a.id - b.id) : [];
+  const cutoff = getHiddenCutoff(store, viewerId, otherId);
+  return convo ? convo.messages.filter((message) => message.id > cutoff).slice().sort((a, b) => a.id - b.id) : [];
 }
 
 type AttachmentPayload = NonNullable<DirectMessageEntry["attachments"]>;
