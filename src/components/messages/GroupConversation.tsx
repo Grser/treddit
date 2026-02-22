@@ -470,8 +470,14 @@ export default function GroupConversation({
         </div>
       )}
       <ul ref={messagesListRef} className="flex-1 space-y-2 overflow-y-auto rounded-2xl border border-border bg-surface/90 p-3">
-        {messages.map((msg) => {
+        {messages.map((msg, index) => {
           const mine = msg.senderId === viewerId;
+          const previous = messages[index - 1];
+          const next = messages[index + 1];
+          const prevSameSender = previous?.senderId === msg.senderId;
+          const nextSameSender = next?.senderId === msg.senderId;
+          const showAvatar = !mine && !prevSameSender;
+          const showHeader = !mine && !prevSameSender;
           const sharedPost = parseSharedPostText(msg.text);
           const preview = sharedPost ? sharedPostPreviews[sharedPost.postId] : null;
           const isPostUnavailable = preview === null;
@@ -479,74 +485,95 @@ export default function GroupConversation({
           const canRevealSensitive = Boolean(preview?.isSensitive && preview?.canViewSensitive);
           const isSensitiveRevealed = Boolean(sharedPost && revealedSensitivePosts[sharedPost.postId]);
           const shouldShowMedia = Boolean(preview?.mediaUrl) && (!preview?.isSensitive || isSensitiveRevealed);
+          const avatar = msg.sender.avatar_url?.trim() || "/demo-reddit.png";
 
           return (
-            <li key={msg.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-              <div
-                className={`max-w-[92%] rounded-2xl px-4 py-2 text-sm shadow-sm ${
-                  mine ? "bg-brand text-white" : "bg-input text-foreground"
-                }`}
-              >
+            <li key={msg.id} className={`flex ${mine ? "justify-end" : "justify-start"} ${prevSameSender ? "mt-0.5" : "mt-2.5"}`}>
+              <div className={`flex max-w-[98%] items-end gap-2 md:max-w-[92%] ${mine ? "flex-row-reverse" : "flex-row"}`}>
                 {!mine && (
-                  <p className="text-[11px] font-semibold text-brand/90">
-                    <Link href={`/u/${msg.sender.username}`} className="hover:underline">{msg.sender.nickname || msg.sender.username}</Link>
-                  </p>
+                  showAvatar ? (
+                    <Image
+                      src={avatar}
+                      alt={msg.sender.nickname || msg.sender.username}
+                      width={32}
+                      height={32}
+                      className="size-8 rounded-full object-cover"
+                      unoptimized
+                    />
+                  ) : <div className="size-8" />
                 )}
-                {!sharedPost ? (
-                  <p className="whitespace-pre-wrap">{msg.text}</p>
-                ) : (
-                  <div className="space-y-2">
-                    {sharedPost.intro ? <p className="text-xs opacity-85">{sharedPost.intro}</p> : null}
-                    <a
-                      href={sharedPost.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block rounded-2xl border border-white/20 bg-black/10 p-2 hover:bg-black/20"
-                    >
-                      <p className="text-[11px] uppercase tracking-wide opacity-70">Publicación compartida</p>
-                      {shouldShowMedia ? (
-                        <Image
-                          src={preview?.mediaUrl || ""}
-                          alt={preview.description || "Post compartido"}
-                          width={420}
-                          height={260}
-                          className="mt-2 max-h-52 w-full rounded-xl object-cover"
-                          unoptimized
-                        />
-                      ) : (
-                        <div className="mt-2 flex h-24 w-full items-center justify-center rounded-xl bg-black/10 px-3 text-center text-xs">
+                <div
+                  className={`max-w-[92%] rounded-2xl px-4 py-2 text-sm shadow-sm ${
+                    mine ? "bg-brand text-white" : "bg-input text-foreground"
+                  }`}
+                >
+                  {showHeader && (
+                    <p className="mb-1 text-[11px] font-semibold text-brand/90">
+                      <Link href={`/u/${msg.sender.username}`} className="hover:underline">{msg.sender.nickname || msg.sender.username}</Link>
+                    </p>
+                  )}
+                  {!sharedPost ? (
+                    <p className="whitespace-pre-wrap">{msg.text}</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {sharedPost.intro ? <p className="text-xs opacity-85">{sharedPost.intro}</p> : null}
+                      <a
+                        href={sharedPost.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block rounded-2xl border border-white/20 bg-black/10 p-2 hover:bg-black/20"
+                      >
+                        <p className="text-[11px] uppercase tracking-wide opacity-70">Publicación compartida</p>
+                        {shouldShowMedia ? (
+                          <Image
+                            src={preview?.mediaUrl || ""}
+                            alt={preview.description || "Post compartido"}
+                            width={420}
+                            height={260}
+                            className="mt-2 max-h-52 w-full rounded-xl object-cover"
+                            unoptimized
+                          />
+                        ) : (
+                          <div className="mt-2 flex h-24 w-full items-center justify-center rounded-xl bg-black/10 px-3 text-center text-xs">
+                            {isSensitiveBlocked
+                              ? "Contenido sensible bloqueado. Debes verificar tu edad para verlo."
+                              : canRevealSensitive
+                                ? "Contenido sensible. Toca “Ver contenido” para mostrarlo."
+                                : isPostUnavailable
+                                  ? "Publicación no disponible, ya no existe."
+                                  : "Vista previa no disponible."}
+                          </div>
+                        )}
+                        <p className="mt-2 text-sm font-semibold">{preview?.nickname || "Publicación no disponible"}</p>
+                        <p className="text-xs opacity-80">
                           {isSensitiveBlocked
                             ? "Contenido sensible bloqueado. Debes verificar tu edad para verlo."
-                            : canRevealSensitive
-                              ? "Contenido sensible. Toca “Ver contenido” para mostrarlo."
-                              : isPostUnavailable
-                                ? "Publicación no disponible, ya no existe."
-                                : "Vista previa no disponible."}
-                        </div>
-                      )}
-                      <p className="mt-2 text-sm font-semibold">{preview?.nickname || "Publicación no disponible"}</p>
-                      <p className="text-xs opacity-80">
-                        {isSensitiveBlocked
-                          ? "Contenido sensible bloqueado. Debes verificar tu edad para verlo."
-                          : isPostUnavailable
-                            ? "Publicación no disponible, ya no existe."
-                            : preview?.description || "Mira la publicación que te compartieron."}
-                      </p>
-                      {canRevealSensitive && sharedPost && !isSensitiveRevealed ? (
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.preventDefault();
-                            setRevealedSensitivePosts((prev) => ({ ...prev, [sharedPost.postId]: true }));
-                          }}
-                          className="mt-2 rounded-full border border-white/30 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide hover:bg-white/20"
-                        >
-                          Ver contenido
-                        </button>
-                      ) : null}
-                    </a>
-                  </div>
-                )}
+                            : isPostUnavailable
+                              ? "Publicación no disponible, ya no existe."
+                              : preview?.description || "Mira la publicación que te compartieron."}
+                        </p>
+                        {canRevealSensitive && sharedPost && !isSensitiveRevealed ? (
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              setRevealedSensitivePosts((prev) => ({ ...prev, [sharedPost.postId]: true }));
+                            }}
+                            className="mt-2 rounded-full border border-white/30 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide hover:bg-white/20"
+                          >
+                            Ver contenido
+                          </button>
+                        ) : null}
+                      </a>
+                    </div>
+                  )}
+                  {!mine && !nextSameSender ? (
+                    <p className="mt-1 text-[10px] opacity-65">{new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
+                  ) : null}
+                  {mine ? (
+                    <p className="mt-1 text-[10px] text-white/70">{new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
+                  ) : null}
+                </div>
               </div>
             </li>
           );

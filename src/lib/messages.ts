@@ -407,15 +407,19 @@ export async function fetchConversationMessages(
     JOIN Users u ON u.id = dm.sender_id
     LEFT JOIN Direct_Messages parent ON parent.id = dm.reply_to_message_id
     LEFT JOIN Users parent_sender ON parent_sender.id = parent.sender_id
+    LEFT JOIN Direct_Message_Hidden_Conversations dmhc
+      ON dmhc.user_id = ?
+     AND dmhc.other_user_id = ?
     WHERE (
       (dm.sender_id = ? AND dm.recipient_id = ?)
       OR (dm.sender_id = ? AND dm.recipient_id = ?)
     )
+      AND dm.id > COALESCE(dmhc.hidden_until_message_id, 0)
       AND dm.id > ?
     ORDER BY dm.created_at ASC
     LIMIT ?
     `,
-    [viewerId, otherId, otherId, viewerId, Math.max(0, afterId), Math.max(1, Math.min(limit, 200))],
+    [viewerId, otherId, viewerId, otherId, otherId, viewerId, Math.max(0, afterId), Math.max(1, Math.min(limit, 200))],
   );
 
   return rows.map((row) => ({

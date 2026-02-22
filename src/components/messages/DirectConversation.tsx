@@ -423,7 +423,7 @@ export default function DirectConversation({
             const next = messages[index + 1];
             const prevSameSender = previous?.senderId === msg.senderId;
             const nextSameSender = next?.senderId === msg.senderId;
-            const showAvatar = !isMine && !nextSameSender;
+            const showAvatar = !isMine && !prevSameSender;
             const showHeader = !isMine && !prevSameSender;
             const bubbleClasses = isMine
               ? "bg-brand text-white"

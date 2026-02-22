@@ -161,7 +161,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
         const message = typeof payload.error === "string" ? payload.error : "No se pudo borrar el chat";
         throw new Error(message);
       }
-      window.location.href = "/mensajes";
+      window.location.reload();
     } catch (error) {
       const message = error instanceof Error ? error.message : "No se pudo borrar el chat";
       window.alert(message);
