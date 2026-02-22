@@ -1,5 +1,6 @@
 const SHELL_MISSING_REGEX = /spawn\s+\/bin\/sh\s+ENOENT/i;
 const WINDOWS_PATH_PERMISSION_REGEX = /EPERM: operation not permitted, open ['"](?:[A-Za-z]:\\[^'"]+)['"]/i;
+const WINDOWS_PATH_NOT_FOUND_REGEX = /ENOENT: no such file or directory, open ['"](?:[A-Za-z]:\\(?:tmp|temp)\\[^'"]+)['"]/i;
 
 function isMissingShellError(error: unknown): boolean {
   if (error instanceof Error && SHELL_MISSING_REGEX.test(error.message)) {
@@ -38,8 +39,26 @@ function isWindowsPathPermissionError(error: unknown): boolean {
   return /^[A-Za-z]:\\/.test(path);
 }
 
+function isWindowsTempPathNotFoundError(error: unknown): boolean {
+  if (error instanceof Error && WINDOWS_PATH_NOT_FOUND_REGEX.test(error.message)) {
+    return true;
+  }
+
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const code = "code" in error ? error.code : undefined;
+  const path = "path" in error ? error.path : undefined;
+  if (code !== "ENOENT" || typeof path !== "string") {
+    return false;
+  }
+
+  return /^[A-Za-z]:\\(?:tmp|temp)\\/i.test(path);
+}
+
 function isIgnoredEnvironmentError(error: unknown): boolean {
-  return isMissingShellError(error) || isWindowsPathPermissionError(error);
+  return isMissingShellError(error) || isWindowsPathPermissionError(error) || isWindowsTempPathNotFoundError(error);
 }
 
 const globalForShellGuard = globalThis as typeof globalThis & {
