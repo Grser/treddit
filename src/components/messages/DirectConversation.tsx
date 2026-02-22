@@ -23,6 +23,8 @@ type SharedPostPreview = {
   nickname: string;
   description: string | null;
   mediaUrl: string | null;
+  isSensitive: boolean;
+  canViewSensitive: boolean;
 };
 
 const QUICK_EMOJIS = ["😀", "😂", "🔥", "❤️", "👏", "😮", "🙏", "🎉"] as const;
@@ -207,6 +209,8 @@ export default function DirectConversation({
             nickname: String(item.nickname || item.username || "Publicación"),
             description: item.description ? String(item.description) : null,
             mediaUrl: item.mediaUrl ? String(item.mediaUrl) : null,
+            isSensitive: Boolean(item.is_sensitive),
+            canViewSensitive: Boolean(item.can_view_sensitive),
           }] as const;
         } catch {
           return [id, null] as const;
@@ -480,7 +484,7 @@ export default function DirectConversation({
                             <div className={`px-3 py-2 text-[11px] font-medium uppercase tracking-wide ${isMine ? "bg-black/20 text-white/85" : "bg-muted/70 text-foreground/75"}`}>
                               Publicación compartida
                             </div>
-                            {preview?.mediaUrl ? (
+                            {preview?.mediaUrl && (!preview.isSensitive || preview.canViewSensitive) ? (
                               <Image
                                 src={preview.mediaUrl}
                                 alt={preview.description || "Post compartido"}
@@ -496,7 +500,9 @@ export default function DirectConversation({
                               <p className="text-xs font-semibold">{preview?.nickname || "Publicación"}</p>
                               <p className={`text-xs ${isMine ? "text-white/80" : "text-foreground/75"}`}>@{preview?.username || "usuario"}</p>
                               <p className={`line-clamp-2 text-xs ${isMine ? "text-white/85" : "text-foreground/85"}`}>
-                                {preview?.description || "Mira la publicación que te compartieron."}
+                                {preview?.isSensitive && !preview?.canViewSensitive
+                                  ? "Contenido sensible bloqueado. Debes verificar tu edad para verlo."
+                                  : preview?.description || "Mira la publicación que te compartieron."}
                               </p>
                             </div>
                           </a>
