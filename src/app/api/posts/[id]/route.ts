@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/lib/db";
 import { getSessionUser, requireUser } from "@/lib/auth";
 import { getDemoFeed } from "@/lib/demoStore";
+import { estimatePostViews } from "@/lib/postStats";
 
 type AuthenticatedUser = Awaited<ReturnType<typeof requireUser>>;
 
@@ -99,6 +100,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       likes: Number(row.likes) || 0,
       comments: Number(row.comments) || 0,
       reposts: Number(row.reposts) || 0,
+      views: estimatePostViews({ likes: row.likes, comments: row.comments, reposts: row.reposts }),
       hasPoll: Number(row.hasPoll) > 0,
       likedByMe: Number(row.likedByMe) > 0,
       repostedByMe: Number(row.repostedByMe) > 0,
