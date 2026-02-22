@@ -6,6 +6,7 @@ import PostCard, { type Post as PostCardType } from "@/components/PostCard";
 import { getSessionUser } from "@/lib/auth";
 import { db, isDatabaseConfigured } from "@/lib/db";
 import { getDemoFeed } from "@/lib/demoStore";
+import { estimatePostViews } from "@/lib/postStats";
 
 type PostDetailsRow = RowDataPacket & {
   id: number;
@@ -85,6 +86,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
         likes: Number(row.likes) || 0,
         comments: Number(row.comments) || 0,
         reposts: Number(row.reposts) || 0,
+        views: estimatePostViews({ likes: row.likes, comments: row.comments, reposts: row.reposts }),
         hasPoll: Number(row.hasPoll) > 0,
         likedByMe: Number(row.likedByMe) > 0,
         repostedByMe: Number(row.repostedByMe) > 0,

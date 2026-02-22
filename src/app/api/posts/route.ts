@@ -9,6 +9,7 @@ import { createDemoPost, getDemoFeed } from "@/lib/demoStore";
 import { ensurePostsCommunityColumn, getPostsCommunityColumn } from "@/lib/communityColumns";
 import { ensurePostsSensitiveColumn, getPostsSensitiveColumn } from "@/lib/postSensitivity";
 import { isUserAgeVerified } from "@/lib/ageVerification";
+import { estimatePostViews } from "@/lib/postStats";
 
 type PostRow = {
   id: number;
@@ -337,7 +338,7 @@ export async function GET(req: Request) {
       likes: Number(row.likes) || 0,
       comments: Number(row.comments) || 0,
       reposts: Number(row.reposts) || 0,
-      views: (Number(row.likes) || 0) * 12 + (Number(row.comments) || 0) * 8 + (Number(row.reposts) || 0) * 15,
+      views: estimatePostViews({ likes: row.likes, comments: row.comments, reposts: row.reposts }),
       likedByMe: Boolean(row.likedByMe),
       repostedByMe: Boolean(row.repostedByMe),
       hasPoll: Boolean(row.hasPoll),
