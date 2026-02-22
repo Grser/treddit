@@ -117,6 +117,22 @@ export async function ensureMessageTables() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `);
   await db.execute(`
+    CREATE TABLE IF NOT EXISTS Direct_Message_Conversation_Settings (
+      user_id INT UNSIGNED NOT NULL,
+      other_user_id INT UNSIGNED NOT NULL,
+      is_archived TINYINT(1) NOT NULL DEFAULT 0,
+      is_muted TINYINT(1) NOT NULL DEFAULT 0,
+      is_pinned TINYINT(1) NOT NULL DEFAULT 0,
+      is_favorite TINYINT(1) NOT NULL DEFAULT 0,
+      is_listed TINYINT(1) NOT NULL DEFAULT 0,
+      is_blocked TINYINT(1) NOT NULL DEFAULT 0,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (user_id, other_user_id),
+      CONSTRAINT fk_dm_settings_user FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
+      CONSTRAINT fk_dm_settings_other_user FOREIGN KEY (other_user_id) REFERENCES Users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+  await db.execute(`
     CREATE TABLE IF NOT EXISTS Direct_Message_Reactions (
       message_id INT NOT NULL,
       user_id INT UNSIGNED NOT NULL,
@@ -264,6 +280,12 @@ type ConversationSummaryRow = RowDataPacket & {
   created_at: Date | string;
   sender_id: number;
   unreadCount: number | null;
+  is_archived: number;
+  is_muted: number;
+  is_pinned: number;
+  is_favorite: number;
+  is_listed: number;
+  is_blocked: number;
 };
 
 type ConversationStarterRow = RowDataPacket & {
@@ -286,6 +308,12 @@ export type ConversationSummary = {
   lastSenderId: number;
   createdAt: string;
   unreadCount: number;
+  isArchived: boolean;
+  isMuted: boolean;
+  isPinned: boolean;
+  isFavorite: boolean;
+  isListed: boolean;
+  isBlocked: boolean;
 };
 
 export async function getAllowMessagesFromAnyone(userId: number): Promise<boolean> {
@@ -499,7 +527,13 @@ export async function fetchConversationSummaries(
           AND unread.recipient_id = ?
           AND unread.id > COALESCE(dmhc.hidden_until_message_id, 0)
           AND unread.id > COALESCE(dmrs.last_read_message_id, 0)
-      ) AS unreadCount
+      ) AS unreadCount,
+      COALESCE(dmcs.is_archived, 0) AS is_archived,
+      COALESCE(dmcs.is_muted, 0) AS is_muted,
+      COALESCE(dmcs.is_pinned, 0) AS is_pinned,
+      COALESCE(dmcs.is_favorite, 0) AS is_favorite,
+      COALESCE(dmcs.is_listed, 0) AS is_listed,
+      COALESCE(dmcs.is_blocked, 0) AS is_blocked
     FROM (
       SELECT MAX(id) AS id
       FROM Direct_Messages dm
@@ -512,10 +546,13 @@ export async function fetchConversationSummaries(
     ) latest
     JOIN Direct_Messages dm ON dm.id = latest.id
     JOIN Users other ON other.id = CASE WHEN dm.sender_id = ? THEN dm.recipient_id ELSE dm.sender_id END
-    ORDER BY dm.created_at DESC
+    LEFT JOIN Direct_Message_Conversation_Settings dmcs
+      ON dmcs.user_id = ?
+     AND dmcs.other_user_id = other.id
+    ORDER BY COALESCE(dmcs.is_pinned, 0) DESC, dm.created_at DESC
     LIMIT ?
     `,
-    [userId, userId, userId, userId, userId, userId, userId, userId, userId, limit],
+    [userId, userId, userId, userId, userId, userId, userId, userId, userId, userId, limit],
   );
 
   return rows.map((row) => ({
@@ -529,7 +566,60 @@ export async function fetchConversationSummaries(
     lastSenderId: Number(row.sender_id),
     createdAt: new Date(row.created_at).toISOString(),
     unreadCount: Number(row.unreadCount ?? 0),
+    isArchived: Boolean(row.is_archived),
+    isMuted: Boolean(row.is_muted),
+    isPinned: Boolean(row.is_pinned),
+    isFavorite: Boolean(row.is_favorite),
+    isListed: Boolean(row.is_listed),
+    isBlocked: Boolean(row.is_blocked),
   }));
+}
+
+export async function updateConversationSettings(
+  userId: number,
+  otherUserId: number,
+  changes: Partial<{
+    isArchived: boolean;
+    isMuted: boolean;
+    isPinned: boolean;
+    isFavorite: boolean;
+    isListed: boolean;
+    isBlocked: boolean;
+  }>,
+) {
+  if (!isDatabaseConfigured()) return;
+  await ensureMessageTables();
+  await db.execute(
+    `INSERT INTO Direct_Message_Conversation_Settings (
+      user_id,
+      other_user_id,
+      is_archived,
+      is_muted,
+      is_pinned,
+      is_favorite,
+      is_listed,
+      is_blocked,
+      updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+    ON DUPLICATE KEY UPDATE
+      is_archived = COALESCE(VALUES(is_archived), is_archived),
+      is_muted = COALESCE(VALUES(is_muted), is_muted),
+      is_pinned = COALESCE(VALUES(is_pinned), is_pinned),
+      is_favorite = COALESCE(VALUES(is_favorite), is_favorite),
+      is_listed = COALESCE(VALUES(is_listed), is_listed),
+      is_blocked = COALESCE(VALUES(is_blocked), is_blocked),
+      updated_at = NOW()`,
+    [
+      userId,
+      otherUserId,
+      changes.isArchived == null ? null : changes.isArchived ? 1 : 0,
+      changes.isMuted == null ? null : changes.isMuted ? 1 : 0,
+      changes.isPinned == null ? null : changes.isPinned ? 1 : 0,
+      changes.isFavorite == null ? null : changes.isFavorite ? 1 : 0,
+      changes.isListed == null ? null : changes.isListed ? 1 : 0,
+      changes.isBlocked == null ? null : changes.isBlocked ? 1 : 0,
+    ],
+  );
 }
 
 export async function hideConversation(userId: number, otherUserId: number) {
@@ -609,6 +699,28 @@ export async function markConversationRead(userId: number, otherUserId: number) 
       last_read_message_id = GREATEST(last_read_message_id, VALUES(last_read_message_id)),
       updated_at = NOW()`,
     [userId, otherUserId, otherUserId, userId],
+  );
+}
+
+export async function markConversationUnread(userId: number, otherUserId: number) {
+  if (!isDatabaseConfigured()) return;
+  await ensureMessageTables();
+  const [rows] = await db.query<RowDataPacket[]>(
+    `SELECT COALESCE(MAX(id), 0) AS maxIncomingId
+     FROM Direct_Messages
+     WHERE sender_id = ? AND recipient_id = ?`,
+    [otherUserId, userId],
+  );
+  const maxIncomingId = Number(rows[0]?.maxIncomingId ?? 0);
+  if (maxIncomingId <= 0) return;
+  const unreadFrom = Math.max(0, maxIncomingId - 1);
+  await db.execute(
+    `INSERT INTO Direct_Message_Read_State (user_id, other_user_id, last_read_message_id, updated_at)
+     VALUES (?, ?, ?, NOW())
+     ON DUPLICATE KEY UPDATE
+      last_read_message_id = LEAST(last_read_message_id, VALUES(last_read_message_id)),
+      updated_at = NOW()`,
+    [userId, otherUserId, unreadFrom],
   );
 }
 
