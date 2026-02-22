@@ -33,6 +33,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     avatarUrl?: unknown;
     addMemberIds?: unknown;
     removeMemberIds?: unknown;
+    promoteMemberIds?: unknown;
+    demoteMemberIds?: unknown;
   } | null;
 
   const addMemberIds = Array.isArray(payload?.addMemberIds)
@@ -40,6 +42,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     : [];
   const removeMemberIds = Array.isArray(payload?.removeMemberIds)
     ? payload.removeMemberIds.filter((value): value is number => typeof value === "number")
+    : [];
+  const promoteMemberIds = Array.isArray(payload?.promoteMemberIds)
+    ? payload.promoteMemberIds.filter((value): value is number => typeof value === "number")
+    : [];
+  const demoteMemberIds = Array.isArray(payload?.demoteMemberIds)
+    ? payload.demoteMemberIds.filter((value): value is number => typeof value === "number")
     : [];
 
   if (addMemberIds.length > 0) {
@@ -58,6 +66,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       avatarUrl: typeof payload?.avatarUrl === "string" ? payload.avatarUrl : undefined,
       addMemberIds,
       removeMemberIds,
+      promoteMemberIds,
+      demoteMemberIds,
     });
 
     if (!group) {
@@ -68,6 +78,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   } catch (error) {
     if (error instanceof Error && error.message === "NOT_IN_GROUP") {
       return NextResponse.json({ error: "Sin acceso" }, { status: 403 });
+    }
+    if (error instanceof Error && error.message === "NOT_GROUP_ADMIN") {
+      return NextResponse.json({ error: "Solo administradores del grupo pueden editar" }, { status: 403 });
     }
     if (error instanceof Error && error.message === "INVALID_GROUP_NAME") {
       return NextResponse.json({ error: "Nombre inválido" }, { status: 400 });

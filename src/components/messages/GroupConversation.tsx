@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import type { GroupMessageEntry } from "@/lib/messages";
@@ -10,6 +11,7 @@ type GroupMember = {
   username: string;
   nickname: string | null;
   avatar_url: string | null;
+  role: "owner" | "admin" | "member";
 };
 
 type SearchUser = {
@@ -69,6 +71,8 @@ export default function GroupConversation({
     description: string | null;
     avatar_url: string | null;
     members: GroupMember[];
+    canManage: boolean;
+    myRole: "owner" | "admin" | "member";
   };
 }) {
   const [messages, setMessages] = useState(initialMessages);
@@ -81,6 +85,8 @@ export default function GroupConversation({
   const [description, setDescription] = useState(initialGroup.description || "");
   const [avatarUrl, setAvatarUrl] = useState(initialGroup.avatar_url || "");
   const [members, setMembers] = useState<GroupMember[]>(initialGroup.members || []);
+  const [canManage, setCanManage] = useState(Boolean(initialGroup.canManage));
+  const [myRole, setMyRole] = useState(initialGroup.myRole);
   const [userQuery, setUserQuery] = useState("");
   const [userResults, setUserResults] = useState<SearchUser[]>([]);
   const [savingChanges, setSavingChanges] = useState(false);
@@ -201,16 +207,18 @@ export default function GroupConversation({
       <div className="flex items-start justify-between gap-3 rounded-2xl border border-border/70 bg-background/40 px-3 py-2">
         <div className="min-w-0">
           <h1 className="truncate text-lg font-semibold">{name}</h1>
-          <p className="text-xs opacity-70">Grupo · {members.length} integrantes</p>
+          <p className="text-xs opacity-70">Grupo · {members.length} integrantes · Rol: {myRole}</p>
           {description && <p className="mt-1 whitespace-pre-wrap text-sm opacity-85">{description}</p>}
         </div>
-        <button
-          type="button"
-          onClick={() => setShowSettings((prev) => !prev)}
-          className="shrink-0 rounded-full border border-border px-3 py-1 text-xs"
-        >
-          Editar grupo
-        </button>
+        {canManage && (
+          <button
+            type="button"
+            onClick={() => setShowSettings((prev) => !prev)}
+            className="shrink-0 rounded-full border border-border px-3 py-1 text-xs"
+          >
+            Editar grupo
+          </button>
+        )}
       </div>
       {showSettings && (
         <div className="rounded-2xl border border-border/80 bg-background/60 p-3">
@@ -312,6 +320,8 @@ export default function GroupConversation({
                     const payload = await res.json().catch(() => ({}));
                     if (res.ok && payload.group?.members) {
                       setMembers(payload.group.members as GroupMember[]);
+                      setCanManage(Boolean(payload.group.canManage));
+                      setMyRole((payload.group.myRole as "owner" | "admin" | "member") || "member");
                     }
                     setUserResults([]);
                     setUserQuery("");
@@ -323,27 +333,61 @@ export default function GroupConversation({
             </div>
           )}
 
-          <div className="mt-2 flex flex-wrap gap-2">
+          <div className="mt-3 space-y-2">
             {members.map((member) => (
-              <button
-                key={member.id}
-                type="button"
-                className="rounded-full border border-border px-2 py-1 text-xs"
-                onClick={async () => {
-                  if (member.id === viewerId) return;
-                  const res = await fetch(`/api/messages/groups/${groupId}`, {
-                    method: "PATCH",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ removeMemberIds: [member.id] }),
-                  });
-                  const payload = await res.json().catch(() => ({}));
-                  if (res.ok && payload.group?.members) {
-                    setMembers(payload.group.members as GroupMember[]);
-                  }
-                }}
-              >
-                {member.nickname || member.username} {member.id === viewerId ? "(tú)" : "×"}
-              </button>
+              <div key={member.id} className="flex items-center gap-2 rounded-xl border border-border/70 px-2 py-1.5 text-xs">
+                <Image
+                  src={member.avatar_url || "/demo-reddit.png"}
+                  alt={member.nickname || member.username}
+                  width={28}
+                  height={28}
+                  className="size-7 rounded-full object-cover"
+                  unoptimized
+                />
+                <Link href={`/u/${member.username}`} className="min-w-0 flex-1 truncate hover:underline">
+                  {member.nickname || member.username} <span className="opacity-65">@{member.username}</span>
+                </Link>
+                <span className="rounded-full border border-brand/30 bg-brand/10 px-2 py-0.5 uppercase">{member.role}</span>
+                {canManage && member.id !== viewerId && member.role !== "owner" && (
+                  <>
+                    <button
+                      type="button"
+                      className="rounded-full border border-border px-2 py-0.5"
+                      onClick={async () => {
+                        const key = member.role === "admin" ? "demoteMemberIds" : "promoteMemberIds";
+                        const res = await fetch(`/api/messages/groups/${groupId}`, {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ [key]: [member.id] }),
+                        });
+                        const payload = await res.json().catch(() => ({}));
+                        if (res.ok && payload.group?.members) {
+                          setMembers(payload.group.members as GroupMember[]);
+                        }
+                      }}
+                    >
+                      {member.role === "admin" ? "Quitar admin" : "Hacer admin"}
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-full border border-rose-400/50 px-2 py-0.5 text-rose-300"
+                      onClick={async () => {
+                        const res = await fetch(`/api/messages/groups/${groupId}`, {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ removeMemberIds: [member.id] }),
+                        });
+                        const payload = await res.json().catch(() => ({}));
+                        if (res.ok && payload.group?.members) {
+                          setMembers(payload.group.members as GroupMember[]);
+                        }
+                      }}
+                    >
+                      Quitar
+                    </button>
+                  </>
+                )}
+              </div>
             ))}
           </div>
 
@@ -365,6 +409,8 @@ export default function GroupConversation({
                   setDescription((payload.group.description as string | null) || "");
                   setAvatarUrl((payload.group.avatar_url as string | null) || "");
                   setMembers((payload.group.members as GroupMember[]) || []);
+                  setCanManage(Boolean(payload.group.canManage));
+                  setMyRole((payload.group.myRole as "owner" | "admin" | "member") || "member");
                 } else {
                   setSettingsError(
                     typeof payload.error === "string" ? payload.error : "No se pudo guardar el grupo",
@@ -403,7 +449,7 @@ export default function GroupConversation({
               >
                 {!mine && (
                   <p className="text-[11px] font-semibold text-brand/90">
-                    {msg.sender.nickname || msg.sender.username}
+                    <Link href={`/u/${msg.sender.username}`} className="hover:underline">{msg.sender.nickname || msg.sender.username}</Link>
                   </p>
                 )}
                 {!sharedPost ? (
