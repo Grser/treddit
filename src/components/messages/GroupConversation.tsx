@@ -24,6 +24,8 @@ type SharedPostPreview = {
   nickname: string;
   description: string | null;
   mediaUrl: string | null;
+  isSensitive: boolean;
+  canViewSensitive: boolean;
 };
 
 function parseSharedPostText(text: string | null | undefined) {
@@ -78,6 +80,7 @@ export default function GroupConversation({
   const [sendError, setSendError] = useState<string | null>(null);
   const [settingsError, setSettingsError] = useState<string | null>(null);
   const [sharedPostPreviews, setSharedPostPreviews] = useState<Record<number, SharedPostPreview | null>>({});
+  const [revealedSensitivePosts, setRevealedSensitivePosts] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     const id = setInterval(async () => {
@@ -125,6 +128,8 @@ export default function GroupConversation({
                 nickname: String(item.nickname || item.username || "Publicación"),
                 description: item.description ? String(item.description) : null,
                 mediaUrl: item.mediaUrl ? String(item.mediaUrl) : null,
+                isSensitive: Boolean(item.is_sensitive),
+                canViewSensitive: Boolean(item.can_view_sensitive),
               },
             ] as const;
           } catch {
@@ -341,6 +346,10 @@ export default function GroupConversation({
           const mine = msg.senderId === viewerId;
           const sharedPost = parseSharedPostText(msg.text);
           const preview = sharedPost ? sharedPostPreviews[sharedPost.postId] : null;
+          const isSensitiveBlocked = Boolean(preview?.isSensitive && !preview?.canViewSensitive);
+          const canRevealSensitive = Boolean(preview?.isSensitive && preview?.canViewSensitive);
+          const isSensitiveRevealed = Boolean(sharedPost && revealedSensitivePosts[sharedPost.postId]);
+          const shouldShowMedia = Boolean(preview?.mediaUrl) && (!preview?.isSensitive || isSensitiveRevealed);
 
           return (
             <li key={msg.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
@@ -366,20 +375,42 @@ export default function GroupConversation({
                       className="block rounded-2xl border border-white/20 bg-black/10 p-2 hover:bg-black/20"
                     >
                       <p className="text-[11px] uppercase tracking-wide opacity-70">Publicación compartida</p>
-                      {preview?.mediaUrl ? (
+                      {shouldShowMedia ? (
                         <Image
-                          src={preview.mediaUrl}
+                          src={preview?.mediaUrl || ""}
                           alt={preview.description || "Post compartido"}
                           width={420}
                           height={260}
                           className="mt-2 max-h-52 w-full rounded-xl object-cover"
                           unoptimized
                         />
-                      ) : null}
+                      ) : (
+                        <div className="mt-2 flex h-24 w-full items-center justify-center rounded-xl bg-black/10 px-3 text-center text-xs">
+                          {isSensitiveBlocked
+                            ? "Contenido sensible bloqueado. Debes verificar tu edad para verlo."
+                            : canRevealSensitive
+                              ? "Contenido sensible. Toca “Ver contenido” para mostrarlo."
+                              : "Vista previa no disponible."}
+                        </div>
+                      )}
                       <p className="mt-2 text-sm font-semibold">{preview?.nickname || "Ver publicación"}</p>
                       <p className="text-xs opacity-80">
-                        {preview?.description || "Mira la publicación que te compartieron."}
+                        {isSensitiveBlocked
+                          ? "Contenido sensible bloqueado. Debes verificar tu edad para verlo."
+                          : preview?.description || "Mira la publicación que te compartieron."}
                       </p>
+                      {canRevealSensitive && sharedPost && !isSensitiveRevealed ? (
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            setRevealedSensitivePosts((prev) => ({ ...prev, [sharedPost.postId]: true }));
+                          }}
+                          className="mt-2 rounded-full border border-white/30 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide hover:bg-white/20"
+                        >
+                          Ver contenido
+                        </button>
+                      ) : null}
                     </a>
                   </div>
                 )}
