@@ -23,7 +23,7 @@ type InboxListProps = {
 
 export default function InboxList({ entries, currentUserId, activeUsername, className }: InboxListProps) {
   const [query, setQuery] = useState("");
-  const [tab, setTab] = useState<"all" | "unread" | "groups">("all");
+  const [tab, setTab] = useState<"all" | "archived" | "groups">("all");
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [groupName, setGroupName] = useState("");
   const [groupDescription, setGroupDescription] = useState("");
@@ -33,10 +33,14 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
   const [groupError, setGroupError] = useState<string | null>(null);
   const [deletingUsername, setDeletingUsername] = useState<string | null>(null);
   const [openMenuUsername, setOpenMenuUsername] = useState<string | null>(null);
+  const [menuActionLoading, setMenuActionLoading] = useState<string | null>(null);
   const [searchStarters, setSearchStarters] = useState<InboxEntry[]>([]);
 
   const orderedEntries = useMemo(() => {
     return [...entries].sort((left, right) => {
+      if (Boolean(right.isPinned) !== Boolean(left.isPinned)) {
+        return Number(Boolean(right.isPinned)) - Number(Boolean(left.isPinned));
+      }
       const leftTime = new Date(left.createdAt).getTime();
       const rightTime = new Date(right.createdAt).getTime();
       if (rightTime !== leftTime) {
@@ -111,15 +115,40 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
     });
   }, [entries, filteredEntries, normalizedQuery, searchStarters]);
 
+  const hasArchivedUnread = useMemo(
+    () => combinedEntries.some((entry) => entry.type !== "group" && !entry.isStarter && entry.isArchived && entry.unreadCount > 0),
+    [combinedEntries],
+  );
+
   const visibleEntries = useMemo(() => {
     if (tab === "groups") {
       return combinedEntries.filter((entry) => entry.type === "group");
     }
-    if (tab === "unread") {
-      return combinedEntries.filter((entry) => entry.unreadCount > 0);
+    if (tab === "archived") {
+      return combinedEntries.filter((entry) => entry.type !== "group" && !entry.isStarter && entry.isArchived);
     }
-    return combinedEntries;
+    return combinedEntries.filter((entry) => entry.type === "group" || entry.isStarter || !entry.isArchived);
   }, [combinedEntries, tab]);
+
+  async function applyConversationAction(username: string, action: string, enabled = true) {
+    setMenuActionLoading(`${username}:${action}`);
+    try {
+      const res = await fetch(`/api/messages/conversation/${encodeURIComponent(username)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, enabled }),
+      });
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        throw new Error(typeof payload.error === "string" ? payload.error : "No se pudo actualizar el chat");
+      }
+      window.location.reload();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "No se pudo actualizar el chat");
+    } finally {
+      setMenuActionLoading(null);
+    }
+  }
 
   async function removeConversation(username: string) {
     const confirmDelete = window.confirm("¿Eliminar este chat de tu lista? Podrás volver a escribirle cuando quieras.");
@@ -190,7 +219,10 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
         />
         <div className="mt-3 flex flex-wrap gap-2 text-sm">
           <button type="button" onClick={() => setTab("all")} className={`rounded-full border px-3 py-1.5 transition ${tab === "all" ? "border-brand bg-brand/20 text-foreground" : "border-border text-foreground/80 hover:bg-background/70"}`}>Todos</button>
-          <button type="button" onClick={() => setTab("unread")} className={`rounded-full border px-3 py-1.5 transition ${tab === "unread" ? "border-brand bg-brand/20 text-foreground" : "border-border text-foreground/80 hover:bg-background/70"}`}>No leídos</button>
+          <button type="button" onClick={() => setTab("archived")} className={`relative rounded-full border px-3 py-1.5 transition ${tab === "archived" ? "border-brand bg-brand/20 text-foreground" : "border-border text-foreground/80 hover:bg-background/70"}`}>
+            Archivados
+            {hasArchivedUnread && <span className="absolute -right-1 -top-1 size-2.5 rounded-full bg-brand" aria-hidden />}
+          </button>
           <button type="button" onClick={() => setTab("groups")} className={`rounded-full border px-3 py-1.5 transition ${tab === "groups" ? "border-brand bg-brand/20 text-foreground" : "border-border text-foreground/80 hover:bg-background/70"}`}>Grupos</button>
         </div>
         {tab === "groups" && (
@@ -316,6 +348,9 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
                     <div className="flex items-center gap-1.5 text-sm">
                       <span className="line-clamp-1 font-semibold">{displayName}</span>
                       {!isGroup && <UserBadges size="sm" isAdmin={item.is_admin} isVerified={item.is_verified} />}
+                      {item.isFavorite && <span className="text-amber-300">★</span>}
+                      {item.isMuted && <span className="opacity-70">🔕</span>}
+                      {item.isBlocked && <span className="opacity-70">🚫</span>}
                       <span className="ml-auto text-xs opacity-60">{item.isStarter ? "Nuevo" : getCompactTime(item.createdAt)}</span>
                     </div>
                     <p className={`line-clamp-1 text-sm ${unread ? "font-semibold" : "opacity-70"}`}>
@@ -350,7 +385,32 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
                     </button>
 
                     {openMenuUsername === item.username && (
-                      <div className="absolute right-0 top-9 w-48 overflow-hidden rounded-2xl border border-white/10 bg-[#1f2a2f]/95 p-1 shadow-2xl backdrop-blur">
+                      <div className="absolute right-0 top-9 w-56 overflow-hidden rounded-2xl border border-white/10 bg-[#1f2a2f]/95 p-1 shadow-2xl backdrop-blur">
+                        {[
+                          { key: "archive", label: item.isArchived ? "Desarchivar chat" : "Archivar chat", enabled: !item.isArchived },
+                          { key: "mute", label: item.isMuted ? "Activar notificaciones" : "Silenciar notificaciones", enabled: !item.isMuted },
+                          { key: "pin", label: item.isPinned ? "Desfijar chat" : "Fijar chat", enabled: !item.isPinned },
+                          { key: "markUnread", label: "Marcar como no leído", enabled: true },
+                          { key: "favorite", label: item.isFavorite ? "Quitar de favoritos" : "Añadir a Favoritos", enabled: !item.isFavorite },
+                          { key: "list", label: item.isListed ? "Quitar de la lista" : "Añadir a la lista", enabled: !item.isListed },
+                          { key: "block", label: item.isBlocked ? "Desbloquear" : "Bloquear", enabled: !item.isBlocked },
+                        ].map((action) => (
+                          <button
+                            key={action.key}
+                            type="button"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              setOpenMenuUsername(null);
+                              void applyConversationAction(item.username, action.key, action.enabled);
+                            }}
+                            disabled={menuActionLoading === `${item.username}:${action.key}`}
+                            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-white/85 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {action.label}
+                          </button>
+                        ))}
+                        <hr className="my-1 border-white/10" />
                         <button
                           type="button"
                           onClick={(event) => {
@@ -362,11 +422,6 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
                           disabled={deletingUsername === item.username}
                           className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-red-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          <svg viewBox="0 0 20 20" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.7">
-                            <path d="M3.5 5h13" strokeLinecap="round" />
-                            <path d="M7.5 5V3.8c0-.7.6-1.3 1.3-1.3h2.4c.7 0 1.3.6 1.3 1.3V5" strokeLinecap="round" />
-                            <path d="M6 7.2v8.3c0 1 .8 1.8 1.8 1.8h4.4c1 0 1.8-.8 1.8-1.8V7.2" strokeLinecap="round" />
-                          </svg>
                           {deletingUsername === item.username ? "Eliminando..." : "Eliminar chat"}
                         </button>
                       </div>

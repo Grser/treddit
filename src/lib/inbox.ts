@@ -15,6 +15,12 @@ export type InboxEntry = {
   lastSenderId: number;
   createdAt: string;
   unreadCount: number;
+  isArchived?: boolean;
+  isMuted?: boolean;
+  isPinned?: boolean;
+  isFavorite?: boolean;
+  isListed?: boolean;
+  isBlocked?: boolean;
   isStarter?: boolean;
   groupId?: number;
 };
@@ -32,6 +38,12 @@ export async function loadInbox(userId: number): Promise<InboxEntry[]> {
       lastSenderId: entry.lastSenderId,
       createdAt: entry.created_at,
       unreadCount: entry.unreadCount,
+      isArchived: false,
+      isMuted: false,
+      isPinned: false,
+      isFavorite: false,
+      isListed: false,
+      isBlocked: false,
     }));
   }
 
@@ -53,6 +65,12 @@ export async function loadInbox(userId: number): Promise<InboxEntry[]> {
     lastSenderId: row.lastSenderId,
     createdAt: row.createdAt,
     unreadCount: row.unreadCount,
+    isArchived: row.isArchived,
+    isMuted: row.isMuted,
+    isPinned: row.isPinned,
+    isFavorite: row.isFavorite,
+    isListed: row.isListed,
+    isBlocked: row.isBlocked,
   }));
 
   const existing = new Set(conversations.map((entry) => entry.userId));
@@ -70,6 +88,12 @@ export async function loadInbox(userId: number): Promise<InboxEntry[]> {
       lastSenderId: 0,
       createdAt: row.createdAt,
       unreadCount: 0,
+      isArchived: false,
+      isMuted: false,
+      isPinned: false,
+      isFavorite: false,
+      isListed: false,
+      isBlocked: false,
       isStarter: true,
     }));
 
@@ -83,6 +107,12 @@ export async function loadInbox(userId: number): Promise<InboxEntry[]> {
     lastSenderId: group.lastSenderId,
     createdAt: group.createdAt,
     unreadCount: group.unreadCount,
+    isArchived: false,
+    isMuted: false,
+    isPinned: false,
+    isFavorite: false,
+    isListed: false,
+    isBlocked: false,
     groupId: group.id,
   }));
 
