@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
+import { getRequestBaseUrl } from "@/lib/requestBaseUrl";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   await requireAdmin();
@@ -18,14 +19,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   switch (op) {
     case "hide":
+    case "suspend":
       await db.execute("UPDATE Communities SET visible=0 WHERE id=?", [communityId]);
       break;
     case "show":
       await db.execute("UPDATE Communities SET visible=1 WHERE id=?", [communityId]);
       break;
+    case "delete":
+      await db.execute("DELETE FROM Communities WHERE id=?", [communityId]);
+      break;
     default:
       return NextResponse.json({ error: "Operación no soportada" }, { status: 400 });
   }
 
-  return NextResponse.redirect(new URL("/admin/communities", req.url));
+  const baseUrl = await getRequestBaseUrl();
+  return NextResponse.redirect(new URL("/admin/communities", baseUrl));
 }

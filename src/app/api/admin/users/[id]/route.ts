@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { ensureAgeVerificationRequestsTable, ensureUsersAgeColumns } from "@/lib/ageVerification";
+import { getRequestBaseUrl } from "@/lib/requestBaseUrl";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   await requireAdmin();
@@ -11,7 +12,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const id = Number(userId);
   const form = await req.formData();
   const op = String(form.get("op") || "");
-  const baseUrl = new URL("/", req.url);
+  const baseUrl = await getRequestBaseUrl();
   await Promise.all([ensureUsersAgeColumns(), ensureAgeVerificationRequestsTable()]);
 
   switch (op) {

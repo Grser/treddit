@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
 
   const redirectHost = new URL(redirectUri).hostname;
   const requestHost = req.headers.get("host")?.split(":")[0]?.trim().toLowerCase() ?? null;
-  if (redirectHost === "treddit.com" && requestHost && requestHost !== "treddit.com") {
+  if (redirectHost === "treddit.clawn.cat" && requestHost && requestHost !== "treddit.clawn.cat") {
     const fallback = new URL("/auth/login?error=google_oauth_redirect", origin);
     return NextResponse.redirect(fallback);
   }

@@ -136,7 +136,7 @@ export function getBaseUrl(req: Request | NextRequest) {
 
   if (nextOrigin) return nextOrigin;
 
-  return normalizeOrigin(req.url) ?? "https://treddit.com";
+  return normalizeOrigin(req.url) ?? "https://treddit.clawn.cat";
 }
 
 export async function getRedirectUri(baseUrl: string, req?: Request) {
@@ -175,7 +175,11 @@ export async function getRedirectUri(baseUrl: string, req?: Request) {
   }
 
   const requestOrigin = req ? normalizeOrigin(req.url) : null;
-  const safeBase = normalizedBase || requestOrigin || process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+  const safeBase =
+    normalizedBase ||
+    requestOrigin ||
+    process.env.NEXT_PUBLIC_BASE_URL ||
+    "https://treddit.clawn.cat";
   return new URL("/api/auth/google/callback", safeBase).toString();
 }
 

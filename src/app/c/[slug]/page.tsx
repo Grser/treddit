@@ -115,7 +115,7 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
             <div>
               <p className="text-xs uppercase tracking-wide text-foreground/60">Comunidad</p>
               <h1 className="text-3xl font-semibold tracking-tight">{community.name}</h1>
-              <p className="text-sm text-foreground/70">treddit.com/c/{community.slug}</p>
+              <p className="text-sm text-foreground/70">treddit.clawn.cat/c/{community.slug}</p>
               <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-foreground/80">
                 <span className="rounded-full bg-muted px-3 py-1">
                   {community.members.toLocaleString()} miembros

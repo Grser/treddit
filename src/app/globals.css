@@ -5,12 +5,12 @@
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
 
   /* colores de marca/superficies */
-  --color-brand: #A81700 ;             /* NavBar Rojo*/
-  --color-app: hsl(220 10% 6%);       /* fondo app oscuro */
-  --color-surface: hsl(220 10% 8%);   /* navbar / cards */
-  --color-input: hsl(220 10% 18%);    /* input search */
-  --color-border: hsl(220 10% 22%);
-  --color-foreground: hsl(0 0% 98%);
+  --color-brand: #1d9bf0;
+  --color-app: hsl(222 35% 7%);
+  --color-surface: hsl(222 32% 10%);
+  --color-input: hsl(222 24% 16%);
+  --color-border: hsl(222 18% 24%);
+  --color-foreground: hsl(210 40% 98%);
   --radius: 0.75rem;
 }
 
@@ -24,7 +24,7 @@ html:not(.dark) {
   --color-input: #f1f5f9;
   --color-border: #e5e7eb;
   --color-foreground: #0b0f19;
-  --color-brand: #A81700;
+  --color-brand: #1d9bf0;
 }
 
 html:not(.dark)[data-light-palette="official"] {
@@ -33,7 +33,7 @@ html:not(.dark)[data-light-palette="official"] {
   --color-input: #f1f5f9;
   --color-border: #e5e7eb;
   --color-foreground: #0b0f19;
-  --color-brand: #A81700;
+  --color-brand: #1d9bf0;
 }
 
 html:not(.dark)[data-light-palette="purple-night"] {

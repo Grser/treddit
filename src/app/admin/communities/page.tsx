@@ -66,14 +66,16 @@ export default async function AdminCommunitiesPage() {
                     <a href={`/c/${community.slug}`} className="underline">
                       Ver
                     </a>
-                    <form
-                      action={`/api/admin/communities/${community.id}`}
-                      method="post"
-                      className="inline"
-                    >
-                      <input type="hidden" name="op" value={community.visible ? "hide" : "show"} />
+                    <form action={`/api/admin/communities/${community.id}`} method="post" className="inline">
+                      <input type="hidden" name="op" value={community.visible ? "suspend" : "show"} />
                       <button className="underline" type="submit">
-                        {community.visible ? "Ocultar" : "Mostrar"}
+                        {community.visible ? "Suspender" : "Reactivar"}
+                      </button>
+                    </form>
+                    <form action={`/api/admin/communities/${community.id}`} method="post" className="inline">
+                      <input type="hidden" name="op" value="delete" />
+                      <button className="underline text-red-500" type="submit">
+                        Borrar
                       </button>
                     </form>
                   </td>
