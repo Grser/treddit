@@ -75,6 +75,15 @@ const globalForShellGuard = globalThis as typeof globalThis & {
 };
 
 export async function register() {
+  const hasNodeProcessApi =
+    typeof process !== "undefined" &&
+    typeof process.on === "function" &&
+    typeof process.nextTick === "function";
+
+  if (!hasNodeProcessApi) {
+    return;
+  }
+
   if (globalForShellGuard.__tredditShellErrorGuardsRegistered) {
     return;
   }
