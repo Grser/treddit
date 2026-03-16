@@ -314,6 +314,8 @@ type ConversationStarterRow = RowDataPacket & {
   is_verified: number;
 };
 
+const DEFAULT_CONVERSATION_CREATED_AT = new Date(0).toISOString();
+
 export type ConversationSummary = {
   userId: number;
   username: string;
@@ -689,7 +691,6 @@ export async function fetchConversationStarters(
     [userId, userId, searchQuery, searchLike, searchLike, limit],
   );
 
-  const createdAt = new Date(0).toISOString();
   return rows.map((row) => ({
     userId: Number(row.user_id),
     username: String(row.username),
@@ -699,7 +700,7 @@ export async function fetchConversationStarters(
     is_verified: Boolean(row.is_verified),
     lastMessage: "",
     lastSenderId: 0,
-    createdAt,
+    createdAt: DEFAULT_CONVERSATION_CREATED_AT,
     unreadCount: 0,
     isArchived: false,
     isMuted: false,
