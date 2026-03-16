@@ -27,9 +27,10 @@ export default function SidebarRight({
   recommended?: UserRec[];
   canInteract?: boolean;
 }) {
-  const { strings } = useLocale();
+  const { strings, locale } = useLocale();
   const t = strings.sidebarRight;
   const badges = strings.badges;
+  const numberFormatter = useMemo(() => new Intl.NumberFormat(locale), [locale]);
   const [suggestions, setSuggestions] = useState(recommended);
   const originalById = useMemo(() => new Map(recommended.map((user) => [user.id, user])), [recommended]);
 
@@ -67,7 +68,7 @@ export default function SidebarRight({
               >
                 <span className="font-semibold text-brand">{trend.tag}</span>
                 <span className="text-xs opacity-70">
-                  {Intl.NumberFormat().format(trend.views ?? trend.count)} visualizaciones · {trend.count} publicaciones
+                  {numberFormatter.format(trend.views ?? trend.count)} visualizaciones · {numberFormatter.format(trend.count)} publicaciones
                 </span>
               </Link>
             </li>
