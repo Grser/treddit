@@ -62,6 +62,16 @@ export default function PostCard({
   }).format(new Date(post.created_at));
   const previewUrl = post.description ? extractFirstUrl(post.description) : null;
 
+  async function deleteAsAdmin() {
+    if (!confirm("¿Eliminar este post?")) return;
+    const res = await fetch(`/api/posts/${post.id}`, { method: "DELETE" });
+    if (!res.ok) {
+      alert("No se pudo eliminar el post");
+      return;
+    }
+    location.reload();
+  }
+
   return (
     <article className="bg-surface text-foreground rounded-xl border border-border p-4">
       {pinned && (
@@ -149,6 +159,27 @@ export default function PostCard({
           )}
         </div>
       </div>
+
+
+      {post.isAdminViewer && (
+        <div className="mb-2 flex gap-2">
+          <button
+            type="button"
+            onClick={deleteAsAdmin}
+            className="rounded-full border border-red-500/50 bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-400 hover:bg-red-500/20"
+          >
+            Eliminar (admin)
+          </button>
+          {post.community && (
+            <a
+              href="/admin/communities"
+              className="rounded-full border border-border px-3 py-1 text-xs font-semibold hover:bg-muted/60"
+            >
+              Moderar comunidad
+            </a>
+          )}
+        </div>
+      )}
 
       {post.description && showSensitive && (
         <p className="text-sm mb-2 whitespace-pre-wrap break-words">{renderDescription(post.description)}</p>

@@ -179,8 +179,9 @@ export async function GET(req: Request) {
     }
   }
 
+  const isPopularFeed = filter === "popular";
   const shouldPrioritizeFollowed = Boolean(
-    meId && !userId && !likesOf && !wantsCommunityFilter && !usernameFilter && !normalizedTag,
+    meId && !isPopularFeed && !userId && !likesOf && !wantsCommunityFilter && !usernameFilter && !normalizedTag,
   );
 
   if (shouldPrioritizeFollowed) {
@@ -224,6 +225,15 @@ export async function GET(req: Request) {
   const whereClause = whereParts.length ? `WHERE ${whereParts.join(" AND ")}` : "";
   const shouldJoinUsersInIdQuery = Boolean(usernameFilter);
   const idQueryUsersJoin = shouldJoinUsersInIdQuery ? "JOIN Users u ON u.id = p.user" : "";
+  const popularJoin = isPopularFeed
+    ? `LEFT JOIN (SELECT lp.post, COUNT(*) AS likes FROM Like_Posts lp GROUP BY lp.post) popularLikeCount ON popularLikeCount.post = p.id`
+    : "";
+  const idQueryOrderBy = isPopularFeed
+    ? "COALESCE(popularLikeCount.likes, 0) DESC, p.id DESC"
+    : shouldPrioritizeFollowed
+      ? "CASE WHEN ff.follower IS NULL THEN 1 ELSE 0 END, p.id DESC"
+      : "p.id DESC";
+  const idQueryLimit = isPopularFeed ? Math.min(1000, limit + 1) : limit + 1;
   const communityIdSelect = hasCommunityColumn && communityColumn ? `p.${communityColumn}` : "NULL";
   const communityJoin = hasCommunityColumn && communityColumn ? `LEFT JOIN Communities c ON c.id = p.${communityColumn}` : "";
   const communitySlugSelect = hasCommunityColumn ? "c.slug" : "NULL";
@@ -237,11 +247,12 @@ export async function GET(req: Request) {
       FROM Posts p
       ${joins.join(" ")}
       ${idQueryUsersJoin}
+      ${popularJoin}
       ${whereClause}
-      ORDER BY ${shouldPrioritizeFollowed ? "CASE WHEN ff.follower IS NULL THEN 1 ELSE 0 END, p.id DESC" : "p.id DESC"}
+      ORDER BY ${idQueryOrderBy}
       LIMIT ?
       `,
-      [...joinParams, ...whereParams, limit + 1],
+      [...joinParams, ...whereParams, idQueryLimit],
     );
 
     const orderedIds = idRows.map((row) => Number(row.id)).filter((id) => Number.isFinite(id));

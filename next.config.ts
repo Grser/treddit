@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  poweredByHeader: false,
   /**
    * Nodemailer is a Node.js-only package. Keep it external so Next.js does
    * not attempt to bundle it for server targets.

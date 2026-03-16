@@ -44,5 +44,5 @@ export async function getRequestBaseUrl() {
     return `${protocol}://${host}`;
   }
 
-  return "https://treddit.com";
+  return "https://treddit.clawn.cat";
 }

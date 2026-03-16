@@ -45,7 +45,7 @@ export default function ManageCommunitiesList({ communities }: { communities: Co
             <li key={community.id} className="flex flex-col gap-2 rounded-lg border border-border/60 p-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="font-semibold">{community.name}</p>
-                <p className="text-xs opacity-70">treddit.com/c/{community.slug}</p>
+                <p className="text-xs opacity-70">treddit.clawn.cat/c/{community.slug}</p>
                 {label && <span className="mt-1 inline-block rounded-full bg-muted px-2 py-0.5 text-xs text-foreground/80">{label}</span>}
               </div>
               <Link
