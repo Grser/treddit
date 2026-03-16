@@ -1,14 +1,18 @@
 import "./globals.css";
+import { headers } from "next/headers";
 
 import { LocaleProvider } from "@/contexts/LocaleContext";
 
 export const metadata = { title: "Treddit" };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
         <script
+          nonce={nonce}
           dangerouslySetInnerHTML={{
             __html: `(() => {
               try {
