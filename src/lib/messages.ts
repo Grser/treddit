@@ -701,6 +701,12 @@ export async function fetchConversationStarters(
     lastSenderId: 0,
     createdAt,
     unreadCount: 0,
+    isArchived: false,
+    isMuted: false,
+    isPinned: false,
+    isFavorite: false,
+    isListed: true,
+    isBlocked: false,
   }));
 }
 
