@@ -33,7 +33,7 @@ function getForwardedFromForwardedHeader(req: Request) {
       else if (key === "host") host = value;
     }
     if (host) {
-      const candidate = buildOrigin(host, proto, req);
+      const candidate = buildOrigin(host, proto);
       if (candidate) return candidate;
     }
   }
@@ -82,13 +82,9 @@ function isLocalHost(host: string | null) {
   return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
 }
 
-function buildOrigin(host: string, proto: string | null | undefined, req: Request) {
+function buildOrigin(host: string, proto: string | null | undefined) {
   if (!host) return null;
-  const forwardedPort = req.headers.get("x-forwarded-port")?.split(",")[0]?.trim();
-  let authority = host;
-  if (forwardedPort && !authority.includes(":")) {
-    authority = `${authority}:${forwardedPort}`;
-  }
+  const authority = host;
 
   const protocol = proto ?? (isLocalHost(host) ? "http" : "https");
   try {
@@ -121,7 +117,7 @@ export function getBaseUrl(req: Request | NextRequest) {
 
   const forwardedHost = getForwardedHost(req);
   const forwardedProto = getForwardedProto(req);
-  const forwardedOrigin = buildOrigin(forwardedHost ?? "", forwardedProto, req);
+  const forwardedOrigin = buildOrigin(forwardedHost ?? "", forwardedProto);
   if (forwardedOrigin && (!normalizedConfigured || isLocalOrigin(normalizedConfigured))) {
     return forwardedOrigin;
   }
@@ -135,7 +131,7 @@ export function getBaseUrl(req: Request | NextRequest) {
   if (refererOrigin) return refererOrigin;
 
   const hostHeader = req.headers.get("host")?.trim();
-  const hostOrigin = buildOrigin(hostHeader ?? "", forwardedProto, req);
+  const hostOrigin = buildOrigin(hostHeader ?? "", forwardedProto);
   if (hostOrigin) return hostOrigin;
 
   if (nextOrigin) return nextOrigin;
