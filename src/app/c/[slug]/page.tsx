@@ -1,6 +1,8 @@
 import type { RowDataPacket } from "mysql2";
 
+import CommunityChat from "@/components/community/CommunityChat";
 import JoinCommunityButton from "@/components/community/JoinCommunityButton";
+import PromoteSelfCommunityButton from "@/components/community/PromoteSelfCommunityButton";
 import Navbar from "@/components/Navbar";
 import Feed from "@/components/Feed";
 import { getSessionUser } from "@/lib/auth";
@@ -105,6 +107,7 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
   const { initialPosts, moderators, ...community } = data;
   const canInteract = Boolean(me);
   const isAuthorized = community.visible || community.isMember || me?.is_admin;
+  const isCommunityManager = Boolean(community.myRole) && community.myRole !== "member";
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
@@ -131,11 +134,19 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
               </div>
             </div>
             {isAuthorized ? (
-              <JoinCommunityButton
-                communityId={community.id}
-                initiallyMember={community.isMember}
-                canInteract={canInteract}
-              />
+              <div className="flex flex-col items-end gap-2">
+                <JoinCommunityButton
+                  communityId={community.id}
+                  initiallyMember={community.isMember}
+                  canInteract={canInteract}
+                />
+                {me?.is_admin && (
+                  <PromoteSelfCommunityButton
+                    communityId={community.id}
+                    alreadyManager={isCommunityManager}
+                  />
+                )}
+              </div>
             ) : (
               <div className="rounded-full border border-border px-5 py-2 text-sm text-foreground/80">
                 Comunidad privada
@@ -169,6 +180,12 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
             </div>
 
             <aside className="space-y-4">
+              <CommunityChat
+                communityId={community.id}
+                canInteract={canInteract}
+                canWrite={community.isMember || Boolean(me?.is_admin)}
+              />
+
               <section className="rounded-2xl border border-border bg-surface p-5">
                 <h2 className="text-lg font-semibold">Moderación</h2>
                 {moderators.length > 0 ? (
