@@ -13,9 +13,9 @@ const nextConfig: NextConfigWithProxyBodySize = {
      * Keep request size limits aligned with `/api/upload` validations so
      * oversized payloads fail early with predictable 413 responses.
      */
-    proxyClientMaxBodySize: 4 * 1024 * 1024,
+    proxyClientMaxBodySize: 1024 * 1024 * 1024,
     serverActions: {
-      bodySizeLimit: "4mb",
+      bodySizeLimit: "1024mb",
     },
   },
   /**
