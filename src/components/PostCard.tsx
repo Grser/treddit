@@ -53,7 +53,7 @@ export default function PostCard({
   const displayName = post.nickname?.trim() || post.username;
   const pinnedLabel = strings.profilePage?.pinnedBadge || strings.postCard.pinned;
   const community = post.community;
-  const canViewSensitive = Boolean(post.can_view_sensitive);
+  const [canViewSensitive, setCanViewSensitive] = useState(Boolean(post.can_view_sensitive));
   const mediaUrl = normalizeMediaUrl(post.mediaUrl || null);
   const hasSensitiveImage = Boolean(post.is_sensitive && mediaUrl && !isVideoUrl(mediaUrl));
   const [showSensitive, setShowSensitive] = useState(!hasSensitiveImage);
@@ -70,6 +70,30 @@ export default function PostCard({
   useEffect(() => () => {
     if (previewTimerRef.current) window.clearTimeout(previewTimerRef.current);
   }, []);
+
+  useEffect(() => {
+    setCanViewSensitive(Boolean(post.can_view_sensitive));
+  }, [post.can_view_sensitive, post.id]);
+
+  useEffect(() => {
+    if (!hasSensitiveImage || canViewSensitive) return;
+    let active = true;
+
+    fetch("/api/age-verification/status", { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) return null;
+        return (await response.json()) as { is_age_verified?: boolean };
+      })
+      .then((payload) => {
+        if (!active || !payload?.is_age_verified) return;
+        setCanViewSensitive(true);
+      })
+      .catch(() => {});
+
+    return () => {
+      active = false;
+    };
+  }, [canViewSensitive, hasSensitiveImage]);
 
   function handlePreviewEnter() {
     if (previewTimerRef.current) window.clearTimeout(previewTimerRef.current);
