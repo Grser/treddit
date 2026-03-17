@@ -236,7 +236,7 @@ export default function PostCard({
                 Ver archivo original
               </a>
             </div>
-          ) : isAnimatedImage(mediaUrl) ? (
+          ) : isAnimatedImage(mediaUrl) || isLocalUploadedMedia(mediaUrl) ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={mediaUrl} alt="" className={`block h-auto w-full object-cover ${shouldBlurSensitiveImage ? "blur-2xl" : ""}`} loading="lazy" />
           ) : (
@@ -329,6 +329,10 @@ function normalizeMediaUrl(url: string | null) {
 function isVideoUrl(url: string) {
   const normalized = url.toLowerCase().split("?")[0];
   return [".mp4", ".webm", ".ogg", ".mov", ".m4v"].some((ext) => normalized.endsWith(ext));
+}
+
+function isLocalUploadedMedia(url: string) {
+  return url.startsWith("/uploads/") || url.startsWith("/api/upload/");
 }
 
 function extractFirstUrl(text: string) {

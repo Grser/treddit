@@ -6,6 +6,7 @@ type UsersAgeColumns = {
   birthDate: boolean;
   ageVerified: boolean;
   countryOfOrigin: boolean;
+  legacyAgeVerified: boolean;
 };
 
 let cachedUsersColumns: UsersAgeColumns | undefined;
@@ -26,7 +27,7 @@ function isDuplicateSchemaError(error: unknown) {
 
 export async function ensureUsersAgeColumns() {
   if (!isDatabaseConfigured()) {
-    cachedUsersColumns = { birthDate: true, ageVerified: true, countryOfOrigin: true };
+    cachedUsersColumns = { birthDate: true, ageVerified: true, countryOfOrigin: true, legacyAgeVerified: false };
     return cachedUsersColumns;
   }
 
@@ -76,7 +77,9 @@ export async function ensureUsersAgeColumns() {
     }
   }
 
-  cachedUsersColumns = { birthDate, ageVerified, countryOfOrigin };
+  const legacyAgeVerified = await hasUsersColumn("age_verified").catch(() => false);
+
+  cachedUsersColumns = { birthDate, ageVerified, countryOfOrigin, legacyAgeVerified };
   return cachedUsersColumns;
 }
 
@@ -128,7 +131,10 @@ export async function isUserAgeVerified(userId: number): Promise<boolean> {
   if (!userId || !Number.isFinite(userId)) {
     return false;
   }
-  await ensureUsersAgeColumns();
-  const [rows] = await db.query<RowDataPacket[]>("SELECT is_age_verified FROM Users WHERE id=? LIMIT 1", [userId]);
-  return Boolean(rows[0]?.is_age_verified);
+  const columns = await ensureUsersAgeColumns();
+  const ageVerifiedSelect = columns.legacyAgeVerified
+    ? "COALESCE(is_age_verified, age_verified, 0) AS age_verified"
+    : "COALESCE(is_age_verified, 0) AS age_verified";
+  const [rows] = await db.query<RowDataPacket[]>(`SELECT ${ageVerifiedSelect} FROM Users WHERE id=? LIMIT 1`, [userId]);
+  return Boolean(rows[0]?.age_verified);
 }
