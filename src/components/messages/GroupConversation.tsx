@@ -12,6 +12,7 @@ type GroupMember = {
   nickname: string | null;
   avatar_url: string | null;
   role: "owner" | "admin" | "member";
+  can_send_messages?: boolean;
 };
 
 type SearchUser = {
@@ -89,6 +90,7 @@ export default function GroupConversation({
     members: GroupMember[];
     canManage: boolean;
     myRole: "owner" | "admin" | "member";
+    speakerRequests?: SearchUser[];
   };
 }) {
   const [messages, setMessages] = useState(initialMessages);
@@ -103,6 +105,7 @@ export default function GroupConversation({
   const [members, setMembers] = useState<GroupMember[]>(initialGroup.members || []);
   const [canManage, setCanManage] = useState(Boolean(initialGroup.canManage));
   const [myRole, setMyRole] = useState(initialGroup.myRole);
+  const [speakerRequests, setSpeakerRequests] = useState<SearchUser[]>(initialGroup.speakerRequests || []);
   const [userQuery, setUserQuery] = useState("");
   const [userResults, setUserResults] = useState<SearchUser[]>([]);
   const [savingChanges, setSavingChanges] = useState(false);
@@ -114,6 +117,9 @@ export default function GroupConversation({
   const [revealedSensitivePosts, setRevealedSensitivePosts] = useState<Record<number, boolean>>({});
   const [messageMenuId, setMessageMenuId] = useState<number | null>(null);
   const groupAvatar = avatarUrl || "/demo-reddit.png";
+
+  const myMember = members.find((member) => member.id === viewerId);
+  const canSendMessages = Boolean(myMember?.can_send_messages ?? true);
 
   useEffect(() => {
     const id = setInterval(async () => {
@@ -420,6 +426,7 @@ export default function GroupConversation({
 
           <div className="mt-3 space-y-2">
             {members.map((member) => (
+                
               <div key={member.id} className="flex items-center gap-2 rounded-xl border border-border/70 px-2 py-1.5 text-xs">
                 <Image
                   src={member.avatar_url || "/demo-reddit.png"}
@@ -433,6 +440,27 @@ export default function GroupConversation({
                   {member.nickname || member.username} <span className="opacity-65">@{member.username}</span>
                 </Link>
                 <span className="rounded-full border border-brand/30 bg-brand/10 px-2 py-0.5">{roleLabel(member.role)}</span>
+                {canManage && member.id !== viewerId && member.role !== "owner" && (
+                  <button
+                    type="button"
+                    className="rounded-full border border-border px-2 py-0.5"
+                    onClick={async () => {
+                      const key = member.can_send_messages ? "blockSendMemberIds" : "allowSendMemberIds";
+                      const res = await fetch(`/api/messages/groups/${groupId}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ [key]: [member.id] }),
+                      });
+                      const payload = await res.json().catch(() => ({}));
+                      if (res.ok && payload.group?.members) {
+                        setMembers(payload.group.members as GroupMember[]);
+                        setSpeakerRequests((payload.group.speakerRequests as SearchUser[]) || []);
+                      }
+                    }}
+                  >
+                    {member.can_send_messages ? "Silenciar" : "Permitir hablar"}
+                  </button>
+                )}
                 {canManage && member.id !== viewerId && member.role !== "owner" && (
                   <>
                     <button
@@ -539,6 +567,39 @@ export default function GroupConversation({
               {leavingGroup ? "Saliendo…" : "Salir del grupo"}
             </button>
           </div>
+          {canManage && speakerRequests.length > 0 && (
+            <div className="mt-3 rounded-xl border border-border bg-input/40 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide opacity-70">Solicitudes para hablar</p>
+              <div className="mt-2 space-y-2">
+                {speakerRequests.map((request) => (
+                  <div key={request.id} className="flex items-center justify-between gap-2 text-xs">
+                    <span>{request.nickname || request.username} (@{request.username})</span>
+                    <button
+                      type="button"
+                      className="rounded-full border border-border px-3 py-1"
+                      onClick={async () => {
+                        setSettingsError(null);
+                        const res = await fetch(`/api/messages/groups/${groupId}`, {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ approveSpeakerRequestUserIds: [request.id] }),
+                        });
+                        const payload = await res.json().catch(() => ({}));
+                        if (!res.ok || !payload.group) {
+                          setSettingsError(typeof payload.error === "string" ? payload.error : "No se pudo aprobar la solicitud");
+                          return;
+                        }
+                        setMembers(payload.group.members || []);
+                        setSpeakerRequests(payload.group.speakerRequests || []);
+                      }}
+                    >
+                      Aprobar
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {settingsError && <p className="mt-2 text-xs text-rose-400">{settingsError}</p>}
         </div>
       )}
@@ -678,12 +739,31 @@ export default function GroupConversation({
           );
         })}
       </ul>
+      {!canSendMessages && (
+        <div className="rounded-xl border border-amber-400/40 bg-amber-400/10 p-3 text-xs">
+          No tienes permiso para hablar en este grupo.
+          <button
+            type="button"
+            className="ml-2 underline"
+            onClick={async () => {
+              const res = await fetch(`/api/messages/groups/${groupId}/messages`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ requestSpeak: true }),
+              });
+              setSendError(res.ok ? "Solicitud enviada al administrador." : "No se pudo enviar la solicitud.");
+            }}
+          >
+            Solicitar permiso
+          </button>
+        </div>
+      )}
       <form
         className="flex gap-2 rounded-2xl border border-border bg-input p-2"
         onSubmit={async (event) => {
           event.preventDefault();
           const trimmed = text.trim();
-          if (!trimmed || sendingRef.current) return;
+          if (!trimmed || sendingRef.current || !canSendMessages) return;
           sendingRef.current = true;
           setSendError(null);
           try {
@@ -708,9 +788,10 @@ export default function GroupConversation({
           value={text}
           onChange={(event) => setText(event.target.value)}
           className="flex-1 rounded-full bg-background/70 px-4 py-2 text-sm outline-none"
-          placeholder="Escribe un mensaje"
+          placeholder={canSendMessages ? "Escribe un mensaje" : "Solo lectura"}
+          disabled={!canSendMessages || sendingRef.current}
         />
-        <button type="submit" className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white">
+        <button type="submit" disabled={!canSendMessages || sendingRef.current || !text.trim()} className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
           Enviar
         </button>
       </form>

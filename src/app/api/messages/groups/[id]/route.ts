@@ -35,6 +35,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     removeMemberIds?: unknown;
     promoteMemberIds?: unknown;
     demoteMemberIds?: unknown;
+    allowSendMemberIds?: unknown;
+    blockSendMemberIds?: unknown;
+    approveSpeakerRequestUserIds?: unknown;
   } | null;
 
   const addMemberIds = Array.isArray(payload?.addMemberIds)
@@ -48,6 +51,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     : [];
   const demoteMemberIds = Array.isArray(payload?.demoteMemberIds)
     ? payload.demoteMemberIds.filter((value): value is number => typeof value === "number")
+    : [];
+
+  const allowSendMemberIds = Array.isArray(payload?.allowSendMemberIds)
+    ? payload.allowSendMemberIds.filter((value): value is number => typeof value === "number")
+    : [];
+  const blockSendMemberIds = Array.isArray(payload?.blockSendMemberIds)
+    ? payload.blockSendMemberIds.filter((value): value is number => typeof value === "number")
+    : [];
+  const approveSpeakerRequestUserIds = Array.isArray(payload?.approveSpeakerRequestUserIds)
+    ? payload.approveSpeakerRequestUserIds.filter((value): value is number => typeof value === "number")
     : [];
 
   if (addMemberIds.length > 0) {
@@ -68,6 +81,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       removeMemberIds,
       promoteMemberIds,
       demoteMemberIds,
+      allowSendMemberIds,
+      blockSendMemberIds,
+      approveSpeakerRequestUserIds,
     });
 
     if (!group) {

@@ -16,8 +16,8 @@ export async function POST(req: Request) {
   if (!file) return NextResponse.json({ error: "archivo requerido" }, { status: 400 });
 
   // validación mínima
-  if (file.size > 10 * 1024 * 1024) {
-    return NextResponse.json({ error: "archivo demasiado grande (10MB máximo)" }, { status: 413 });
+  if (file.size > 1024 * 1024 * 1024) {
+    return NextResponse.json({ error: "archivo demasiado grande (1GB máximo)" }, { status: 413 });
   }
 
   const arrayBuffer = await file.arrayBuffer();
