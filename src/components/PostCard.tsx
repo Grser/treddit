@@ -264,7 +264,7 @@ export default function PostCard({
                       onClick={() => setShowSensitive(true)}
                       className="rounded-full bg-black/85 px-4 py-1 text-xs font-semibold text-white transition hover:bg-black"
                     >
-                      Mostrar
+                      Revelar imagen
                     </button>
                   </div>
                 ) : (
