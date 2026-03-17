@@ -10,6 +10,7 @@ import { ensurePostsCommunityColumn, getPostsCommunityColumn } from "@/lib/commu
 import { ensurePostsSensitiveColumn, getPostsSensitiveColumn } from "@/lib/postSensitivity";
 import { isUserAgeVerified } from "@/lib/ageVerification";
 import { estimatePostViews } from "@/lib/postStats";
+import { isImageMediaUrl } from "@/lib/sensitiveMedia";
 
 type PostRow = {
   id: number;
@@ -430,7 +431,7 @@ export async function POST(req: Request) {
   const pollPayload = body["poll"];
   const communityValue = body["communityId"];
   const sensitiveValue = body["isSensitive"];
-  const isSensitive = sensitiveValue === true || sensitiveValue === 1 || sensitiveValue === "1";
+  const isSensitiveRequested = sensitiveValue === true || sensitiveValue === 1 || sensitiveValue === "1";
   const communityIdRaw = typeof communityValue === "number" ? communityValue : Number(communityValue);
   const normalizedCommunityId = Number.isFinite(communityIdRaw) && communityIdRaw > 0 ? communityIdRaw : null;
 
@@ -518,7 +519,7 @@ export async function POST(req: Request) {
       mediaUrl: mediaUrl || null,
       poll: null,
       communityId: normalizedCommunityId,
-      isSensitive,
+      isSensitive: Boolean(mediaUrl && isImageMediaUrl(mediaUrl) && isSensitiveRequested),
     });
     return NextResponse.json({ ok: true, id }, { status: 201 });
   }
@@ -540,7 +541,7 @@ export async function POST(req: Request) {
     if (sensitiveColumn) {
       columns.push(sensitiveColumn);
       placeholders.push("?");
-      params.push(isSensitive ? 1 : 0);
+      params.push(mediaUrl && isImageMediaUrl(mediaUrl) && isSensitiveRequested ? 1 : 0);
     }
 
     const insertSql = `INSERT INTO Posts (${columns.join(", ")}) VALUES (${placeholders.join(", ")})`;

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { useLocale } from "@/contexts/LocaleContext";
 import { formatUploadLimit, validateUploadSize } from "@/lib/upload";
+import { isImageMediaUrl } from "@/lib/sensitiveMedia";
 
 type Tab = "post" | "media" | "poll";
 
@@ -22,6 +23,7 @@ export default function Composer({ enabled }: { enabled: boolean }) {
   const [text, setText] = useState("");
   const [mediaUrl, setMediaUrl] = useState("");
   const [isSensitive, setIsSensitive] = useState(false);
+  const [sensitiveSuggested, setSensitiveSuggested] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const fileRef = useRef<HTMLInputElement | null>(null);
@@ -34,6 +36,7 @@ export default function Composer({ enabled }: { enabled: boolean }) {
   const [mentionQuery, setMentionQuery] = useState("");
   const [mentionResults, setMentionResults] = useState<MentionUser[]>([]);
   const [mentionsLoading, setMentionsLoading] = useState(false);
+  const canMarkSensitive = Boolean(mediaUrl && isImageMediaUrl(mediaUrl));
 
   const [question, setQuestion] = useState("");
   const [options, setOptions] = useState<string[]>(["", ""]);
@@ -162,6 +165,15 @@ export default function Composer({ enabled }: { enabled: boolean }) {
       if (payload.url) {
         setMediaUrl(payload.url);
         setTab("media");
+        const isImage = isImageMediaUrl(payload.url);
+        const suggested = Boolean(payload.sensitive?.suggestedSensitive);
+        if (isImage && suggested) {
+          setIsSensitive(true);
+          setSensitiveSuggested(true);
+        } else {
+          setSensitiveSuggested(false);
+          if (!isImage) setIsSensitive(false);
+        }
         clearError();
       } else {
         setErrorKey("uploadFailed");
@@ -207,7 +219,7 @@ export default function Composer({ enabled }: { enabled: boolean }) {
       mediaUrl: null,
       poll: null,
       communityId: communityId > 0 ? communityId : null,
-      isSensitive,
+      isSensitive: Boolean(mediaUrl && isImageMediaUrl(mediaUrl) && isSensitive),
     };
 
     if (tab === "media") {
@@ -253,6 +265,7 @@ export default function Composer({ enabled }: { enabled: boolean }) {
         setDays(1);
         setTab("post");
         setIsSensitive(false);
+        setSensitiveSuggested(false);
         clearError();
         router.refresh();
       } else {
@@ -403,11 +416,20 @@ export default function Composer({ enabled }: { enabled: boolean }) {
       )}
 
       <div className="mt-3 text-sm">
-        <label className="mb-1 block font-medium">Contenido sensible</label>
+        <label className="mb-1 block font-medium">Contenido sensible (solo imagen)</label>
         <label className="inline-flex items-center gap-2 text-xs opacity-80">
-          <input type="checkbox" checked={isSensitive} onChange={(e) => setIsSensitive(e.target.checked)} />
-          Contenido sensible
+          <input
+            type="checkbox"
+            checked={isSensitive}
+            disabled={!canMarkSensitive}
+            onChange={(e) => setIsSensitive(e.target.checked)}
+          />
+          Marcar imagen como sensible
         </label>
+        {!canMarkSensitive && <p className="mt-1 text-xs opacity-60">Disponible solo cuando adjuntas una imagen.</p>}
+        {sensitiveSuggested && canMarkSensitive && (
+          <p className="mt-1 text-xs text-amber-400">Detección automática: se sugirió marcar esta imagen como sensible.</p>
+        )}
       </div>
 
       <div className="mt-3 text-sm">
@@ -460,7 +482,7 @@ export default function Composer({ enabled }: { enabled: boolean }) {
   );
 }
 
-function uploadWithProgress(formData: FormData, onProgress: (progress: number) => void): Promise<{ url?: string }> {
+function uploadWithProgress(formData: FormData, onProgress: (progress: number) => void): Promise<{ url?: string; sensitive?: { suggestedSensitive?: boolean } }> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", "/api/upload");

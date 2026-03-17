@@ -54,7 +54,10 @@ export default function PostCard({
   const pinnedLabel = strings.profilePage?.pinnedBadge || strings.postCard.pinned;
   const community = post.community;
   const canViewSensitive = Boolean(post.can_view_sensitive);
-  const [showSensitive, setShowSensitive] = useState(!post.is_sensitive);
+  const mediaUrl = normalizeMediaUrl(post.mediaUrl || null);
+  const hasSensitiveImage = Boolean(post.is_sensitive && mediaUrl && !isVideoUrl(mediaUrl));
+  const [showSensitive, setShowSensitive] = useState(!hasSensitiveImage);
+  const shouldBlurSensitiveImage = hasSensitiveImage && !showSensitive;
   const [showLinkPreview, setShowLinkPreview] = useState(false);
   const previewTimerRef = useRef<number | null>(null);
   const createdAtLabel = new Intl.DateTimeFormat(locale, {
@@ -63,7 +66,6 @@ export default function PostCard({
     timeZone: "UTC",
   }).format(new Date(post.created_at));
   const previewUrl = post.description ? extractFirstUrl(post.description) : null;
-  const mediaUrl = normalizeMediaUrl(post.mediaUrl || null);
 
   useEffect(() => () => {
     if (previewTimerRef.current) window.clearTimeout(previewTimerRef.current);
@@ -198,11 +200,11 @@ export default function PostCard({
         </div>
       )}
 
-      {post.description && showSensitive && (
+      {post.description && (
         <p className="text-sm mb-2 whitespace-pre-wrap break-words">{renderDescription(post.description)}</p>
       )}
 
-      {previewUrl && showSensitive && (
+      {previewUrl && (
         <div onMouseEnter={handlePreviewEnter} onMouseLeave={handlePreviewLeave}>
           {showLinkPreview && (
         <a
@@ -219,29 +221,28 @@ export default function PostCard({
         </div>
       )}
 
-      {post.is_sensitive && !showSensitive && canViewSensitive && (
-        <button
-          type="button"
-          onClick={() => setShowSensitive(true)}
-          className="mb-2 w-full rounded-lg border border-border bg-muted/40 px-4 py-6 text-left"
-        >
+      {hasSensitiveImage && !showSensitive && (
+        <div className="mb-2 w-full rounded-lg border border-border bg-muted/40 px-4 py-3 text-left">
           <p className="text-sm font-semibold">Contenido sensible</p>
-          <p className="mt-1 text-xs opacity-70">Este post puede incluir material delicado. Presiona para mostrarlo.</p>
-        </button>
+          <p className="mt-1 text-xs opacity-70">
+            Esta imagen está difuminada por contener posible gore, desnudos o material explícito.
+          </p>
+          {canViewSensitive ? (
+            <button
+              type="button"
+              onClick={() => setShowSensitive(true)}
+              className="mt-3 rounded-md border border-border bg-surface px-3 py-1 text-xs font-semibold hover:bg-muted/60"
+            >
+              Ver imagen
+            </button>
+          ) : (
+            <p className="mt-2 text-xs text-amber-400">Debes verificar tu edad para revelar la imagen.</p>
+          )}
+        </div>
       )}
 
-      {post.is_sensitive && !showSensitive && !canViewSensitive && (
-        <button
-          type="button"
-          onClick={() => setShowSensitive(true)}
-          className="mb-2 w-full rounded-lg border border-border bg-muted/40 px-4 py-6 text-left"
-        >
-          <p className="text-sm font-semibold">Contenido sensible</p>
-          <p className="mt-1 text-xs opacity-70">Este post puede incluir material delicado. Presiona para mostrarlo.</p>
-        </button>
-      )}
+      {mediaUrl && (
 
-      {mediaUrl && showSensitive && (
         <div className="mb-2 overflow-hidden rounded-lg ring-1 ring-border">
           {isVideoUrl(mediaUrl) ? (
             <div className="space-y-2 bg-black/30 p-2">
@@ -257,7 +258,7 @@ export default function PostCard({
             </div>
           ) : isAnimatedImage(mediaUrl) ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={mediaUrl} alt="" className="h-auto w-full object-cover" loading="lazy" />
+            <img src={mediaUrl} alt="" className={`h-auto w-full object-cover ${shouldBlurSensitiveImage ? "blur-2xl" : ""}`} loading="lazy" />
           ) : (
             <Image
               src={mediaUrl}
@@ -265,7 +266,7 @@ export default function PostCard({
               width={1200}
               height={675}
               sizes="(min-width: 768px) 600px, 100vw"
-              className="h-auto w-full object-cover"
+              className={`h-auto w-full object-cover ${shouldBlurSensitiveImage ? "blur-2xl" : ""}`}
             />
           )}
         </div>
