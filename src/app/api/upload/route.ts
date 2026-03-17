@@ -9,28 +9,34 @@ import path from "path";
 function buildPublicUploadUrl(req: Request, filename: string) {
   const fallbackBase = "https://treddit.clawn.cat";
 
+  const requestProtocol = (() => {
+    try {
+      const protocol = new URL(req.url).protocol.replace(":", "");
+      return protocol || null;
+    } catch {
+      return null;
+    }
+  })();
+
   const forwardedHost = req.headers.get("x-forwarded-host")?.trim();
   if (forwardedHost) {
     const host = forwardedHost.split(",")[0]?.trim();
     if (host) {
       const forwardedProto = req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
-      const proto = forwardedProto || (host.includes("localhost") ? "http" : "https");
+      const proto = forwardedProto || requestProtocol || (host.includes("localhost") ? "http" : "https");
       return `${proto}://${host}/uploads/${filename}`;
     }
   }
 
   const host = req.headers.get("host")?.trim();
   if (host) {
-    const proto = host.includes("localhost") ? "http" : "https";
+    const proto = requestProtocol || (host.includes("localhost") ? "http" : "https");
     return `${proto}://${host}/uploads/${filename}`;
   }
 
-  try {
-    const origin = new URL(req.url).origin;
-    return `${origin}/uploads/${filename}`;
-  } catch {
-    return `${fallbackBase}/uploads/${filename}`;
-  }
+  if (requestProtocol) return `${requestProtocol}://treddit.clawn.cat/uploads/${filename}`;
+
+  return `${fallbackBase}/uploads/${filename}`;
 }
 
 function splitFilenameParts(filename: string) {
