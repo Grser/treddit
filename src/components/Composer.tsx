@@ -4,6 +4,7 @@ import { useState, useRef, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 import { useLocale } from "@/contexts/LocaleContext";
+import { validateUploadSize } from "@/lib/upload";
 
 type Tab = "post" | "media" | "poll";
 
@@ -154,6 +155,7 @@ export default function Composer({ enabled }: { enabled: boolean }) {
     clearError();
     setUploading(true);
     try {
+      validateUploadSize(file);
       const formData = new FormData();
       formData.append("file", file);
       const payload = await uploadWithProgress(formData, (progress) => setUploadProgress(progress));

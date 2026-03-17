@@ -4,6 +4,7 @@ import Image from "next/image";
 import { ChangeEvent, useState } from "react";
 
 import { useLocale } from "@/contexts/LocaleContext";
+import { validateUploadSize } from "@/lib/upload";
 
 type Props = {
   name: string;
@@ -66,6 +67,14 @@ export default function ImagePickerField({
         setFileKey((k) => k + 1);
         return;
       }
+    }
+
+    try {
+      validateUploadSize(file);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t.uploadFailed);
+      setFileKey((k) => k + 1);
+      return;
     }
 
     const form = new FormData();

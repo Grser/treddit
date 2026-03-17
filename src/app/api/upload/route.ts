@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
+import { MAX_UPLOAD_BYTES, getUploadSizeErrorMessage } from "@/lib/upload";
 import fs from "fs";
 import path from "path";
 
@@ -46,8 +47,8 @@ export async function POST(req: Request) {
   if (!file) return NextResponse.json({ error: "archivo requerido" }, { status: 400 });
 
   // validación mínima
-  if (file.size > 1024 * 1024 * 1024) {
-    return NextResponse.json({ error: "archivo demasiado grande (1GB máximo)" }, { status: 413 });
+  if (file.size > MAX_UPLOAD_BYTES) {
+    return NextResponse.json({ error: getUploadSizeErrorMessage() }, { status: 413 });
   }
 
   const arrayBuffer = await file.arrayBuffer();
