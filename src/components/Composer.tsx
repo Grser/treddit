@@ -4,7 +4,7 @@ import { useState, useRef, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 import { useLocale } from "@/contexts/LocaleContext";
-import { validateUploadSize } from "@/lib/upload";
+import { formatUploadLimit, validateUploadSize } from "@/lib/upload";
 
 type Tab = "post" | "media" | "poll";
 
@@ -325,6 +325,7 @@ export default function Composer({ enabled }: { enabled: boolean }) {
               className="block w-full text-sm"
             />
           </div>
+          <p className="text-xs opacity-70">Tamaño máximo para fotos y videos: {formatUploadLimit()}.</p>
           {uploading && (
             <div className="rounded-lg border border-border bg-input/60 p-2">
               <p className="text-xs opacity-80">Subiendo archivo: {uploadProgress}%</p>

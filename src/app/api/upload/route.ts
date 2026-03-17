@@ -23,14 +23,17 @@ function buildPublicUploadUrl(req: Request, filename: string) {
     const host = forwardedHost.split(",")[0]?.trim();
     if (host) {
       const forwardedProto = req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
-      const proto = forwardedProto || requestProtocol || (host.includes("localhost") ? "http" : "https");
+      const hasLocalHost = host.includes("localhost") || host.startsWith("127.");
+      const fallbackProto = hasLocalHost ? "http" : "https";
+      const proto = forwardedProto || (requestProtocol === "https" ? "https" : fallbackProto);
       return `${proto}://${host}/uploads/${filename}`;
     }
   }
 
   const host = req.headers.get("host")?.trim();
   if (host) {
-    const proto = requestProtocol || (host.includes("localhost") ? "http" : "https");
+    const hasLocalHost = host.includes("localhost") || host.startsWith("127.");
+    const proto = requestProtocol === "https" ? "https" : hasLocalHost ? "http" : "https";
     return `${proto}://${host}/uploads/${filename}`;
   }
 
