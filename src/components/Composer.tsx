@@ -328,23 +328,6 @@ export default function Composer({ enabled }: { enabled: boolean }) {
 
       {tab === "media" && (
         <div className="mt-3 space-y-2">
-          <input
-            type="url"
-            inputMode="url"
-            placeholder={t.mediaPlaceholder}
-            value={mediaUrl}
-            onChange={(e) => {
-              clearError();
-              const nextUrl = e.target.value;
-              setMediaUrl(nextUrl);
-              if (!nextUrl || !isImageMediaUrl(nextUrl)) {
-                setIsSensitive(false);
-              }
-              setSensitiveSuggested(false);
-            }}
-            disabled={!enabled || uploading}
-            className="w-full h-10 rounded-md bg-input px-3 text-sm outline-none ring-1 ring-border focus:ring-2"
-          />
           <div className="flex items-center gap-2">
             <input
               ref={fileRef}
@@ -365,9 +348,7 @@ export default function Composer({ enabled }: { enabled: boolean }) {
             </div>
           )}
           {mediaUrl && (
-            <p className="text-xs opacity-70">
-              {t.attachLabel}: {mediaUrl}
-            </p>
+            <p className="text-xs opacity-70">{t.attachLabel}: {mediaUrl.split("/").pop() || "archivo"}</p>
           )}
         </div>
       )}
