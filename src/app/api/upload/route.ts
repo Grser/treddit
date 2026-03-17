@@ -7,47 +7,7 @@ import { analyzeSensitiveMediaInput } from "@/lib/sensitiveMedia";
 import fs from "fs";
 import path from "path";
 
-function buildPublicUploadUrl(req: Request, filename: string) {
-  const requestUrl = (() => {
-    try {
-      return new URL(req.url);
-    } catch {
-      return null;
-    }
-  })();
-
-  const requestPathBase = requestUrl ? `${requestUrl.origin}` : "";
-
-  const requestProtocol = (() => {
-    try {
-      const protocol = new URL(req.url).protocol.replace(":", "");
-      return protocol || null;
-    } catch {
-      return null;
-    }
-  })();
-
-  const forwardedHost = req.headers.get("x-forwarded-host")?.trim();
-  if (forwardedHost) {
-    const host = forwardedHost.split(",")[0]?.trim();
-    if (host) {
-      const forwardedProto = req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
-      const hasLocalHost = host.includes("localhost") || host.startsWith("127.");
-      const fallbackProto = hasLocalHost ? "http" : "https";
-      const proto = forwardedProto || (requestProtocol === "https" ? "https" : fallbackProto);
-      return `${proto}://${host}/uploads/${filename}`;
-    }
-  }
-
-  const host = req.headers.get("host")?.trim();
-  if (host) {
-    const hasLocalHost = host.includes("localhost") || host.startsWith("127.");
-    const proto = requestProtocol === "https" ? "https" : hasLocalHost ? "http" : "https";
-    return `${proto}://${host}/uploads/${filename}`;
-  }
-
-  if (requestPathBase) return `${requestPathBase}/uploads/${filename}`;
-
+function buildPublicUploadUrl(filename: string) {
   return `/uploads/${filename}`;
 }
 
@@ -110,7 +70,7 @@ export async function POST(req: Request) {
     fs.writeFileSync(filepath, buffer);
   }
 
-  const url = buildPublicUploadUrl(req, filename);
+  const url = buildPublicUploadUrl(filename);
   const analysis = analyzeSensitiveMediaInput({ filename: file.name, mimeType: file.type });
 
   return NextResponse.json({ ok: true, url, owner: user.id, sensitive: analysis });

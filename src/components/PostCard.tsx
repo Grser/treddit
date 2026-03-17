@@ -268,7 +268,15 @@ export default function PostCard({
                     </button>
                   </div>
                 ) : (
-                  <p className="mt-3 text-xs font-semibold text-amber-300">Debes verificar tu edad para revelar la imagen.</p>
+                  <div className="mt-3 space-y-2">
+                    <p className="text-xs font-semibold text-amber-300">Debes verificar tu edad para revelar la imagen.</p>
+                    <a
+                      href={`/u/${post.username}/edit`}
+                      className="inline-flex rounded-full border border-amber-300/60 bg-black/60 px-3 py-1 text-xs font-semibold text-amber-200 transition hover:bg-black/80"
+                    >
+                      Verificar edad
+                    </a>
+                  </div>
                 )}
               </div>
             </div>
