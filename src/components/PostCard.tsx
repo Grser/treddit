@@ -63,6 +63,7 @@ export default function PostCard({
     timeZone: "UTC",
   }).format(new Date(post.created_at));
   const previewUrl = post.description ? extractFirstUrl(post.description) : null;
+  const mediaUrl = normalizeMediaUrl(post.mediaUrl || null);
 
   useEffect(() => () => {
     if (previewTimerRef.current) window.clearTimeout(previewTimerRef.current);
@@ -240,13 +241,13 @@ export default function PostCard({
         </button>
       )}
 
-      {post.mediaUrl && showSensitive && (
+      {mediaUrl && showSensitive && (
         <div className="mb-2 overflow-hidden rounded-lg ring-1 ring-border">
-          {isVideoUrl(post.mediaUrl) ? (
+          {isVideoUrl(mediaUrl) ? (
             <div className="space-y-2 bg-black/30 p-2">
-              <video src={post.mediaUrl} controls className="h-auto max-h-[70vh] w-full" preload="metadata" />
+              <video src={mediaUrl} controls className="h-auto max-h-[70vh] w-full" preload="metadata" />
               <a
-                href={post.mediaUrl}
+                href={mediaUrl}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-block text-xs text-sky-400 hover:underline"
@@ -254,12 +255,12 @@ export default function PostCard({
                 Ver archivo original
               </a>
             </div>
-          ) : isAnimatedImage(post.mediaUrl) ? (
+          ) : isAnimatedImage(mediaUrl) ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={post.mediaUrl} alt="" className="h-auto w-full object-cover" loading="lazy" />
+            <img src={mediaUrl} alt="" className="h-auto w-full object-cover" loading="lazy" />
           ) : (
             <Image
-              src={post.mediaUrl}
+              src={mediaUrl}
               alt=""
               width={1200}
               height={675}
@@ -296,6 +297,20 @@ export default function PostCard({
 function isAnimatedImage(url: string) {
   const normalized = url.toLowerCase();
   return normalized.includes(".gif") || normalized.includes("format=gif") || normalized.includes("type=sticker") || normalized.includes("type=gif");
+}
+
+function normalizeMediaUrl(url: string | null) {
+  if (!url) return null;
+  if (!url.startsWith("http://")) return url;
+
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname === "localhost" || parsed.hostname.startsWith("127.")) return url;
+    parsed.protocol = "https:";
+    return parsed.toString();
+  } catch {
+    return url.replace(/^http:\/\//i, "https://");
+  }
 }
 
 function isVideoUrl(url: string) {
