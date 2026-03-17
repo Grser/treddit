@@ -5,6 +5,36 @@ import { requireUser } from "@/lib/auth";
 import fs from "fs";
 import path from "path";
 
+function buildPublicUploadUrl(req: Request, filename: string) {
+  const fallbackBase = "https://treddit.clawn.cat";
+  try {
+    const origin = new URL(req.url).origin;
+    return `${origin}/uploads/${filename}`;
+  } catch {
+    return `${fallbackBase}/uploads/${filename}`;
+  }
+}
+
+function splitFilenameParts(filename: string) {
+  const ext = path.extname(filename);
+  const name = ext ? filename.slice(0, -ext.length) : filename;
+  return { name, ext };
+}
+
+function generateUniqueFilename(uploadsDir: string, originalName: string) {
+  const safeName = originalName.replace(/[^a-zA-Z0-9._-]/g, "_") || "archivo";
+  const { name, ext } = splitFilenameParts(safeName);
+  let candidate = safeName;
+  let index = 1;
+
+  while (fs.existsSync(path.join(uploadsDir, candidate))) {
+    candidate = `${name}-${index}${ext}`;
+    index += 1;
+  }
+
+  return candidate;
+}
+
 export async function POST(req: Request) {
   // exige sesión para subir
   const user = await requireUser();
@@ -26,14 +56,12 @@ export async function POST(req: Request) {
   const uploadsDir = path.join(process.cwd(), "public", "uploads");
   if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
-  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const filename = `${Date.now()}-${safeName}`;
+  const filename = generateUniqueFilename(uploadsDir, `${Date.now()}-${file.name}`);
   const filepath = path.join(uploadsDir, filename);
 
   fs.writeFileSync(filepath, buffer);
 
-  // url pública (Next sirve /public como raíz)
-  const url = `/uploads/${filename}`;
+  const url = buildPublicUploadUrl(req, filename);
 
   return NextResponse.json({ ok: true, url, owner: user.id });
 }
