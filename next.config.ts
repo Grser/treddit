@@ -2,6 +2,18 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  experimental: {
+    /**
+     * Allow larger multipart/form-data requests for local uploads.
+     *
+     * Without this, Next.js can reject bigger payloads before reaching
+     * our `/api/upload` route, resulting in HTTP 413 responses.
+     */
+    proxyClientMaxBodySize: 1024 * 1024 * 1024,
+    serverActions: {
+      bodySizeLimit: "1gb",
+    },
+  },
   /**
    * Nodemailer is a Node.js-only package. Keep it external so Next.js does
    * not attempt to bundle it for server targets.
