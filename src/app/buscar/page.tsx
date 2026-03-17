@@ -27,6 +27,12 @@ type SearchUser = {
   avatar_url: string | null;
 };
 
+type SearchCommunity = {
+  id: number;
+  slug: string;
+  name: string;
+};
+
 export default async function SearchPage({ searchParams }: SearchPageProps) {
   const params = await searchParams;
   const query = (params.q || "").trim();
@@ -34,9 +40,10 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   const like = `%${sanitized}%`;
 
   const normalizedUserQuery = normalizeUserSearchQuery(query);
-  const [posts, users] = await Promise.all([
+  const [posts, users, communities] = await Promise.all([
     query ? findPosts(like, query) : Promise.resolve([] as SearchPost[]),
     normalizedUserQuery ? findUsers(normalizedUserQuery) : Promise.resolve([] as SearchUser[]),
+    query ? findCommunities(query) : Promise.resolve([] as SearchCommunity[]),
   ]);
 
   return (
@@ -62,7 +69,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
 
         <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_18rem]">
           <section className="space-y-3">
-            {query && posts.length === 0 && users.length === 0 && (
+            {query && posts.length === 0 && users.length === 0 && communities.length === 0 && (
               <p className="rounded-xl border border-border bg-surface p-4 text-sm opacity-70">Sin resultados para “{query}”.</p>
             )}
 
@@ -77,6 +84,23 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
               </article>
             ))}
           </section>
+
+
+            {communities.length > 0 && (
+              <section className="rounded-xl border border-border bg-surface p-4">
+                <h2 className="font-semibold">Comunidades</h2>
+                <ul className="mt-2 space-y-2">
+                  {communities.map((community) => (
+                    <li key={community.id}>
+                      <Link href={`/c/${community.slug}`} className="text-sm font-medium hover:underline">
+                        c/{highlight(community.slug, query)}
+                      </Link>
+                      <p className="text-xs opacity-70">{highlight(community.name, query)}</p>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
 
           <aside className="space-y-3">
             <section className="rounded-xl border border-border bg-surface p-4">
@@ -127,6 +151,22 @@ async function findUsers(term: string): Promise<SearchUser[]> {
   const normalizedLike = `%${likeEscape(normalizeUserSearchQuery(term))}%`;
   const [rows] = await db.query(`SELECT u.id, u.username, u.nickname, u.avatar_url FROM Users u WHERE u.visible = 1 AND (u.username LIKE ? OR u.nickname LIKE ?) ORDER BY u.username ASC LIMIT 40`, [normalizedLike, normalizedLike]);
   return rows as SearchUser[];
+}
+
+async function findCommunities(term: string): Promise<SearchCommunity[]> {
+  if (!isDatabaseConfigured()) {
+    return [];
+  }
+  const normalizedLike = `%${likeEscape(term.trim())}%`;
+  const [rows] = await db.query(
+    `SELECT c.id, c.slug, c.name
+     FROM Communities c
+     WHERE c.visible = 1 AND (c.slug LIKE ? OR c.name LIKE ?)
+     ORDER BY c.name ASC
+     LIMIT 20`,
+    [normalizedLike, normalizedLike],
+  );
+  return rows as SearchCommunity[];
 }
 
 function highlight(text: string | null, needle: string): ReactNode {

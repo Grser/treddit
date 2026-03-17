@@ -36,7 +36,7 @@ export default function SidebarLeft({ communities = [] as SidebarCommunity[] }) 
         {communities.length === 0 && (
           <span className="px-3 py-2 text-sm opacity-60">{t.empty}</span>
         )}
-        {communities.map((community) => {
+        {communities.slice(0, 5).map((community) => {
           const href = `/c/${encodeURIComponent(community.slug)}`;
           return (
             <Link
@@ -49,6 +49,11 @@ export default function SidebarLeft({ communities = [] as SidebarCommunity[] }) 
             </Link>
           );
         })}
+        {communities.length > 5 && (
+          <Link href="/explorar" className="px-3 py-2 text-sm text-brand hover:underline">
+            Ver todas
+          </Link>
+        )}
       </div>
     </aside>
   );

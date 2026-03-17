@@ -179,6 +179,25 @@ export async function ensureMessageTables() {
       CONSTRAINT fk_dm_group_members_user FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `);
+  const [canSendColumn] = await db.query<RowDataPacket[]>(
+    "SHOW COLUMNS FROM Direct_Message_Group_Members LIKE 'can_send_messages'",
+  );
+  if (!canSendColumn.length) {
+    await db.execute(
+      "ALTER TABLE Direct_Message_Group_Members ADD COLUMN can_send_messages TINYINT(1) NOT NULL DEFAULT 1 AFTER role",
+    );
+  }
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS Direct_Message_Group_Speaker_Requests (
+      group_id INT NOT NULL,
+      user_id INT UNSIGNED NOT NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (group_id, user_id),
+      CONSTRAINT fk_dm_group_speaker_requests_group FOREIGN KEY (group_id) REFERENCES Direct_Message_Groups(id) ON DELETE CASCADE,
+      CONSTRAINT fk_dm_group_speaker_requests_user FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+
   await db.execute(`
     CREATE TABLE IF NOT EXISTS Direct_Message_Group_Messages (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -1083,10 +1102,13 @@ export async function sendGroupMessage(userId: number, groupId: number, text: st
   const normalized = text.trim().slice(0, 1000);
   if (!normalized) throw new Error("EMPTY_MESSAGE");
   const [membership] = await db.query<RowDataPacket[]>(
-    "SELECT group_id FROM Direct_Message_Group_Members WHERE group_id=? AND user_id=? LIMIT 1",
+    "SELECT group_id, can_send_messages FROM Direct_Message_Group_Members WHERE group_id=? AND user_id=? LIMIT 1",
     [groupId, userId],
   );
   if (!membership[0]?.group_id) throw new Error("NOT_IN_GROUP");
+  if (!Number(membership[0].can_send_messages ?? 1)) {
+    throw new Error("CANNOT_SEND_MESSAGES");
+  }
 
   const [result] = await db.execute<ResultSetHeader>(
     "INSERT INTO Direct_Message_Group_Messages (group_id, sender_id, message, created_at) VALUES (?, ?, ?, NOW())",
@@ -1128,7 +1150,7 @@ export async function fetchGroupDetails(userId: number, groupId: number) {
   );
   if (!rows[0]) return null;
   const [members] = await db.query<RowDataPacket[]>(
-    `SELECT u.id, u.username, u.nickname, u.avatar_url, gm.role
+    `SELECT u.id, u.username, u.nickname, u.avatar_url, gm.role, gm.can_send_messages
      FROM Direct_Message_Group_Members gm
      JOIN Users u ON u.id = gm.user_id
      WHERE gm.group_id = ?
@@ -1137,6 +1159,14 @@ export async function fetchGroupDetails(userId: number, groupId: number) {
   );
   const myRole = String(rows[0].my_role || "member") as GroupMemberRole;
   const canManage = myRole === "owner" || myRole === "admin";
+  const [speakerRequests] = await db.query<RowDataPacket[]>(
+    `SELECT u.id, u.username, u.nickname
+     FROM Direct_Message_Group_Speaker_Requests sr
+     JOIN Users u ON u.id = sr.user_id
+     WHERE sr.group_id = ?
+     ORDER BY sr.created_at ASC`,
+    [groupId],
+  );
   return {
     id: Number(rows[0].id),
     name: String(rows[0].name),
@@ -1151,6 +1181,12 @@ export async function fetchGroupDetails(userId: number, groupId: number) {
       nickname: row.nickname ? String(row.nickname) : null,
       avatar_url: row.avatar_url ? String(row.avatar_url) : null,
       role: String(row.role || "member") as GroupMemberRole,
+      can_send_messages: Boolean(row.can_send_messages),
+    })),
+    speakerRequests: speakerRequests.map((row) => ({
+      id: Number(row.id),
+      username: String(row.username),
+      nickname: row.nickname ? String(row.nickname) : null,
     })),
   };
 }
@@ -1166,6 +1202,9 @@ export async function updateGroupConversation(
     removeMemberIds?: number[];
     promoteMemberIds?: number[];
     demoteMemberIds?: number[];
+    allowSendMemberIds?: number[];
+    blockSendMemberIds?: number[];
+    approveSpeakerRequestUserIds?: number[];
   },
 ) {
   if (!isDatabaseConfigured()) throw new Error("DB_REQUIRED");
@@ -1230,7 +1269,55 @@ export async function updateGroupConversation(
     await db.execute("DELETE FROM Direct_Message_Group_Members WHERE group_id=? AND user_id=?", [groupId, memberId]);
   }
 
+
+  const allowSendMemberIds = [...new Set((payload.allowSendMemberIds || []).filter((id) => Number.isFinite(id) && id > 0))];
+  for (const memberId of allowSendMemberIds) {
+    await db.execute(
+      "UPDATE Direct_Message_Group_Members SET can_send_messages = 1 WHERE group_id=? AND user_id=?",
+      [groupId, memberId],
+    );
+    await db.execute(
+      "DELETE FROM Direct_Message_Group_Speaker_Requests WHERE group_id=? AND user_id=?",
+      [groupId, memberId],
+    );
+  }
+
+  const blockSendMemberIds = [...new Set((payload.blockSendMemberIds || []).filter((id) => Number.isFinite(id) && id > 0 && id !== userId))];
+  for (const memberId of blockSendMemberIds) {
+    await db.execute(
+      "UPDATE Direct_Message_Group_Members SET can_send_messages = 0 WHERE group_id=? AND user_id=?",
+      [groupId, memberId],
+    );
+  }
+
+  const approveSpeakerRequestUserIds = [...new Set((payload.approveSpeakerRequestUserIds || []).filter((id) => Number.isFinite(id) && id > 0))];
+  for (const memberId of approveSpeakerRequestUserIds) {
+    await db.execute(
+      "UPDATE Direct_Message_Group_Members SET can_send_messages = 1 WHERE group_id=? AND user_id=?",
+      [groupId, memberId],
+    );
+    await db.execute(
+      "DELETE FROM Direct_Message_Group_Speaker_Requests WHERE group_id=? AND user_id=?",
+      [groupId, memberId],
+    );
+  }
+
   return fetchGroupDetails(userId, groupId);
+}
+
+export async function requestSpeakInGroup(userId: number, groupId: number) {
+  if (!isDatabaseConfigured()) throw new Error("DB_REQUIRED");
+  await ensureMessageTables();
+  const [membership] = await db.query<RowDataPacket[]>(
+    "SELECT group_id FROM Direct_Message_Group_Members WHERE group_id=? AND user_id=? LIMIT 1",
+    [groupId, userId],
+  );
+  if (!membership[0]?.group_id) throw new Error("NOT_IN_GROUP");
+  await db.execute(
+    "INSERT IGNORE INTO Direct_Message_Group_Speaker_Requests (group_id, user_id, created_at) VALUES (?, ?, NOW())",
+    [groupId, userId],
+  );
+  return true;
 }
 
 export async function leaveGroupConversation(userId: number, groupId: number) {

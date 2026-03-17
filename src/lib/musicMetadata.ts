@@ -60,8 +60,11 @@ function normalizeHost(value: string) {
 }
 
 export async function resolveMusicMetadata(rawUrl: string): Promise<MusicMetadata> {
-  const urlValue = rawUrl.trim();
+  let urlValue = rawUrl.trim();
   if (!urlValue) return { title: null, artist: null };
+  if (!/^https?:\/\//i.test(urlValue)) {
+    urlValue = `https://${urlValue}`;
+  }
 
   let parsed: URL;
   try {

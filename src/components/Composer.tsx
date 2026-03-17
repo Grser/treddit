@@ -6,15 +6,11 @@ import { useRouter } from "next/navigation";
 import { useLocale } from "@/contexts/LocaleContext";
 
 type Tab = "post" | "media" | "poll";
-type MediaKind = "media" | "gif" | "sticker";
 
 type ComposerErrorKey = "needContent" | "uploadFailed" | "createFailed" | "pollInvalid" | "mediaEmpty" | null;
 
 type CommunityOption = { id: number; name: string; slug: string };
 type MentionUser = { id: number; username: string; nickname: string | null };
-
-const GIF_STORAGE_KEY = "treddit_saved_gifs";
-const STICKER_STORAGE_KEY = "treddit_saved_stickers";
 
 export default function Composer({ enabled }: { enabled: boolean }) {
   const router = useRouter();
@@ -24,11 +20,9 @@ export default function Composer({ enabled }: { enabled: boolean }) {
   const [tab, setTab] = useState<Tab>("post");
   const [text, setText] = useState("");
   const [mediaUrl, setMediaUrl] = useState("");
-  const [mediaKind, setMediaKind] = useState<MediaKind>("media");
-  const [savedGifs, setSavedGifs] = useState<string[]>([]);
-  const [savedStickers, setSavedStickers] = useState<string[]>([]);
   const [isSensitive, setIsSensitive] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [errorKey, setErrorKey] = useState<ComposerErrorKey>(null);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -58,14 +52,6 @@ export default function Composer({ enabled }: { enabled: boolean }) {
     setErrorKey(null);
     setServerError(null);
   }
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const gifs = window.localStorage.getItem(GIF_STORAGE_KEY);
-    const stickers = window.localStorage.getItem(STICKER_STORAGE_KEY);
-    setSavedGifs(gifs ? JSON.parse(gifs) : []);
-    setSavedStickers(stickers ? JSON.parse(stickers) : []);
-  }, []);
 
   useEffect(() => {
     if (!enabled) {
@@ -161,26 +147,6 @@ export default function Composer({ enabled }: { enabled: boolean }) {
     clearError();
   }
 
-  function persistCollection(key: string, values: string[]) {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(key, JSON.stringify(values.slice(0, 24)));
-  }
-
-  function saveCurrentMedia() {
-    const normalized = mediaUrl.trim();
-    if (!normalized) return;
-    if (mediaKind === "gif") {
-      const next = [normalized, ...savedGifs.filter((value) => value !== normalized)].slice(0, 24);
-      setSavedGifs(next);
-      persistCollection(GIF_STORAGE_KEY, next);
-    }
-    if (mediaKind === "sticker") {
-      const next = [normalized, ...savedStickers.filter((value) => value !== normalized)].slice(0, 24);
-      setSavedStickers(next);
-      persistCollection(STICKER_STORAGE_KEY, next);
-    }
-  }
-
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     if (!enabled) return;
     const file = e.target.files?.[0];
@@ -188,12 +154,11 @@ export default function Composer({ enabled }: { enabled: boolean }) {
     clearError();
     setUploading(true);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await fetch("/api/upload", { method: "POST", body: fd });
-      const j = await res.json().catch(() => ({}));
-      if (res.ok && j.url) {
-        setMediaUrl(j.url);
+      const formData = new FormData();
+      formData.append("file", file);
+      const payload = await uploadWithProgress(formData, (progress) => setUploadProgress(progress));
+      if (payload.url) {
+        setMediaUrl(payload.url);
         setTab("media");
         clearError();
       } else {
@@ -203,6 +168,7 @@ export default function Composer({ enabled }: { enabled: boolean }) {
       setErrorKey("uploadFailed");
     } finally {
       setUploading(false);
+      setUploadProgress(0);
       if (fileRef.current) fileRef.current.value = "";
     }
   }
@@ -296,8 +262,6 @@ export default function Composer({ enabled }: { enabled: boolean }) {
     }
   }
 
-  const selectedPack = mediaKind === "gif" ? savedGifs : savedStickers;
-
   return (
     <div className="border border-border bg-surface rounded-xl p-4">
       <div className="flex gap-2 mb-3 text-sm">
@@ -345,50 +309,23 @@ export default function Composer({ enabled }: { enabled: boolean }) {
 
       {tab === "media" && (
         <div className="mt-3 space-y-2">
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            <button type="button" className={`rounded-full border px-3 py-1 ${mediaKind === "media" ? "bg-brand text-white border-transparent" : "border-border"}`} onClick={() => setMediaKind("media")}>Foto/Video</button>
-            <button type="button" className={`rounded-full border px-3 py-1 ${mediaKind === "gif" ? "bg-brand text-white border-transparent" : "border-border"}`} onClick={() => setMediaKind("gif")}>GIF</button>
-            <button type="button" className={`rounded-full border px-3 py-1 ${mediaKind === "sticker" ? "bg-brand text-white border-transparent" : "border-border"}`} onClick={() => setMediaKind("sticker")}>Sticker</button>
-          </div>
           <div className="flex items-center gap-2">
-            <input
-              type="url"
-              placeholder={mediaKind === "media" ? t.mediaPlaceholder : mediaKind === "gif" ? "URL del GIF" : "URL del sticker"}
-              className="flex-1 h-10 px-3 rounded-md bg-input text-sm outline-none ring-1 ring-border focus:ring-2"
-              disabled={!enabled}
-              value={mediaUrl}
-              onChange={(e) => {
-                clearError();
-                setMediaUrl(e.target.value);
-              }}
-            />
             <input
               ref={fileRef}
               type="file"
-              accept={mediaKind === "media" ? "image/*,video/*" : mediaKind === "gif" ? "image/gif,image/webp" : "image/png,image/webp,image/gif"}
+              accept="image/*,video/*"
               disabled={!enabled || uploading}
               onChange={handleFile}
-              className="block text-sm"
+              className="block w-full text-sm"
             />
           </div>
-          {(mediaKind === "gif" || mediaKind === "sticker") && (
-            <>
-              <div className="flex items-center gap-2">
-                <button type="button" className="h-8 rounded-full border border-border px-3 text-xs" onClick={saveCurrentMedia}>
-                  Guardar en mi pack
-                </button>
-                <span className="text-xs opacity-70">Guárdalos para reutilizar tus {mediaKind === "gif" ? "GIFs" : "stickers"} en próximos posts.</span>
+          {uploading && (
+            <div className="rounded-lg border border-border bg-input/60 p-2">
+              <p className="text-xs opacity-80">Subiendo archivo: {uploadProgress}%</p>
+              <div className="mt-1 h-2 overflow-hidden rounded bg-muted">
+                <div className="h-full bg-brand transition-all" style={{ width: `${uploadProgress}%` }} />
               </div>
-              {selectedPack.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {selectedPack.map((item) => (
-                    <button key={item} type="button" className="rounded-full border border-border px-3 py-1 text-xs" onClick={() => setMediaUrl(item)}>
-                      Usar guardado
-                    </button>
-                  ))}
-                </div>
-              )}
-            </>
+            </div>
           )}
           {mediaUrl && (
             <p className="text-xs opacity-70">
@@ -514,6 +451,31 @@ export default function Composer({ enabled }: { enabled: boolean }) {
       </div>
     </div>
   );
+}
+
+function uploadWithProgress(formData: FormData, onProgress: (progress: number) => void): Promise<{ url?: string }> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/upload");
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable) return;
+      onProgress(Math.max(1, Math.min(100, Math.round((event.loaded / event.total) * 100))));
+    };
+    xhr.onload = () => {
+      try {
+        const json = JSON.parse(xhr.responseText || "{}");
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve(json as { url?: string });
+          return;
+        }
+      } catch {
+        // noop
+      }
+      reject(new Error("UPLOAD_FAILED"));
+    };
+    xhr.onerror = () => reject(new Error("UPLOAD_FAILED"));
+    xhr.send(formData);
+  });
 }
 
 function TabBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {

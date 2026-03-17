@@ -9,7 +9,7 @@ import UserBadges from "./UserBadges";
 import MentionUserLink from "./MentionUserLink";
 
 import { useLocale } from "@/contexts/LocaleContext";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export type Post = {
   id: number;
@@ -55,12 +55,28 @@ export default function PostCard({
   const community = post.community;
   const canViewSensitive = Boolean(post.can_view_sensitive);
   const [showSensitive, setShowSensitive] = useState(!post.is_sensitive);
+  const [showLinkPreview, setShowLinkPreview] = useState(false);
+  const previewTimerRef = useRef<number | null>(null);
   const createdAtLabel = new Intl.DateTimeFormat(locale, {
     dateStyle: "short",
     timeStyle: "medium",
     timeZone: "UTC",
   }).format(new Date(post.created_at));
   const previewUrl = post.description ? extractFirstUrl(post.description) : null;
+
+  useEffect(() => () => {
+    if (previewTimerRef.current) window.clearTimeout(previewTimerRef.current);
+  }, []);
+
+  function handlePreviewEnter() {
+    if (previewTimerRef.current) window.clearTimeout(previewTimerRef.current);
+    previewTimerRef.current = window.setTimeout(() => setShowLinkPreview(true), 2000);
+  }
+
+  function handlePreviewLeave() {
+    if (previewTimerRef.current) window.clearTimeout(previewTimerRef.current);
+    setShowLinkPreview(false);
+  }
 
   async function deleteAsAdmin() {
     if (!confirm("¿Eliminar este post?")) return;
@@ -186,6 +202,8 @@ export default function PostCard({
       )}
 
       {previewUrl && showSensitive && (
+        <div onMouseEnter={handlePreviewEnter} onMouseLeave={handlePreviewLeave}>
+          {showLinkPreview && (
         <a
           href={previewUrl}
           target="_blank"
@@ -196,6 +214,8 @@ export default function PostCard({
           <p className="mt-1 truncate text-sm font-medium">{getUrlHostname(previewUrl)}</p>
           <p className="truncate text-xs opacity-70">{previewUrl}</p>
         </a>
+          )}
+        </div>
       )}
 
       {post.is_sensitive && !showSensitive && canViewSensitive && (
@@ -210,10 +230,14 @@ export default function PostCard({
       )}
 
       {post.is_sensitive && !showSensitive && !canViewSensitive && (
-        <div className="mb-2 w-full rounded-lg border border-border bg-muted/40 px-4 py-6 text-left">
-          <p className="text-sm font-semibold">Contenido sensible bloqueado</p>
-          <p className="mt-1 text-xs opacity-70">Debes verificar tu edad para poder mostrar este contenido.</p>
-        </div>
+        <button
+          type="button"
+          onClick={() => setShowSensitive(true)}
+          className="mb-2 w-full rounded-lg border border-border bg-muted/40 px-4 py-6 text-left"
+        >
+          <p className="text-sm font-semibold">Contenido sensible</p>
+          <p className="mt-1 text-xs opacity-70">Este post puede incluir material delicado. Presiona para mostrarlo.</p>
+        </button>
       )}
 
       {post.mediaUrl && showSensitive && (
