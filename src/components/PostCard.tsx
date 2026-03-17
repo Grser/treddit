@@ -222,21 +222,23 @@ export default function PostCard({
       )}
 
       {hasSensitiveImage && !showSensitive && (
-        <div className="mb-2 w-full rounded-lg border border-border bg-muted/40 px-4 py-3 text-left">
-          <p className="text-sm font-semibold">Contenido sensible</p>
-          <p className="mt-1 text-xs opacity-70">
-            Esta imagen está difuminada por contener posible gore, desnudos o material explícito.
+        <div className="mb-2 w-full rounded-xl border border-white/15 bg-gradient-to-r from-slate-700/60 via-zinc-600/45 to-rose-700/45 px-4 py-4 text-left shadow-inner backdrop-blur">
+          <p className="text-[13px] font-semibold sm:text-base">Advertencia de contenido: Contenido delicado</p>
+          <p className="mt-2 text-xs opacity-90 sm:text-sm">
+            El autor del post marcó esta imagen para indicar que puede mostrar contenido delicado.
           </p>
           {canViewSensitive ? (
-            <button
-              type="button"
-              onClick={() => setShowSensitive(true)}
-              className="mt-3 rounded-md border border-border bg-surface px-3 py-1 text-xs font-semibold hover:bg-muted/60"
-            >
-              Ver imagen
-            </button>
+            <div className="mt-3 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowSensitive(true)}
+                className="rounded-full bg-black/85 px-4 py-1 text-xs font-semibold text-white transition hover:bg-black"
+              >
+                Mostrar
+              </button>
+            </div>
           ) : (
-            <p className="mt-2 text-xs text-amber-400">Debes verificar tu edad para revelar la imagen.</p>
+            <p className="mt-3 text-xs font-semibold text-amber-300">Debes verificar tu edad para revelar la imagen.</p>
           )}
         </div>
       )}
