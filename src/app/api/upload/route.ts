@@ -8,12 +8,16 @@ import fs from "fs";
 import path from "path";
 
 function buildPublicUploadUrl(filename: string) {
-  return `/uploads/${filename}`;
+  return `/api/upload/${encodeURIComponent(filename)}`;
 }
 
 function resolveUploadDirs() {
   const dirs = new Set<string>();
   const cwd = process.cwd();
+  const customUploadDir = process.env.TREDDIT_UPLOAD_DIR?.trim();
+  if (customUploadDir) {
+    dirs.add(path.resolve(customUploadDir));
+  }
   dirs.add(path.resolve(cwd, "public", "uploads"));
   dirs.add(path.resolve(cwd, "..", "public", "uploads"));
   dirs.add(path.resolve(cwd, "..", "..", "public", "uploads"));
