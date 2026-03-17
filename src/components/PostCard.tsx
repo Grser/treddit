@@ -242,7 +242,19 @@ export default function PostCard({
 
       {post.mediaUrl && showSensitive && (
         <div className="mb-2 overflow-hidden rounded-lg ring-1 ring-border">
-          {isAnimatedImage(post.mediaUrl) ? (
+          {isVideoUrl(post.mediaUrl) ? (
+            <div className="space-y-2 bg-black/30 p-2">
+              <video src={post.mediaUrl} controls className="h-auto max-h-[70vh] w-full" preload="metadata" />
+              <a
+                href={post.mediaUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-block text-xs text-sky-400 hover:underline"
+              >
+                Ver archivo original
+              </a>
+            </div>
+          ) : isAnimatedImage(post.mediaUrl) ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={post.mediaUrl} alt="" className="h-auto w-full object-cover" loading="lazy" />
           ) : (
@@ -284,6 +296,11 @@ export default function PostCard({
 function isAnimatedImage(url: string) {
   const normalized = url.toLowerCase();
   return normalized.includes(".gif") || normalized.includes("format=gif") || normalized.includes("type=sticker") || normalized.includes("type=gif");
+}
+
+function isVideoUrl(url: string) {
+  const normalized = url.toLowerCase().split("?")[0];
+  return [".mp4", ".webm", ".ogg", ".mov", ".m4v"].some((ext) => normalized.endsWith(ext));
 }
 
 function extractFirstUrl(text: string) {

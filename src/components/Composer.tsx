@@ -164,8 +164,12 @@ export default function Composer({ enabled }: { enabled: boolean }) {
       } else {
         setErrorKey("uploadFailed");
       }
-    } catch {
-      setErrorKey("uploadFailed");
+    } catch (err) {
+      if (err instanceof Error && err.message && err.message !== "UPLOAD_FAILED") {
+        setServerError(err.message);
+      } else {
+        setErrorKey("uploadFailed");
+      }
     } finally {
       setUploading(false);
       setUploadProgress(0);
@@ -466,6 +470,10 @@ function uploadWithProgress(formData: FormData, onProgress: (progress: number) =
         const json = JSON.parse(xhr.responseText || "{}");
         if (xhr.status >= 200 && xhr.status < 300) {
           resolve(json as { url?: string });
+          return;
+        }
+        if (typeof json?.error === "string" && json.error.trim()) {
+          reject(new Error(json.error));
           return;
         }
       } catch {
