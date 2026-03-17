@@ -221,31 +221,9 @@ export default function PostCard({
         </div>
       )}
 
-      {hasSensitiveImage && !showSensitive && (
-        <div className="mb-2 w-full rounded-xl border border-white/15 bg-gradient-to-r from-slate-700/60 via-zinc-600/45 to-rose-700/45 px-4 py-4 text-left shadow-inner backdrop-blur">
-          <p className="text-[13px] font-semibold sm:text-base">Advertencia de contenido: Contenido delicado</p>
-          <p className="mt-2 text-xs opacity-90 sm:text-sm">
-            El autor del post marcó esta imagen para indicar que puede mostrar contenido delicado.
-          </p>
-          {canViewSensitive ? (
-            <div className="mt-3 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setShowSensitive(true)}
-                className="rounded-full bg-black/85 px-4 py-1 text-xs font-semibold text-white transition hover:bg-black"
-              >
-                Mostrar
-              </button>
-            </div>
-          ) : (
-            <p className="mt-3 text-xs font-semibold text-amber-300">Debes verificar tu edad para revelar la imagen.</p>
-          )}
-        </div>
-      )}
-
       {mediaUrl && (
 
-        <div className="mb-2 overflow-hidden rounded-lg ring-1 ring-border">
+        <div className="relative mb-2 overflow-hidden rounded-lg ring-1 ring-border">
           {isVideoUrl(mediaUrl) ? (
             <div className="space-y-2 bg-black/30 p-2">
               <video src={mediaUrl} controls className="h-auto max-h-[70vh] w-full" preload="metadata" />
@@ -260,7 +238,7 @@ export default function PostCard({
             </div>
           ) : isAnimatedImage(mediaUrl) ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={mediaUrl} alt="" className={`h-auto w-full object-cover ${shouldBlurSensitiveImage ? "blur-2xl" : ""}`} loading="lazy" />
+            <img src={mediaUrl} alt="" className={`block h-auto w-full object-cover ${shouldBlurSensitiveImage ? "blur-2xl" : ""}`} loading="lazy" />
           ) : (
             <Image
               src={mediaUrl}
@@ -268,8 +246,32 @@ export default function PostCard({
               width={1200}
               height={675}
               sizes="(min-width: 768px) 600px, 100vw"
-              className={`h-auto w-full object-cover ${shouldBlurSensitiveImage ? "blur-2xl" : ""}`}
+              className={`block h-auto w-full object-cover ${shouldBlurSensitiveImage ? "blur-2xl" : ""}`}
             />
+          )}
+
+          {hasSensitiveImage && !showSensitive && (
+            <div className="absolute inset-0 flex items-center bg-black/45 p-4 text-left text-white">
+              <div className="max-w-xs rounded-xl bg-black/40 p-4 backdrop-blur-sm">
+                <p className="text-sm font-semibold sm:text-2xl">Advertencia de contenido: Contenido delicado</p>
+                <p className="mt-2 text-sm opacity-90">
+                  El autor del post marcó esta imagen para indicar que puede mostrar contenido delicado.
+                </p>
+                {canViewSensitive ? (
+                  <div className="mt-3 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setShowSensitive(true)}
+                      className="rounded-full bg-black/85 px-4 py-1 text-xs font-semibold text-white transition hover:bg-black"
+                    >
+                      Mostrar
+                    </button>
+                  </div>
+                ) : (
+                  <p className="mt-3 text-xs font-semibold text-amber-300">Debes verificar tu edad para revelar la imagen.</p>
+                )}
+              </div>
+            </div>
           )}
         </div>
       )}
