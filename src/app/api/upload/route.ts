@@ -3,11 +3,20 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { MAX_UPLOAD_BYTES, getUploadSizeErrorMessage } from "@/lib/upload";
+import { analyzeSensitiveMediaInput } from "@/lib/sensitiveMedia";
 import fs from "fs";
 import path from "path";
 
 function buildPublicUploadUrl(req: Request, filename: string) {
-  const fallbackBase = "https://treddit.clawn.cat";
+  const requestUrl = (() => {
+    try {
+      return new URL(req.url);
+    } catch {
+      return null;
+    }
+  })();
+
+  const requestPathBase = requestUrl ? `${requestUrl.origin}` : "";
 
   const requestProtocol = (() => {
     try {
@@ -37,9 +46,18 @@ function buildPublicUploadUrl(req: Request, filename: string) {
     return `${proto}://${host}/uploads/${filename}`;
   }
 
-  if (requestProtocol) return `${requestProtocol}://treddit.clawn.cat/uploads/${filename}`;
+  if (requestPathBase) return `${requestPathBase}/uploads/${filename}`;
 
-  return `${fallbackBase}/uploads/${filename}`;
+  return `/uploads/${filename}`;
+}
+
+function resolveUploadDirs() {
+  const dirs = new Set<string>();
+  const cwd = process.cwd();
+  dirs.add(path.resolve(cwd, "public", "uploads"));
+  dirs.add(path.resolve(cwd, "..", "public", "uploads"));
+  dirs.add(path.resolve(cwd, "..", "..", "public", "uploads"));
+  return [...dirs];
 }
 
 function splitFilenameParts(filename: string) {
@@ -80,15 +98,20 @@ export async function POST(req: Request) {
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
 
-  const uploadsDir = path.join(process.cwd(), "public", "uploads");
-  if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+  const uploadDirs = resolveUploadDirs();
+  const uploadsDir = uploadDirs[0];
+  for (const dir of uploadDirs) {
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  }
 
   const filename = generateUniqueFilename(uploadsDir, `${Date.now()}-${file.name}`);
-  const filepath = path.join(uploadsDir, filename);
-
-  fs.writeFileSync(filepath, buffer);
+  for (const dir of uploadDirs) {
+    const filepath = path.join(dir, filename);
+    fs.writeFileSync(filepath, buffer);
+  }
 
   const url = buildPublicUploadUrl(req, filename);
+  const analysis = analyzeSensitiveMediaInput({ filename: file.name, mimeType: file.type });
 
-  return NextResponse.json({ ok: true, url, owner: user.id });
+  return NextResponse.json({ ok: true, url, owner: user.id, sensitive: analysis });
 }
