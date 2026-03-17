@@ -54,10 +54,13 @@ export default function ProfileHeader({
       {/* Banner */}
       <div className="relative h-36 w-full overflow-hidden bg-muted sm:h-48 md:h-56">
         {user.banner_url ? (
-          <img
+          <Image
             src={user.banner_url}
-            className="absolute left-1/2 top-1/2 h-auto w-auto max-h-full max-w-full -translate-x-1/2 -translate-y-1/2"
+            className="object-contain"
             alt=""
+            fill
+            sizes="100vw"
+            unoptimized
           />
         ) : (
           <div className="absolute inset-0 bg-gradient-to-r from-brand/40 via-brand/20 to-transparent" aria-hidden="true" />

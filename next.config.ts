@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
+type NextConfigWithProxyBodySize = NextConfig & {
+  experimental?: NextConfig["experimental"] & {
+    proxyClientMaxBodySize?: number;
+  };
+};
+
+const nextConfig: NextConfigWithProxyBodySize = {
   poweredByHeader: false,
   experimental: {
     /**
