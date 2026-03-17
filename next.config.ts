@@ -10,14 +10,12 @@ const nextConfig: NextConfigWithProxyBodySize = {
   poweredByHeader: false,
   experimental: {
     /**
-     * Allow larger multipart/form-data requests for local uploads.
-     *
-     * Without this, Next.js can reject bigger payloads before reaching
-     * our `/api/upload` route, resulting in HTTP 413 responses.
+     * Keep request size limits aligned with `/api/upload` validations so
+     * oversized payloads fail early with predictable 413 responses.
      */
-    proxyClientMaxBodySize: 1024 * 1024 * 1024,
+    proxyClientMaxBodySize: 4 * 1024 * 1024,
     serverActions: {
-      bodySizeLimit: "1gb",
+      bodySizeLimit: "4mb",
     },
   },
   /**

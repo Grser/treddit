@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import UserBadges from "@/components/UserBadges";
 import UserHoverPreview from "@/components/UserHoverPreview";
 import { useLocale } from "@/contexts/LocaleContext";
+import { validateUploadSize } from "@/lib/upload";
 
 import type { DirectMessageAttachment, DirectMessageEntry } from "@/lib/messages";
 
@@ -346,12 +347,18 @@ export default function DirectConversation({
         throw new Error("El audio no puede durar más de 1 minuto");
       }
 
+      validateUploadSize(file);
+
       const fd = new FormData();
       fd.append("file", file);
       const res = await fetch("/api/upload", { method: "POST", body: fd });
       const payload = await res.json().catch(() => ({}));
       if (!res.ok || !payload.url) {
-        throw new Error(strings.composer.errors.uploadFailed || "No se pudo adjuntar el archivo");
+        throw new Error(
+          typeof payload.error === "string" && payload.error.trim()
+            ? payload.error
+            : strings.composer.errors.uploadFailed || "No se pudo adjuntar el archivo",
+        );
       }
       const type: DirectMessageAttachment["type"] = mime.startsWith("image/")
         ? "image"

@@ -4,6 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
+import { validateUploadSize } from "@/lib/upload";
+
 import type { GroupMessageEntry } from "@/lib/messages";
 
 type GroupMember = {
@@ -338,6 +340,8 @@ export default function GroupConversation({
                         setSettingsError(null);
                         setUploadingAvatar(true);
                         try {
+                          validateUploadSize(file);
+
                           const form = new FormData();
                           form.append("file", file);
                           const res = await fetch("/api/upload", { method: "POST", body: form });
