@@ -8,6 +8,23 @@ import path from "path";
 
 function buildPublicUploadUrl(req: Request, filename: string) {
   const fallbackBase = "https://treddit.clawn.cat";
+
+  const forwardedHost = req.headers.get("x-forwarded-host")?.trim();
+  if (forwardedHost) {
+    const host = forwardedHost.split(",")[0]?.trim();
+    if (host) {
+      const forwardedProto = req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+      const proto = forwardedProto || (host.includes("localhost") ? "http" : "https");
+      return `${proto}://${host}/uploads/${filename}`;
+    }
+  }
+
+  const host = req.headers.get("host")?.trim();
+  if (host) {
+    const proto = host.includes("localhost") ? "http" : "https";
+    return `${proto}://${host}/uploads/${filename}`;
+  }
+
   try {
     const origin = new URL(req.url).origin;
     return `${origin}/uploads/${filename}`;
