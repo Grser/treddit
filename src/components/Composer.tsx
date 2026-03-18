@@ -4,7 +4,8 @@ import { useState, useRef, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 import { useLocale } from "@/contexts/LocaleContext";
-import { formatUploadLimit, validateUploadSize } from "@/lib/upload";
+import { formatUploadLimit } from "@/lib/upload";
+import { uploadFile } from "@/lib/clientUpload";
 import { isImageMediaUrl } from "@/lib/sensitiveMedia";
 
 type Tab = "post" | "media" | "poll";
@@ -158,10 +159,7 @@ export default function Composer({ enabled }: { enabled: boolean }) {
     clearError();
     setUploading(true);
     try {
-      validateUploadSize(file);
-      const formData = new FormData();
-      formData.append("file", file);
-      const payload = await uploadWithProgress(formData, (progress) => setUploadProgress(progress));
+      const payload = await uploadFile(file, { onProgress: (progress) => setUploadProgress(progress) });
       if (payload.url) {
         setMediaUrl(payload.url);
         setTab("media");
@@ -478,35 +476,6 @@ export default function Composer({ enabled }: { enabled: boolean }) {
       </div>
     </div>
   );
-}
-
-function uploadWithProgress(formData: FormData, onProgress: (progress: number) => void): Promise<{ url?: string; sensitive?: { suggestedSensitive?: boolean } }> {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", "/api/upload");
-    xhr.upload.onprogress = (event) => {
-      if (!event.lengthComputable) return;
-      onProgress(Math.max(1, Math.min(100, Math.round((event.loaded / event.total) * 100))));
-    };
-    xhr.onload = () => {
-      try {
-        const json = JSON.parse(xhr.responseText || "{}");
-        if (xhr.status >= 200 && xhr.status < 300) {
-          resolve(json as { url?: string });
-          return;
-        }
-        if (typeof json?.error === "string" && json.error.trim()) {
-          reject(new Error(json.error));
-          return;
-        }
-      } catch {
-        // noop
-      }
-      reject(new Error("UPLOAD_FAILED"));
-    };
-    xhr.onerror = () => reject(new Error("UPLOAD_FAILED"));
-    xhr.send(formData);
-  });
 }
 
 function TabBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {

@@ -8,6 +8,7 @@ import UserBadges from "@/components/UserBadges";
 import UserHoverPreview from "@/components/UserHoverPreview";
 import { useLocale } from "@/contexts/LocaleContext";
 import { validateUploadSize } from "@/lib/upload";
+import { uploadFile } from "@/lib/clientUpload";
 
 import type { DirectMessageAttachment, DirectMessageEntry } from "@/lib/messages";
 
@@ -349,11 +350,8 @@ export default function DirectConversation({
 
       validateUploadSize(file);
 
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await fetch("/api/upload", { method: "POST", body: fd });
-      const payload = await res.json().catch(() => ({}));
-      if (!res.ok || !payload.url) {
+      const payload = await uploadFile(file);
+      if (!payload.url) {
         throw new Error(
           typeof payload.error === "string" && payload.error.trim()
             ? payload.error
