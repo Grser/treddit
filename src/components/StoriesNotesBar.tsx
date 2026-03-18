@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { uploadFile } from "@/lib/clientUpload";
 
 const STORY_DURATION_MS = 5000;
 const STORY_TICK_MS = 100;
@@ -209,16 +210,16 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
 
     try {
       for (const file of files) {
-        const form = new FormData();
-        form.append("file", file);
-
-        const res = await fetch("/api/upload", { method: "POST", body: form });
-        const data = (await res.json().catch(() => ({}))) as { error?: string; url?: string };
-        if (!res.ok || !data.url) {
-          setPublishError(data.error || "No se pudo subir uno de los archivos.");
-          continue;
+        try {
+          const data = await uploadFile(file);
+          if (!data.url) {
+            setPublishError(data.error || "No se pudo subir uno de los archivos.");
+            continue;
+          }
+          uploadedUrls.push(data.url);
+        } catch (error) {
+          setPublishError(error instanceof Error ? error.message : "No se pudo subir uno de los archivos.");
         }
-        uploadedUrls.push(data.url);
       }
 
       if (uploadedUrls.length > 0) {

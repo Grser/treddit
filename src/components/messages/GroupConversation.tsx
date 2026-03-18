@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { validateUploadSize } from "@/lib/upload";
+import { uploadFile } from "@/lib/clientUpload";
 
 import type { GroupMessageEntry } from "@/lib/messages";
 
@@ -342,11 +343,8 @@ export default function GroupConversation({
                         try {
                           validateUploadSize(file);
 
-                          const form = new FormData();
-                          form.append("file", file);
-                          const res = await fetch("/api/upload", { method: "POST", body: form });
-                          const payload = await res.json().catch(() => ({}));
-                          if (!res.ok || typeof payload.url !== "string") {
+                          const payload = await uploadFile(file);
+                          if (typeof payload.url !== "string") {
                             throw new Error(
                               typeof payload.error === "string"
                                 ? payload.error

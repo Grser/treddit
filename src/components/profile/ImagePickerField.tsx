@@ -5,6 +5,7 @@ import { ChangeEvent, useState } from "react";
 
 import { useLocale } from "@/contexts/LocaleContext";
 import { validateUploadSize } from "@/lib/upload";
+import { uploadFile } from "@/lib/clientUpload";
 
 type Props = {
   name: string;
@@ -77,20 +78,11 @@ export default function ImagePickerField({
       return;
     }
 
-    const form = new FormData();
-    form.append("file", file);
-
     setUploading(true);
     setError(null);
 
     try {
-      const res = await fetch("/api/upload", { method: "POST", body: form });
-      if (!res.ok) {
-        const info = await res.json().catch(() => null);
-        const message = info?.error || t.uploadFailed;
-        throw new Error(message);
-      }
-      const data = (await res.json()) as { url?: string };
+      const data = await uploadFile(file);
       const url = data?.url?.toString().trim();
       if (!url) {
         throw new Error(t.uploadFailed);

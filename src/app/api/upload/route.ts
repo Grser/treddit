@@ -44,6 +44,26 @@ function generateUniqueFilename(uploadsDir: string, originalName: string) {
   return candidate;
 }
 
+function parseChunkMetadata(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const uploadId = searchParams.get("uploadId")?.trim() || "";
+  const filename = searchParams.get("filename")?.trim() || "";
+  const chunkIndexRaw = searchParams.get("chunkIndex");
+  const totalChunksRaw = searchParams.get("totalChunks");
+
+  if (!uploadId && !chunkIndexRaw && !totalChunksRaw) {
+    return null;
+  }
+
+  const chunkIndex = Number(chunkIndexRaw);
+  const totalChunks = Number(totalChunksRaw);
+  if (!uploadId || !Number.isInteger(chunkIndex) || !Number.isInteger(totalChunks) || chunkIndex < 0 || totalChunks <= 0 || chunkIndex >= totalChunks) {
+    throw new Error("metadatos de chunks inválidos");
+  }
+
+  return { uploadId: uploadId.replace(/[^a-zA-Z0-9_-]/g, ""), filename, chunkIndex, totalChunks };
+}
+
 export async function POST(req: Request) {
   // exige sesión para subir
   const user = await requireUser();
@@ -54,19 +74,64 @@ export async function POST(req: Request) {
   const file = formData.get("file") as File | null;
   if (!file) return NextResponse.json({ error: "archivo requerido" }, { status: 400 });
 
-  // validación mínima
-  if (file.size > MAX_UPLOAD_BYTES) {
-    return NextResponse.json({ error: getUploadSizeErrorMessage() }, { status: 413 });
-  }
-
-  const arrayBuffer = await file.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-
   const uploadDirs = resolveUploadDirs();
   const uploadsDir = uploadDirs[0];
   for (const dir of uploadDirs) {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   }
+
+  let chunkMeta: ReturnType<typeof parseChunkMetadata> = null;
+  try {
+    chunkMeta = parseChunkMetadata(req);
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "metadatos inválidos" }, { status: 400 });
+  }
+
+  if (!chunkMeta && file.size > MAX_UPLOAD_BYTES) {
+    return NextResponse.json({ error: getUploadSizeErrorMessage() }, { status: 413 });
+  }
+
+  if (chunkMeta) {
+    const chunksRoot = path.join(uploadsDir, ".chunks");
+    const tempDir = path.join(chunksRoot, chunkMeta.uploadId);
+    fs.mkdirSync(tempDir, { recursive: true });
+
+    const chunkPath = path.join(tempDir, `${chunkMeta.chunkIndex}.part`);
+    const chunkBuffer = Buffer.from(await file.arrayBuffer());
+    fs.writeFileSync(chunkPath, chunkBuffer);
+
+    const expectedChunkPaths = Array.from({ length: chunkMeta.totalChunks }, (_, index) => path.join(tempDir, `${index}.part`));
+    const hasAllChunks = expectedChunkPaths.every((partPath) => fs.existsSync(partPath));
+    if (!hasAllChunks) {
+      return NextResponse.json({ ok: true, partial: true, chunkIndex: chunkMeta.chunkIndex });
+    }
+
+    const filename = generateUniqueFilename(uploadsDir, `${Date.now()}-${chunkMeta.filename || file.name}`);
+    const finalPath = path.join(uploadsDir, filename);
+    const stream = fs.createWriteStream(finalPath);
+    for (const partPath of expectedChunkPaths) {
+      stream.write(fs.readFileSync(partPath));
+    }
+    stream.end();
+
+    await new Promise<void>((resolve, reject) => {
+      stream.on("finish", () => resolve());
+      stream.on("error", reject);
+    });
+
+    for (const dir of uploadDirs.slice(1)) {
+      fs.copyFileSync(finalPath, path.join(dir, filename));
+    }
+
+    fs.rmSync(tempDir, { recursive: true, force: true });
+
+    const url = buildPublicUploadUrl(filename);
+    const analysis = analyzeSensitiveMediaInput({ filename: chunkMeta.filename || file.name, mimeType: file.type });
+    return NextResponse.json({ ok: true, url, owner: user.id, sensitive: analysis });
+  }
+
+  const arrayBuffer = await file.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
 
   const filename = generateUniqueFilename(uploadsDir, `${Date.now()}-${file.name}`);
   for (const dir of uploadDirs) {
