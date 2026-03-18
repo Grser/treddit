@@ -2,7 +2,13 @@ import { validateUploadSize } from "@/lib/upload";
 
 type UploadResponse = { url?: string; error?: string; sensitive?: { suggestedSensitive?: boolean } };
 
-const CHUNK_SIZE_BYTES = 25 * 1024 * 1024;
+/**
+ * Keep chunks small enough to pass through common reverse-proxy defaults.
+ *
+ * A 25MB chunk can be rejected with HTTP 413 before it reaches Next.js when
+ * the app is deployed behind providers that enforce lower body limits.
+ */
+const CHUNK_SIZE_BYTES = 4 * 1024 * 1024;
 
 function createUploadId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -57,4 +63,3 @@ export async function uploadFile(
 
   throw new Error("UPLOAD_FAILED");
 }
-
