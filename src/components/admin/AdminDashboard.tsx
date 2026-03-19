@@ -19,6 +19,7 @@ export default function AdminDashboard({ stats }: { stats: AdminStats }) {
     { href: "/admin/users", title: t.links.users.title, description: t.links.users.description, emoji: "👥" },
     { href: "/admin/posts", title: t.links.posts.title, description: t.links.posts.description, emoji: "📝" },
     { href: "/admin/communities", title: t.links.communities.title, description: t.links.communities.description, emoji: "🏘️" },
+    { href: "/admin/groups", title: t.links.groups.title, description: t.links.groups.description, emoji: "💬" },
     { href: "/admin/anuncios", title: t.links.ads.title, description: t.links.ads.description, emoji: "📣" },
     { href: "/admin/users#verification", title: t.links.verification.title, description: t.links.verification.description, emoji: "✅" },
   ];

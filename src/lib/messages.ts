@@ -1368,3 +1368,23 @@ export async function leaveGroupConversation(userId: number, groupId: number) {
     await db.execute("DELETE FROM Direct_Message_Groups WHERE id=?", [groupId]);
   }
 }
+
+export async function deleteGroupConversationAsOwner(userId: number, groupId: number) {
+  if (!isDatabaseConfigured()) throw new Error("DB_REQUIRED");
+  await ensureMessageTables();
+
+  const [membershipRows] = await db.query<RowDataPacket[]>(
+    "SELECT role FROM Direct_Message_Group_Members WHERE group_id=? AND user_id=? LIMIT 1",
+    [groupId, userId],
+  );
+  if (!membershipRows[0]) {
+    throw new Error("NOT_IN_GROUP");
+  }
+
+  const myRole = String(membershipRows[0].role || "member") as GroupMemberRole;
+  if (myRole !== "owner") {
+    throw new Error("NOT_GROUP_OWNER");
+  }
+
+  await db.execute("DELETE FROM Direct_Message_Groups WHERE id=?", [groupId]);
+}

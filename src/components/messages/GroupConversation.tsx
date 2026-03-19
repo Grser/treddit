@@ -568,6 +568,32 @@ export default function GroupConversation({
             >
               {leavingGroup ? "Saliendo…" : "Salir del grupo"}
             </button>
+            {myRole === "owner" && (
+              <button
+                type="button"
+                className="rounded-full border border-rose-500/50 bg-rose-500/10 px-3 py-1.5 text-xs font-semibold text-rose-300"
+                disabled={leavingGroup || savingChanges || uploadingAvatar}
+                onClick={async () => {
+                  const confirmDelete = window.confirm("¿Seguro que quieres eliminar este grupo para todos?");
+                  if (!confirmDelete) return;
+                  setSettingsError(null);
+                  setLeavingGroup(true);
+                  try {
+                    const res = await fetch(`/api/messages/groups/${groupId}?mode=delete`, { method: "DELETE" });
+                    const payload = await res.json().catch(() => ({}));
+                    if (!res.ok) {
+                      throw new Error(typeof payload.error === "string" ? payload.error : "No se pudo eliminar el grupo");
+                    }
+                    window.location.href = "/mensajes";
+                  } catch (error) {
+                    setSettingsError(error instanceof Error ? error.message : "No se pudo eliminar el grupo");
+                    setLeavingGroup(false);
+                  }
+                }}
+              >
+                {leavingGroup ? "Procesando…" : "Eliminar grupo"}
+              </button>
+            )}
           </div>
           {canManage && speakerRequests.length > 0 && (
             <div className="mt-3 rounded-xl border border-border bg-input/40 p-3">
@@ -694,17 +720,22 @@ export default function GroupConversation({
                               ? "Publicación no disponible, ya no existe."
                               : preview?.description || "Mira la publicación que te compartieron."}
                         </p>
-                        {canRevealSensitive && sharedPost && !isSensitiveRevealed ? (
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.preventDefault();
-                              setRevealedSensitivePosts((prev) => ({ ...prev, [sharedPost.postId]: true }));
-                            }}
-                            className="mt-2 rounded-full border border-white/30 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide hover:bg-white/20"
-                          >
-                            Ver contenido
-                          </button>
+                        {canRevealSensitive && sharedPost ? (
+                          <div className="mt-2 flex justify-end">
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.preventDefault();
+                                setRevealedSensitivePosts((prev) => ({
+                                  ...prev,
+                                  [sharedPost.postId]: !isSensitiveRevealed,
+                                }));
+                              }}
+                              className="rounded-full border border-white/30 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide hover:bg-white/20"
+                            >
+                              {isSensitiveRevealed ? "Ocultar imagen" : "Ver contenido"}
+                            </button>
+                          </div>
                         ) : null}
                       </Link>
                     </div>
@@ -725,7 +756,7 @@ export default function GroupConversation({
                   )}
                   <div className={`relative mt-1 flex flex-wrap items-center gap-2 pr-8 transition-opacity ${mine ? "justify-end" : "justify-start"} ${messageMenuId === msg.id ? "opacity-100" : "opacity-0 group-hover/message:opacity-100"}`}>
                     {messageMenuId === msg.id && (
-                      <div className={`absolute bottom-8 z-20 w-56 max-w-[min(14rem,calc(100vw-2.5rem))] rounded-2xl border border-border bg-surface/95 p-2 shadow-xl backdrop-blur ${mine ? "right-0" : "left-0"}`}>
+                      <div className={`absolute bottom-8 z-20 w-52 max-w-[min(13rem,calc(100vw-2.5rem))] rounded-2xl border border-border bg-surface/95 p-2 shadow-xl backdrop-blur ${mine ? "right-0" : "left-0"}`}>
                         <div className="mb-2 flex flex-wrap gap-1 border-b border-border pb-2">
                           {MESSAGE_REACTIONS.map((emoji) => (
                             <button key={`${msg.id}-${emoji}`} type="button" className="rounded-full border border-transparent px-2 py-1 text-base transition hover:border-border hover:bg-muted" onClick={() => handleReaction(msg.id, emoji)}>{emoji}</button>
@@ -761,7 +792,7 @@ export default function GroupConversation({
         </div>
       )}
       <form
-        className="flex gap-2 rounded-2xl border border-border bg-input p-2"
+        className="flex gap-2 rounded-2xl border border-border bg-input p-2.5"
         onSubmit={async (event) => {
           event.preventDefault();
           const trimmed = text.trim();
@@ -789,7 +820,7 @@ export default function GroupConversation({
         <input
           value={text}
           onChange={(event) => setText(event.target.value)}
-          className="flex-1 rounded-full bg-background/70 px-4 py-2 text-sm outline-none"
+          className="flex-1 rounded-full bg-background/70 px-4 py-2.5 text-sm outline-none"
           placeholder={canSendMessages ? "Escribe un mensaje" : "Solo lectura"}
           disabled={!canSendMessages || sendingRef.current}
         />

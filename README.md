@@ -93,3 +93,11 @@ Opcionalmente puedes definir `APP_NAME` y `NEXT_PUBLIC_BASE_URL` para personaliz
 
 > Nota: la verificación activa de SMTP (`transporter.verify`) se desactiva por defecto para evitar errores en entornos sin shell del sistema (`/bin/sh`).
 > Si quieres forzarla al iniciar, define `SMTP_VERIFY_ON_START=true`.
+
+## Instrucciones básicas para usar la página (convivencia)
+
+- Habla con respeto y espera el mismo respeto de la otra persona.
+- Si no estás de acuerdo, responde con calma y sin insultos.
+- Antes de enviar contenido sensible, avisa a la otra persona.
+- Si alguien te molesta, usa las opciones de bloqueo/reportes y evita escalar la discusión.
+- En grupos, sigan reglas mutuas: escuchar, turnarse y no compartir datos privados de otros.

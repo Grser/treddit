@@ -232,6 +232,7 @@ export type LocaleStrings = {
       users: { title: string; description: string };
       posts: { title: string; description: string };
       communities: { title: string; description: string };
+      groups: { title: string; description: string };
       verification: { title: string; description: string };
       ads: { title: string; description: string };
     };
@@ -499,6 +500,10 @@ const translations: Record<Locale, LocaleStrings> = {
         communities: {
           title: "Administrar comunidades",
           description: "Activa o desactiva comunidades y consulta sus estadísticas principales.",
+        },
+        groups: {
+          title: "Controlar grupos de chat",
+          description: "Revisa conversaciones grupales y elimina grupos cuando sea necesario.",
         },
         verification: {
           title: "Verificación de perfiles",
@@ -771,6 +776,10 @@ const translations: Record<Locale, LocaleStrings> = {
           title: "Moderate communities",
           description: "Enable or disable communities and inspect key stats.",
         },
+        groups: {
+          title: "Manage message groups",
+          description: "Inspect group conversations and remove abusive groups when needed.",
+        },
         verification: {
           title: "Profile verification",
           description: "Grant or revoke the verified badge for trusted accounts.",
@@ -1041,6 +1050,10 @@ const translations: Record<Locale, LocaleStrings> = {
         communities: {
           title: "Администрирование сообществ",
           description: "Включайте или скрывайте сообщества и просматривайте ключевые показатели.",
+        },
+        groups: {
+          title: "Управление чат-группами",
+          description: "Просматривайте групповые беседы и удаляйте проблемные группы при необходимости.",
         },
         verification: {
           title: "Верификация профилей",
