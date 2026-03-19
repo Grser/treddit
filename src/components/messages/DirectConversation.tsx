@@ -542,17 +542,22 @@ export default function DirectConversation({
                                     ? "Publicación no disponible, ya no existe."
                                     : preview?.description || "Mira la publicación que te compartieron."}
                               </p>
-                              {canRevealSensitive && !isSensitiveRevealed ? (
-                                <button
-                                  type="button"
-                                  onClick={(event) => {
-                                    event.preventDefault();
-                                    setRevealedSensitivePosts((prev) => ({ ...prev, [sharedPost.postId]: true }));
-                                  }}
-                                  className={`mt-1 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wide transition ${isMine ? "border-white/35 bg-white/15 text-white hover:bg-white/25" : "border-border bg-background/80 text-foreground hover:bg-muted"}`}
-                                >
-                                  Ver contenido
-                                </button>
+                              {canRevealSensitive ? (
+                                <div className="mt-1 flex justify-end">
+                                  <button
+                                    type="button"
+                                    onClick={(event) => {
+                                      event.preventDefault();
+                                      setRevealedSensitivePosts((prev) => ({
+                                        ...prev,
+                                        [sharedPost.postId]: !isSensitiveRevealed,
+                                      }));
+                                    }}
+                                    className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wide transition ${isMine ? "border-white/35 bg-white/15 text-white hover:bg-white/25" : "border-border bg-background/80 text-foreground hover:bg-muted"}`}
+                                  >
+                                    {isSensitiveRevealed ? "Ocultar imagen" : "Ver contenido"}
+                                  </button>
+                                </div>
                               ) : null}
                             </div>
                           </Link>
@@ -625,7 +630,7 @@ export default function DirectConversation({
                         </button>
                       )}
                       {messageMenuId === msg.id && (
-                        <div className={`absolute bottom-8 z-20 w-56 max-w-[min(14rem,calc(100vw-2.5rem))] rounded-2xl border border-border bg-surface/95 p-2 shadow-xl backdrop-blur ${isMine ? "right-0" : "left-0"}`}>
+                        <div className={`absolute bottom-8 z-20 w-52 max-w-[min(13rem,calc(100vw-2.5rem))] rounded-2xl border border-border bg-surface/95 p-2 shadow-xl backdrop-blur ${isMine ? "right-0" : "left-0"}`}>
                           <div className="mb-2 flex flex-wrap gap-1 border-b border-border pb-2">
                             {MESSAGE_REACTIONS.map((emoji) => (
                               <button key={`${msg.id}-${emoji}`} type="button" className="rounded-full border border-transparent px-2 py-1 text-base transition hover:border-border hover:bg-muted" onClick={() => handleReaction(msg.id, emoji)}>{emoji}</button>
@@ -633,7 +638,6 @@ export default function DirectConversation({
                           </div>
                           <button type="button" className="block w-full rounded px-2 py-1 text-left text-xs hover:bg-muted" onClick={() => selectLatestMessageFromSender(msg)}>Responder</button>
                           <button type="button" className="block w-full rounded px-2 py-1 text-left text-xs hover:bg-muted" onClick={async () => { if (msg.text) await navigator.clipboard.writeText(msg.text); setMessageMenuId(null); }}>Copiar</button>
-                          <button type="button" className="block w-full rounded px-2 py-1 text-left text-xs opacity-70">Reenviar (pronto)</button>
                           {isMine ? (
                             <button type="button" className="mt-1 block w-full rounded px-2 py-1 text-left text-xs text-rose-300 hover:bg-rose-500/10" onClick={() => handleDeleteMessage(msg.id)}>Eliminar mensaje</button>
                           ) : null}
@@ -648,7 +652,7 @@ export default function DirectConversation({
         </ul>
       </div>
 
-      <form onSubmit={sendMessage} className="shrink-0 space-y-3 rounded-2xl border border-border bg-surface p-3 shadow-sm md:rounded-3xl md:p-4">
+      <form onSubmit={sendMessage} className="shrink-0 space-y-3 rounded-2xl border border-border bg-surface p-3.5 shadow-sm md:rounded-3xl md:p-4">
         {replyingTo && (
           <div className="flex items-start justify-between rounded-xl border border-border bg-muted/40 px-3 py-2 text-xs">
             <div>
@@ -727,7 +731,7 @@ export default function DirectConversation({
             </div>
           </div>
         )}
-        <div className="flex items-end gap-2">
+        <div className="flex items-end gap-2 pr-1">
           <div className="flex items-center gap-2">
             <input ref={fileInputRef} type="file" hidden accept="image/*,video/*,audio/*" onChange={handleFileChange} />
             <input ref={audioInputRef} type="file" hidden accept="audio/*" onChange={handleFileChange} />
@@ -741,7 +745,7 @@ export default function DirectConversation({
               {uploading ? "…" : "+"}
             </button>
           </div>
-          <div className="flex flex-1 items-end gap-2 rounded-[26px] bg-input px-3 py-2 ring-1 ring-border focus-within:ring-2 focus-within:ring-white/20">
+          <div className="flex flex-1 items-end gap-2 rounded-[26px] bg-input px-3 py-2.5 ring-1 ring-border focus-within:ring-2 focus-within:ring-white/20">
             <textarea
               ref={textareaRef}
               id="dm-textarea"

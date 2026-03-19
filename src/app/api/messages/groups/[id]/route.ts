@@ -2,7 +2,12 @@ import { NextResponse } from "next/server";
 
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { fetchGroupDetails, leaveGroupConversation, updateGroupConversation } from "@/lib/messages";
+import {
+  deleteGroupConversationAsOwner,
+  fetchGroupDetails,
+  leaveGroupConversation,
+  updateGroupConversation,
+} from "@/lib/messages";
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const me = await requireUser();
@@ -106,22 +111,31 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 }
 
-export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const me = await requireUser();
   const { id } = await params;
   const groupId = Number(id);
+  const url = new URL(req.url);
+  const mode = String(url.searchParams.get("mode") || "");
   if (!Number.isFinite(groupId) || groupId <= 0) {
     return NextResponse.json({ error: "Grupo inválido" }, { status: 400 });
   }
 
   try {
+    if (mode === "delete") {
+      await deleteGroupConversationAsOwner(me.id, groupId);
+      return NextResponse.json({ ok: true });
+    }
     await leaveGroupConversation(me.id, groupId);
     return NextResponse.json({ ok: true });
   } catch (error) {
     if (error instanceof Error && error.message === "NOT_IN_GROUP") {
       return NextResponse.json({ error: "Sin acceso" }, { status: 404 });
     }
+    if (error instanceof Error && error.message === "NOT_GROUP_OWNER") {
+      return NextResponse.json({ error: "Solo el dueño puede eliminar el grupo" }, { status: 403 });
+    }
     console.error("Failed to leave group", error);
-    return NextResponse.json({ error: "No se pudo salir del grupo" }, { status: 500 });
+    return NextResponse.json({ error: mode === "delete" ? "No se pudo eliminar el grupo" : "No se pudo salir del grupo" }, { status: 500 });
   }
 }
