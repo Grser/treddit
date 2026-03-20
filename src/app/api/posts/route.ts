@@ -34,6 +34,7 @@ type PostRow = {
   community_slug: string | null;
   community_name: string | null;
   is_sensitive: number | boolean | null;
+  isFollowedAuthor: number;
 };
 
 type CommunityMembershipRow = RowDataPacket & {
@@ -119,6 +120,7 @@ export async function GET(req: Request) {
   const whereParams: (number | string)[] = [];
   const joins: string[] = [];
   const whereParts: string[] = [];
+  const meId = me?.id ?? null;
 
   if (likesOf > 0) {
     joins.push("JOIN Like_Posts lpFilter ON lpFilter.post = p.id AND lpFilter.user = ?");
@@ -150,7 +152,13 @@ export async function GET(req: Request) {
     whereParams.push(`%${escapeLike(normalizedTag)}%`);
   }
 
-  const meId = me?.id ?? null;
+  if (filter === "exploring" && meId) {
+    whereParts.push("p.user <> ?");
+    whereParams.push(meId);
+    whereParts.push("NOT EXISTS (SELECT 1 FROM Follows fExplore WHERE fExplore.follower = ? AND fExplore.followed = p.user)");
+    whereParams.push(meId);
+  }
+
   const canUseAnonCache = shouldUseAnonFeedCache(url, meId);
   const canUseAuthCache = shouldUseAuthFeedCache(url, meId);
   const anonCacheKey = canUseAnonCache ? createAnonFeedCacheKey(url) : null;
@@ -289,6 +297,16 @@ export async function GET(req: Request) {
         ${communitySlugSelect} AS community_slug,
         ${communityNameSelect} AS community_name,
         ${sensitiveSelect} AS is_sensitive
+        ,
+        CASE
+          WHEN ? IS NULL THEN 0
+          WHEN EXISTS (
+            SELECT 1
+            FROM Follows f
+            WHERE f.follower = ? AND f.followed = p.user
+          ) THEN 1
+          ELSE 0
+        END AS isFollowedAuthor
       FROM Posts p
       JOIN Users u ON u.id = p.user
       ${communityJoin}
@@ -330,6 +348,8 @@ export async function GET(req: Request) {
       [
         meId,
         meId,
+        meId,
+        meId,
         ...orderedIds,
         ...orderedIds,
         ...orderedIds,
@@ -356,6 +376,7 @@ export async function GET(req: Request) {
       hasPoll: Boolean(row.hasPoll),
       reply_scope: Number(row.reply_scope ?? 0),
       is_sensitive: Boolean(row.is_sensitive),
+      isFollowedAuthor: Boolean(row.isFollowedAuthor),
       can_view_sensitive: viewerAgeVerified,
       isOwner: meId ? Number(row.user) === meId : false,
       isAdminViewer: Boolean(me?.is_admin),

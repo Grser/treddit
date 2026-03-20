@@ -1,6 +1,8 @@
 import Link from "next/link";
 
+import Feed from "@/components/Feed";
 import Navbar from "@/components/Navbar";
+import { getSessionUser } from "@/lib/auth";
 import { getRequestBaseUrl } from "@/lib/requestBaseUrl";
 
 export const dynamic = "force-dynamic";
@@ -8,15 +10,21 @@ export const dynamic = "force-dynamic";
 type TrendingTag = { tag: string; count: number; views: number };
 
 export default async function ExplorePage() {
+  const session = await getSessionUser();
   const baseUrl = await getRequestBaseUrl();
   const tags = await getTrendingTags(baseUrl);
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
-      <Navbar />
+      <Navbar session={session} />
       <main className="mx-auto max-w-4xl px-4 py-8 space-y-6">
         <h1 className="text-3xl font-semibold tracking-tight">Explorar</h1>
-        <p className="text-sm opacity-75">Hashtags más vistos o buscados en este momento.</p>
+        <p className="text-sm opacity-75">Publicaciones de gente nueva y hashtags más vistos o buscados en este momento.</p>
+
+        <section className="space-y-4">
+          <h2 className="text-xl font-semibold">Gente que no sigues</h2>
+          <Feed canInteract={Boolean(session)} filter="exploring" />
+        </section>
 
         <section className="rounded-2xl border border-border bg-surface p-5">
           <ul className="space-y-3">
