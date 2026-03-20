@@ -1,6 +1,7 @@
 import type { RowDataPacket } from "mysql2";
 
 import Navbar from "@/components/Navbar";
+import { AdminSection, AdminShell } from "@/components/admin/AdminShell";
 import UserBadges from "@/components/UserBadges";
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -43,12 +44,12 @@ export default async function AdminPosts({ searchParams }: AdminPostsProps) {
   const params: (string | number)[] = [];
 
   if (username) {
-    where.push("u.username LIKE ? ESCAPE '\\'");
+    where.push("u.username LIKE ? ESCAPE '\\\\'");
     params.push(`%${escapeLike(username)}%`);
   }
 
   if (normalizedTag) {
-    where.push("p.description LIKE ? ESCAPE '\\'");
+    where.push("p.description LIKE ? ESCAPE '\\\\'");
     params.push(`%${escapeLike(normalizedTag)}%`);
   }
 
@@ -76,72 +77,47 @@ export default async function AdminPosts({ searchParams }: AdminPostsProps) {
   return (
     <div>
       <Navbar />
-      <div className="mx-auto max-w-5xl p-6">
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h2 className="text-xl font-semibold">Posts</h2>
-            <p className="text-sm opacity-70">Filtra por usuario o por hashtag para revisar contenido específico.</p>
-          </div>
+      <AdminShell title="Moderación de posts" subtitle="Busca por usuario o hashtag y actúa rápido sobre publicaciones. ">
+        <AdminSection title="Filtros" description="Combina filtros para ubicar contenido puntual sin perder contexto.">
           <form className="flex flex-col gap-2 sm:flex-row sm:items-end" method="get" action="/admin/posts">
             <label className="flex flex-col text-sm">
               <span className="font-medium">Usuario</span>
-              <input
-                type="text"
-                name="user"
-                defaultValue={username}
-                className="mt-1 h-9 rounded-lg border border-border bg-input px-3 text-sm outline-none focus:border-transparent focus:ring-2 focus:ring-brand/60"
-                placeholder="usuario"
-              />
+              <input type="text" name="user" defaultValue={username} className="mt-1 h-9 rounded-lg border border-border bg-input px-3 text-sm" placeholder="usuario" />
             </label>
             <label className="flex flex-col text-sm">
               <span className="font-medium">Hashtag</span>
-              <input
-                type="text"
-                name="tag"
-                defaultValue={tagRaw}
-                className="mt-1 h-9 rounded-lg border border-border bg-input px-3 text-sm outline-none focus:border-transparent focus:ring-2 focus:ring-brand/60"
-                placeholder="#tema"
-              />
+              <input type="text" name="tag" defaultValue={tagRaw} className="mt-1 h-9 rounded-lg border border-border bg-input px-3 text-sm" placeholder="#tema" />
             </label>
             <div className="flex gap-2">
-              <button
-                type="submit"
-                className="h-9 rounded-full bg-brand px-4 text-sm font-medium text-white hover:bg-brand/90"
-              >
-                Filtrar
-              </button>
-              {(username || tagRaw) && (
-                <a
-                  href="/admin/posts"
-                  className="inline-flex h-9 items-center rounded-full border border-border px-4 text-sm"
-                >
-                  Limpiar
-                </a>
-              )}
+              <button type="submit" className="h-9 rounded-full bg-brand px-4 text-sm font-medium text-white">Filtrar</button>
+              {(username || tagRaw) && <a href="/admin/posts" className="inline-flex h-9 items-center rounded-full border border-border px-4 text-sm">Limpiar</a>}
             </div>
           </form>
-        </div>
-        <ul className="space-y-3">
-          {posts.map((p) => (
-            <li key={p.id} className="rounded border border-border p-3">
-              <p className="mb-1 text-sm">
-                <span className="inline-flex items-center gap-2 font-semibold">
-                  @{p.username}
-                  <UserBadges size="sm" isAdmin={p.isAdmin} isVerified={p.isVerified} />
-                </span>
-                <span className="opacity-60"> · {new Date(p.createdAt).toLocaleString()}</span>
-              </p>
-              <p className="mb-2 text-sm">{p.description}</p>
-              <form action={`/api/posts/${p.id}`} method="post" className="inline">
-                <input type="hidden" name="_method" value="DELETE" />
-                <button formAction={`/api/posts/${p.id}`} className="underline">
-                  Eliminar
-                </button>
-              </form>
-            </li>
-          ))}
-        </ul>
-      </div>
+        </AdminSection>
+
+        <AdminSection title="Resultados" description={`Mostrando ${posts.length} posts recientes.`}>
+          <ul className="space-y-3">
+            {posts.map((p) => (
+              <li key={p.id} className="rounded-xl border border-border/70 bg-surface p-4">
+                <p className="mb-1 text-sm">
+                  <span className="inline-flex items-center gap-2 font-semibold">
+                    @{p.username}
+                    <UserBadges size="sm" isAdmin={p.isAdmin} isVerified={p.isVerified} />
+                  </span>
+                  <span className="opacity-60"> · {new Date(p.createdAt).toLocaleString()}</span>
+                </p>
+                <p className="mb-3 text-sm whitespace-pre-wrap">{p.description}</p>
+                <form action={`/api/posts/${p.id}`} method="post" className="inline">
+                  <input type="hidden" name="_method" value="DELETE" />
+                  <button formAction={`/api/posts/${p.id}`} className="rounded-full border border-rose-500/40 px-3 py-1 text-xs text-rose-500">
+                    Eliminar
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </AdminSection>
+      </AdminShell>
     </div>
   );
 }

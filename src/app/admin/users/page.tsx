@@ -5,9 +5,10 @@ type PageProps = {
 };
 
 import Navbar from "@/components/Navbar";
+import { AdminSection, AdminShell } from "@/components/admin/AdminShell";
 import { requireAdmin } from "@/lib/auth";
-import { db } from "@/lib/db";
 import { ensureAgeVerificationRequestsTable, ensureUsersAgeColumns } from "@/lib/ageVerification";
+import { db } from "@/lib/db";
 
 type AdminUserRow = RowDataPacket & {
   id: number;
@@ -52,8 +53,9 @@ export default async function AdminUsers({ searchParams }: PageProps) {
   const params = searchParams ? await searchParams : {};
   const passwordUpdated = params.password === "updated";
   const passwordError = params.password === "error";
+
   const [rows] = await db.query<AdminUserRow[]>(
-    "SELECT id, username, nickname, email, is_admin, is_verified, is_age_verified, visible, birth_date, country_of_origin, created_at FROM Users ORDER BY created_at DESC LIMIT 200"
+    "SELECT id, username, nickname, email, is_admin, is_verified, is_age_verified, visible, birth_date, country_of_origin, created_at FROM Users ORDER BY created_at DESC LIMIT 200",
   );
   const [ageRows] = await db.query<AgeRequestRow[]>(`
     SELECT avr.id AS request_id, avr.user_id, u.username, u.nickname, avr.birth_date, avr.country_of_origin, avr.id_document_url, avr.created_at AS requested_at
@@ -62,6 +64,7 @@ export default async function AdminUsers({ searchParams }: PageProps) {
     ORDER BY avr.created_at DESC
     LIMIT 200
   `);
+
   const users: AdminUser[] = rows.map((row) => ({
     id: Number(row.id),
     username: String(row.username),
@@ -74,129 +77,94 @@ export default async function AdminUsers({ searchParams }: PageProps) {
     birthDate: row.birth_date ? String(row.birth_date).slice(0, 10) : null,
     countryOfOrigin: row.country_of_origin ? String(row.country_of_origin) : null,
   }));
+
   return (
     <div>
       <Navbar />
-      <div className="mx-auto max-w-6xl p-6 space-y-8">
-        <section>
-          <h2 id="verification" className="mb-4 text-xl font-semibold">Solicitudes de verificación de edad</h2>
+      <AdminShell
+        title="Administración de usuarios"
+        subtitle="Panel simplificado para revisar verificaciones y gestionar cuentas sin tener todo amontonado."
+      >
+        <AdminSection title="Solicitudes de verificación de edad" description="Aprueba o rechaza solicitudes pendientes.">
           {ageRows.length === 0 ? (
             <p className="text-sm opacity-70">No hay solicitudes pendientes.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-left">
-                    <th className="py-2 pr-4">Usuario</th>
-                    <th className="py-2 pr-4">Fecha de nacimiento</th>
-                    <th className="py-2 pr-4">País</th>
-                    <th className="py-2 pr-4">Documento</th>
-                    <th className="py-2 pr-4">Solicitada</th>
-                    <th className="py-2 pr-4">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {ageRows.map((request) => (
-                    <tr key={request.request_id} className="border-b border-border/60">
-                      <td className="py-2 pr-4">
-                        <div className="font-semibold">@{request.username}</div>
-                        {request.nickname && <div className="text-xs opacity-70">{request.nickname}</div>}
-                      </td>
-                      <td className="py-2 pr-4">{request.birth_date ? String(request.birth_date).slice(0, 10) : "Sin fecha"}</td>
-                      <td className="py-2 pr-4">{request.country_of_origin || "Sin país"}</td>
-                      <td className="py-2 pr-4">{request.id_document_url ? <a href={request.id_document_url} target="_blank" rel="noreferrer" className="underline">Ver documento</a> : "Sin documento"}</td>
-                      <td className="py-2 pr-4">{new Date(request.requested_at).toLocaleString()}</td>
-                      <td className="space-x-3 whitespace-nowrap py-2 pr-4">
-                        <form action={`/api/admin/users/${request.user_id}`} method="post" className="inline">
-                          <input type="hidden" name="op" value="approve_age_verification" />
-                          <button className="underline">Aprobar</button>
-                        </form>
-                        <form action={`/api/admin/users/${request.user_id}`} method="post" className="inline">
-                          <input type="hidden" name="op" value="reject_age_verification" />
-                          <button className="underline">Rechazar</button>
-                        </form>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="grid gap-3 md:grid-cols-2">
+              {ageRows.map((request) => (
+                <article key={request.request_id} className="rounded-xl border border-border/70 p-4">
+                  <p className="font-semibold">@{request.username}</p>
+                  {request.nickname ? <p className="text-xs opacity-70">{request.nickname}</p> : null}
+                  <dl className="mt-3 grid gap-2 text-sm">
+                    <div className="flex justify-between gap-3"><dt className="opacity-70">Nacimiento</dt><dd>{request.birth_date ? String(request.birth_date).slice(0, 10) : "Sin fecha"}</dd></div>
+                    <div className="flex justify-between gap-3"><dt className="opacity-70">País</dt><dd>{request.country_of_origin || "Sin país"}</dd></div>
+                    <div className="flex justify-between gap-3"><dt className="opacity-70">Solicitada</dt><dd>{new Date(request.requested_at).toLocaleString()}</dd></div>
+                  </dl>
+                  {request.id_document_url ? (
+                    <a href={request.id_document_url} target="_blank" rel="noreferrer" className="mt-3 inline-flex text-sm underline">
+                      Ver documento
+                    </a>
+                  ) : (
+                    <p className="mt-3 text-xs opacity-60">Sin documento adjunto.</p>
+                  )}
+                  <div className="mt-4 flex gap-2">
+                    <form action={`/api/admin/users/${request.user_id}`} method="post">
+                      <input type="hidden" name="op" value="approve_age_verification" />
+                      <button className="rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white">Aprobar</button>
+                    </form>
+                    <form action={`/api/admin/users/${request.user_id}`} method="post">
+                      <input type="hidden" name="op" value="reject_age_verification" />
+                      <button className="rounded-full border border-border px-3 py-1.5 text-xs font-medium">Rechazar</button>
+                    </form>
+                  </div>
+                </article>
+              ))}
             </div>
           )}
-        </section>
+        </AdminSection>
 
-        <section>
-          <h2 className="mb-4 text-xl font-semibold">Usuarios</h2>
-          {passwordUpdated && (
-            <p className="mb-4 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
-              Contraseña actualizada correctamente.
-            </p>
-          )}
-          {passwordError && (
-            <p className="mb-4 rounded-md border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-700 dark:text-rose-300">
-              No se pudo actualizar la contraseña. Debe tener al menos 6 caracteres.
-            </p>
-          )}
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left">
-                  <th className="py-2 pr-4">ID</th>
-                  <th className="py-2 pr-4">Usuario</th>
-                  <th className="py-2 pr-4">Email</th>
-                  <th className="py-2 pr-4">Edad</th>
-                  <th className="py-2 pr-4">País</th>
-                  <th className="py-2 pr-4">Admin</th>
-                  <th className="py-2 pr-4">Verificado</th>
-                  <th className="py-2 pr-4">Visible</th>
-                  <th className="py-2 pr-4">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((u) => (
-                  <tr key={u.id} className="border-b border-border/60">
-                    <td className="py-2 pr-4">{u.id}</td>
-                    <td className="py-2 pr-4">
-                      <div className="font-semibold">@{u.username}</div>
-                      {u.nickname && <div className="text-xs opacity-70">{u.nickname}</div>}
-                    </td>
-                    <td className="py-2 pr-4">{u.email}</td>
-                    <td className="py-2 pr-4">{u.isAgeVerified ? "Verificada" : "Pendiente"}{u.birthDate ? ` (${u.birthDate})` : ""}</td>
-                    <td className="py-2 pr-4">{u.isAdmin ? "Sí" : "No"}</td>
-                    <td className="py-2 pr-4">{u.isVerified ? "Sí" : "No"}</td>
-                    <td className="py-2 pr-4">{u.visible ? "Sí" : "No"}</td>
-                    <td className="space-x-3 whitespace-nowrap py-2 pr-4">
-                      <form action={`/api/admin/users/${u.id}`} method="post" className="inline">
-                        <input type="hidden" name="op" value={u.isAdmin ? "revoke_admin" : "make_admin"} />
-                        <button className="underline">{u.isAdmin ? "Quitar admin" : "Hacer admin"}</button>
-                      </form>
-                      <form action={`/api/admin/users/${u.id}`} method="post" className="inline">
-                        <input type="hidden" name="op" value={u.isVerified ? "unverify" : "verify"} />
-                        <button className="underline">{u.isVerified ? "Quitar verificación" : "Verificar"}</button>
-                      </form>
-                      <form action={`/api/admin/users/${u.id}`} method="post" className="inline">
-                        <input type="hidden" name="op" value={u.visible ? "hide" : "show"} />
-                        <button className="underline">{u.visible ? "Ocultar" : "Mostrar"}</button>
-                      </form>
-                      <form action={`/api/admin/users/${u.id}`} method="post" className="inline-flex items-center gap-2">
-                        <input type="hidden" name="op" value="set_password" />
-                        <input
-                          type="password"
-                          name="password"
-                          minLength={6}
-                          required
-                          placeholder="Nueva contraseña"
-                          className="w-44 rounded-md border border-border bg-transparent px-2 py-1 text-xs"
-                        />
-                        <button className="underline">Cambiar contraseña</button>
-                      </form>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <AdminSection title="Usuarios" description="Acciones rápidas por cuenta y contraseña desde una vista más clara.">
+          {passwordUpdated && <p className="mb-4 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">Contraseña actualizada correctamente.</p>}
+          {passwordError && <p className="mb-4 rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-700 dark:text-rose-300">No se pudo actualizar la contraseña. Debe tener al menos 6 caracteres.</p>}
+          <div className="space-y-3">
+            {users.map((u) => (
+              <article key={u.id} className="rounded-xl border border-border/70 p-4">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <p className="font-semibold">@{u.username}</p>
+                    {u.nickname ? <p className="text-xs opacity-70">{u.nickname}</p> : null}
+                    <p className="mt-1 text-sm opacity-80">{u.email}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+                    <span className="rounded-full border border-border px-2 py-1">ID: {u.id}</span>
+                    <span className="rounded-full border border-border px-2 py-1">Edad: {u.isAgeVerified ? "Verificada" : "Pendiente"}</span>
+                    <span className="rounded-full border border-border px-2 py-1">País: {u.countryOfOrigin || "N/D"}</span>
+                    <span className="rounded-full border border-border px-2 py-1">Visible: {u.visible ? "Sí" : "No"}</span>
+                  </div>
+                </div>
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <form action={`/api/admin/users/${u.id}`} method="post"><input type="hidden" name="op" value={u.isAdmin ? "revoke_admin" : "make_admin"} /><button className="rounded-full border border-border px-3 py-1.5 text-xs">{u.isAdmin ? "Quitar admin" : "Hacer admin"}</button></form>
+                  <form action={`/api/admin/users/${u.id}`} method="post"><input type="hidden" name="op" value={u.isVerified ? "unverify" : "verify"} /><button className="rounded-full border border-border px-3 py-1.5 text-xs">{u.isVerified ? "Quitar verificación" : "Verificar"}</button></form>
+                  <form action={`/api/admin/users/${u.id}`} method="post"><input type="hidden" name="op" value={u.visible ? "hide" : "show"} /><button className="rounded-full border border-border px-3 py-1.5 text-xs">{u.visible ? "Ocultar" : "Mostrar"}</button></form>
+                </div>
+
+                <form action={`/api/admin/users/${u.id}`} method="post" className="mt-3 flex flex-wrap items-center gap-2">
+                  <input type="hidden" name="op" value="set_password" />
+                  <input
+                    type="password"
+                    name="password"
+                    minLength={6}
+                    required
+                    placeholder="Nueva contraseña"
+                    className="h-9 w-52 rounded-lg border border-border bg-input px-3 text-sm"
+                  />
+                  <button className="rounded-full bg-brand px-3 py-1.5 text-xs font-medium text-white">Cambiar contraseña</button>
+                </form>
+              </article>
+            ))}
           </div>
-        </section>
-      </div>
+        </AdminSection>
+      </AdminShell>
     </div>
   );
 }
