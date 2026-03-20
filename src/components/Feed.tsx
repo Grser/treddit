@@ -40,6 +40,7 @@ export default function Feed({
   const [hasError, setHasError] = useState(false);
   const [errMsg, setErrMsg] = useState<string | null>(null);
   const skipFirstLoad = useRef(Boolean(initialItems?.length));
+  const shouldShowExploringBoundary = !filter && !userId && !likesOf && !communityId && !tag && !username;
 
   const query = useMemo(() => {
     const params = new URLSearchParams();
@@ -126,9 +127,24 @@ export default function Feed({
 
   return (
     <div className="space-y-4">
-      {posts.map((post) => (
-        <PostCard key={post.id} post={post} canInteract={canInteract} />
-      ))}
+      {posts.map((post, index) => {
+        const showBoundary =
+          shouldShowExploringBoundary &&
+          canInteract &&
+          post.isFollowedAuthor === false &&
+          (index === 0 || posts[index - 1]?.isFollowedAuthor !== false);
+
+        return (
+          <div key={post.id} className="space-y-4">
+            {showBoundary && (
+              <div className="rounded-xl border border-border bg-surface px-4 py-2 text-center text-xs font-semibold uppercase tracking-wide opacity-70">
+                {strings.feed.exploringBoundary}
+              </div>
+            )}
+            <PostCard post={post} canInteract={canInteract} />
+          </div>
+        );
+      })}
     </div>
   );
 }

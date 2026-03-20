@@ -36,6 +36,7 @@ export type Post = {
   community?: { id: number; slug: string; name: string } | null;
   is_sensitive?: boolean;
   can_view_sensitive?: boolean;
+  isFollowedAuthor?: boolean;
 };
 
 export default function PostCard({

@@ -62,6 +62,7 @@ export type LocaleStrings = {
     loading: string;
     error: string;
     empty: string;
+    exploringBoundary: string;
   };
   sidebarLeft: {
     home: string;
@@ -299,6 +300,7 @@ const translations: Record<Locale, LocaleStrings> = {
       loading: "Cargando…",
       error: "No se pudieron cargar las publicaciones.",
       empty: "Aún no hay publicaciones.",
+      exploringBoundary: "Explorando",
     },
     sidebarLeft: {
       home: "Inicio",
@@ -575,6 +577,7 @@ const translations: Record<Locale, LocaleStrings> = {
       loading: "Loading…",
       error: "Posts could not be loaded.",
       empty: "No posts yet.",
+      exploringBoundary: "Exploring",
     },
     sidebarLeft: {
       home: "Home",
@@ -850,6 +853,7 @@ const translations: Record<Locale, LocaleStrings> = {
       loading: "Загрузка…",
       error: "Не удалось загрузить публикации.",
       empty: "Публикаций пока нет.",
+      exploringBoundary: "Обзор",
     },
     sidebarLeft: {
       home: "Главная",
