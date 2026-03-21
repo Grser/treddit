@@ -88,7 +88,7 @@ export async function POST(req: Request) {
   if (!file) return NextResponse.json({ error: "archivo requerido" }, { status: 400 });
 
   const scope = resolveUploadScope(req);
-  const userDirectorySegments = resolveUserUploadDirectory(user.id, scope);
+  const userDirectorySegments = resolveUserUploadDirectory(String(user.id), scope);
   const uploadDirs = resolveUploadDirs();
   const uploadsDir = uploadDirs[0];
   for (const dir of uploadDirs) {
