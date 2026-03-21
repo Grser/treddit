@@ -25,6 +25,12 @@ type SearchUser = {
 };
 
 const MESSAGE_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"] as const;
+const GROUP_STICKERS = [
+  "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbThwajQ0YXFreXQyb3h2b2N0NWFjYnR5ZzIybDh6OHN5b2N2YWw1NCZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/3oriO0OEd9QIDdllqo/giphy.gif",
+  "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMm1ydGVvM2hyZ3l4YWZsM2lmbnBqeHlkam95cnRwNTNqem9iaHV4dCZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/Cmr1OMJ2FN0B2/giphy.gif",
+  "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbnRjcThhajk5NjN3Z2N4YXN6aG12N3NoYjJ3M2E3dDdnYjhzeW40aCZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/TBddd797slSxO/giphy.gif",
+  "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExZG0yNnN1cWQ5OHQyc3F3NGJ5Y2FmMm5mb2w2bDU2cWhhY2tiNGo0aCZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/Yl5aO3gdVfsQ0/giphy.gif",
+] as const;
 
 type SharedPostPreview = {
   id: number;
@@ -77,6 +83,13 @@ function formatMessageTime(dateInput: string) {
   }).format(new Date(dateInput));
 }
 
+function parseSticker(text: string | null | undefined) {
+  if (!text) return null;
+  const match = text.trim().match(/^\[\[sticker:(https?:\/\/[^\s\]]+)\]\]$/i);
+  if (!match) return null;
+  return match[1];
+}
+
 export default function GroupConversation({
   groupId,
   viewerId,
@@ -119,6 +132,7 @@ export default function GroupConversation({
   const [sharedPostPreviews, setSharedPostPreviews] = useState<Record<number, SharedPostPreview | null>>({});
   const [revealedSensitivePosts, setRevealedSensitivePosts] = useState<Record<number, boolean>>({});
   const [messageMenuId, setMessageMenuId] = useState<number | null>(null);
+  const [showStickerTray, setShowStickerTray] = useState(false);
   const groupAvatar = avatarUrl || "/demo-reddit.png";
 
   const myMember = members.find((member) => member.id === viewerId);
@@ -648,6 +662,7 @@ export default function GroupConversation({
           const isSensitiveRevealed = Boolean(sharedPost && revealedSensitivePosts[sharedPost.postId]);
           const shouldShowMedia = Boolean(preview?.mediaUrl) && (!preview?.isSensitive || isSensitiveRevealed);
           const avatar = msg.sender.avatar_url?.trim() || "/demo-reddit.png";
+          const stickerUrl = parseSticker(msg.text);
 
           return (
             <li key={msg.id} className={`group/message flex ${mine ? "justify-end" : "justify-start"} ${prevSameSender ? "mt-0.5" : "mt-2.5"}`}>
@@ -682,8 +697,17 @@ export default function GroupConversation({
                       <Link href={`/u/${msg.sender.username}`} className="hover:underline">{msg.sender.nickname || msg.sender.username}</Link>
                     </p>
                   )}
-                  {!sharedPost ? (
+                  {!sharedPost && !stickerUrl ? (
                     <p className="whitespace-pre-wrap">{msg.text}</p>
+                  ) : stickerUrl ? (
+                    <Image
+                      src={stickerUrl}
+                      alt="Sticker"
+                      width={180}
+                      height={180}
+                      className="h-[180px] w-[180px] max-w-full object-contain"
+                      unoptimized
+                    />
                   ) : (
                     <div className="space-y-2">
                       {sharedPost.intro ? <p className="text-xs opacity-85">{sharedPost.intro}</p> : null}
@@ -817,17 +841,64 @@ export default function GroupConversation({
           }
         }}
       >
-        <input
-          value={text}
-          onChange={(event) => setText(event.target.value)}
-          className="flex-1 rounded-full bg-background/70 px-4 py-2.5 text-sm outline-none"
-          placeholder={canSendMessages ? "Escribe un mensaje" : "Solo lectura"}
-          disabled={!canSendMessages || sendingRef.current}
-        />
+        <div className="flex flex-1 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowStickerTray((prev) => !prev)}
+            className="inline-flex size-10 items-center justify-center rounded-full bg-background/70 text-lg"
+            disabled={!canSendMessages || sendingRef.current}
+            aria-label="Abrir stickers"
+          >
+            🙂
+          </button>
+          <input
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+            className="flex-1 rounded-full bg-background/70 px-4 py-2.5 text-sm outline-none"
+            placeholder={canSendMessages ? "Escribe un mensaje" : "Solo lectura"}
+            disabled={!canSendMessages || sendingRef.current}
+          />
+        </div>
         <button type="submit" disabled={!canSendMessages || sendingRef.current || !text.trim()} className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
           Enviar
         </button>
       </form>
+      {showStickerTray && canSendMessages && (
+        <div className="rounded-2xl border border-border bg-surface p-3">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide opacity-70">Stickers</p>
+          <div className="flex flex-wrap gap-2">
+            {GROUP_STICKERS.map((url, index) => (
+              <button
+                key={`${url}-${index}`}
+                type="button"
+                className="overflow-hidden rounded-2xl border border-border bg-background/70 p-1 transition hover:scale-[1.03] hover:bg-muted"
+                onClick={async () => {
+                  if (sendingRef.current) return;
+                  sendingRef.current = true;
+                  setSendError(null);
+                  try {
+                    const res = await fetch(`/api/messages/groups/${groupId}/messages`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ text: `[[sticker:${url}]]` }),
+                    });
+                    const payload = await res.json().catch(() => ({}));
+                    if (res.ok && payload.message) {
+                      setMessages((prev) => mergeMessagesById(prev, [payload.message as GroupMessageEntry]));
+                    } else {
+                      setSendError(typeof payload.error === "string" ? payload.error : "No se pudo enviar el sticker");
+                    }
+                  } finally {
+                    sendingRef.current = false;
+                  }
+                }}
+              >
+                <Image src={url} alt={`Sticker ${index + 1}`} width={64} height={64} className="size-14 object-contain" unoptimized />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       {sendError && <p className="text-xs text-rose-400">{sendError}</p>}
     </div>
   );
