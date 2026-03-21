@@ -42,6 +42,13 @@ const QUICK_MEDIA: Array<{ label: string; url: string; type: "gif" | "sticker" }
   { label: "Sticker cool", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExd2F2dzQ4aGdhMnA2M2V5cnRrb3g4eW9vMGl5eGVvMWFzZm9oOWQwZCZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/3oriO0OEd9QIDdllqo/giphy.gif", type: "sticker" },
 ];
 
+const STICKER_PACK = [
+  "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbThwajQ0YXFreXQyb3h2b2N0NWFjYnR5ZzIybDh6OHN5b2N2YWw1NCZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/3oriO0OEd9QIDdllqo/giphy.gif",
+  "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMm1ydGVvM2hyZ3l4YWZsM2lmbnBqeHlkam95cnRwNTNqem9iaHV4dCZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/Cmr1OMJ2FN0B2/giphy.gif",
+  "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbnRjcThhajk5NjN3Z2N4YXN6aG12N3NoYjJ3M2E3dDdnYjhzeW40aCZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/TBddd797slSxO/giphy.gif",
+  "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExZG0yNnN1cWQ5OHQyc3F3NGJ5Y2FmMm5mb2w2bDU2cWhhY2tiNGo0aCZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/Yl5aO3gdVfsQ0/giphy.gif",
+] as const;
+
 
 async function getAudioDurationSeconds(file: File): Promise<number> {
   const objectUrl = URL.createObjectURL(file);
@@ -298,6 +305,11 @@ export default function DirectConversation({
   function addQuickMedia(item: (typeof QUICK_MEDIA)[number]) {
     saveMedia(item.url, item.type);
     setAttachments((prev) => [...prev, { url: item.url, type: "image", name: item.label }]);
+  }
+
+  function addSticker(url: string, label = "Sticker") {
+    saveMedia(url, "sticker");
+    setAttachments((prev) => [...prev, { url, type: "image", name: label }]);
   }
 
   async function handleReaction(messageId: number, emoji: string) {
@@ -722,12 +734,33 @@ export default function DirectConversation({
                   + {item.type}
                 </button>
               ))}
-              {savedStickers.slice(0, 4).map((url) => (
-                <button key={`stk-${url}`} type="button" onClick={() => setAttachments((prev) => [...prev, { url, type: "image", name: "Sticker guardado" }])} className="rounded-full border border-border px-2 py-1 text-[11px] hover:bg-muted">sticker</button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {savedStickers.slice(0, 6).map((url) => (
+                <button key={`stk-${url}`} type="button" onClick={() => addSticker(url, "Sticker guardado")} className="overflow-hidden rounded-xl border border-border bg-background/70 p-1 hover:bg-muted" title="Sticker guardado">
+                  <Image src={url} alt="Sticker guardado" width={44} height={44} className="size-11 object-contain" unoptimized />
+                </button>
               ))}
               {savedGifs.slice(0, 4).map((url) => (
                 <button key={`gif-${url}`} type="button" onClick={() => setAttachments((prev) => [...prev, { url, type: "image", name: "GIF guardado" }])} className="rounded-full border border-border px-2 py-1 text-[11px] hover:bg-muted">gif</button>
               ))}
+            </div>
+            <div className="space-y-1">
+              <p className="text-[11px] font-semibold uppercase tracking-wide opacity-70">Stickers</p>
+              <div className="flex flex-wrap gap-2">
+                {STICKER_PACK.map((url, index) => (
+                  <button
+                    key={`${url}-${index}`}
+                    type="button"
+                    onClick={() => addSticker(url, `Sticker ${index + 1}`)}
+                    className="overflow-hidden rounded-2xl border border-border bg-background/70 p-1 transition hover:scale-[1.03] hover:bg-muted"
+                    disabled={sending || uploading}
+                    title={`Sticker ${index + 1}`}
+                  >
+                    <Image src={url} alt={`Sticker ${index + 1}`} width={64} height={64} className="size-14 object-contain" unoptimized />
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}
