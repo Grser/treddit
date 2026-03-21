@@ -2,6 +2,8 @@ import { validateUploadSize } from "@/lib/upload";
 
 type UploadResponse = { url?: string; error?: string; sensitive?: { suggestedSensitive?: boolean } };
 
+type UploadScope = "general" | "post" | "chat" | "story" | "profile";
+
 /**
  * Keep chunks small enough to pass through common reverse-proxy defaults.
  *
@@ -24,14 +26,17 @@ async function parseUploadResponse(res: Response): Promise<UploadResponse> {
 
 export async function uploadFile(
   file: File,
-  options?: { onProgress?: (progress: number) => void },
+  options?: { onProgress?: (progress: number) => void; scope?: UploadScope },
 ): Promise<UploadResponse> {
   validateUploadSize(file);
+
+  const scope = options?.scope ?? "general";
 
   if (file.size <= CHUNK_SIZE_BYTES) {
     const formData = new FormData();
     formData.append("file", file);
-    const res = await fetch("/api/upload", { method: "POST", body: formData });
+    const params = new URLSearchParams({ scope });
+    const res = await fetch(`/api/upload?${params.toString()}`, { method: "POST", body: formData });
     return parseUploadResponse(res);
   }
 
@@ -47,6 +52,7 @@ export async function uploadFile(
     formData.append("file", chunk, file.name);
 
     const params = new URLSearchParams({
+      scope,
       uploadId,
       chunkIndex: String(chunkIndex),
       totalChunks: String(totalChunks),

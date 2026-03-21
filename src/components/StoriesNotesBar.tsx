@@ -211,7 +211,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
     try {
       for (const file of files) {
         try {
-          const data = await uploadFile(file);
+          const data = await uploadFile(file, { scope: "story" });
           if (!data.url) {
             setPublishError(data.error || "No se pudo subir uno de los archivos.");
             continue;

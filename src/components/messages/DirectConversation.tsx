@@ -350,7 +350,7 @@ export default function DirectConversation({
 
       validateUploadSize(file);
 
-      const payload = await uploadFile(file);
+      const payload = await uploadFile(file, { scope: "chat" });
       if (!payload.url) {
         throw new Error(
           typeof payload.error === "string" && payload.error.trim()
