@@ -708,7 +708,7 @@ export default function GroupConversation({
                       className="h-[180px] w-[180px] max-w-full object-contain"
                       unoptimized
                     />
-                  ) : (
+                  ) : sharedPost ? (
                     <div className="space-y-2">
                       {sharedPost.intro ? <p className="text-xs opacity-85">{sharedPost.intro}</p> : null}
                       <Link
@@ -763,7 +763,7 @@ export default function GroupConversation({
                         ) : null}
                       </Link>
                     </div>
-                  )}
+                  ) : null}
                   {!mine && !nextSameSender ? <p className="mt-1 text-[10px] opacity-65">{formatMessageTime(msg.createdAt)}</p> : null}
                   {mine ? <p className="mt-1 text-[10px] text-white/70">{formatMessageTime(msg.createdAt)}</p> : null}
                   {(msg.reactions?.length ?? 0) > 0 && (
