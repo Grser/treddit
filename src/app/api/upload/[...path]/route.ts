@@ -17,8 +17,8 @@ function resolveUploadDirs() {
   return [...dirs];
 }
 
-function isSafeFilename(filename: string) {
-  return /^[a-zA-Z0-9._-]+$/.test(filename);
+function isSafePathSegment(segment: string) {
+  return /^[a-zA-Z0-9._-]+$/.test(segment);
 }
 
 function getContentType(filename: string) {
@@ -35,15 +35,18 @@ function getContentType(filename: string) {
   return "application/octet-stream";
 }
 
-export async function GET(_: Request, { params }: { params: Promise<{ filename: string }> }) {
-  const { filename: encodedFilename } = await params;
-  const filename = decodeURIComponent(encodedFilename || "").trim();
-  if (!filename || !isSafeFilename(filename)) {
+export async function GET(_: Request, { params }: { params: Promise<{ path: string[] }> }) {
+  const rawPathSegments = (await params).path || [];
+  const pathSegments = rawPathSegments.map((segment) => decodeURIComponent(segment || "").trim()).filter(Boolean);
+
+  if (pathSegments.length === 0 || pathSegments.some((segment) => !isSafePathSegment(segment))) {
     return NextResponse.json({ error: "Archivo inválido" }, { status: 400 });
   }
 
+  const filename = pathSegments[pathSegments.length - 1];
+
   for (const dir of resolveUploadDirs()) {
-    const filepath = path.join(dir, filename);
+    const filepath = path.join(dir, ...pathSegments);
     if (!fs.existsSync(filepath) || !fs.statSync(filepath).isFile()) {
       continue;
     }

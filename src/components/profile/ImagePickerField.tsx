@@ -82,7 +82,7 @@ export default function ImagePickerField({
     setError(null);
 
     try {
-      const data = await uploadFile(file);
+      const data = await uploadFile(file, { scope: "profile" });
       const url = data?.url?.toString().trim();
       if (!url) {
         throw new Error(t.uploadFailed);

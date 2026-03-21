@@ -159,7 +159,7 @@ export default function Composer({ enabled }: { enabled: boolean }) {
     clearError();
     setUploading(true);
     try {
-      const payload = await uploadFile(file, { onProgress: (progress) => setUploadProgress(progress) });
+      const payload = await uploadFile(file, { scope: "post", onProgress: (progress) => setUploadProgress(progress) });
       if (payload.url) {
         setMediaUrl(payload.url);
         setTab("media");

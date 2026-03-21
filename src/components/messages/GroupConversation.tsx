@@ -343,7 +343,7 @@ export default function GroupConversation({
                         try {
                           validateUploadSize(file);
 
-                          const payload = await uploadFile(file);
+                          const payload = await uploadFile(file, { scope: "chat" });
                           if (typeof payload.url !== "string") {
                             throw new Error(
                               typeof payload.error === "string"

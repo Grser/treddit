@@ -7,8 +7,8 @@ import { analyzeSensitiveMediaInput } from "@/lib/sensitiveMedia";
 import fs from "fs";
 import path from "path";
 
-function buildPublicUploadUrl(filename: string) {
-  return `/api/upload/${encodeURIComponent(filename)}`;
+function buildPublicUploadUrl(pathSegments: string[]) {
+  return `/api/upload/${pathSegments.map((segment) => encodeURIComponent(segment)).join("/")}`;
 }
 
 function resolveUploadDirs() {
@@ -30,13 +30,14 @@ function splitFilenameParts(filename: string) {
   return { name, ext };
 }
 
-function generateUniqueFilename(uploadsDir: string, originalName: string) {
+function generateUniqueFilename(uploadsDir: string, directorySegments: string[], originalName: string) {
   const safeName = originalName.replace(/[^a-zA-Z0-9._-]/g, "_") || "archivo";
   const { name, ext } = splitFilenameParts(safeName);
+  const targetDir = path.join(uploadsDir, ...directorySegments);
   let candidate = safeName;
   let index = 1;
 
-  while (fs.existsSync(path.join(uploadsDir, candidate))) {
+  while (fs.existsSync(path.join(targetDir, candidate))) {
     candidate = `${name}-${index}${ext}`;
     index += 1;
   }
@@ -64,6 +65,18 @@ function parseChunkMetadata(req: Request) {
   return { uploadId: uploadId.replace(/[^a-zA-Z0-9_-]/g, ""), filename, chunkIndex, totalChunks };
 }
 
+function resolveUploadScope(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const rawScope = searchParams.get("scope")?.trim() || "general";
+  const safeScope = rawScope.toLowerCase().replace(/[^a-z0-9_-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+  return safeScope || "general";
+}
+
+function resolveUserUploadDirectory(userId: string, scope: string) {
+  const safeUserId = userId.replace(/[^a-zA-Z0-9_-]/g, "") || "anon";
+  return [safeUserId, scope];
+}
+
 export async function POST(req: Request) {
   // exige sesión para subir
   const user = await requireUser();
@@ -74,10 +87,13 @@ export async function POST(req: Request) {
   const file = formData.get("file") as File | null;
   if (!file) return NextResponse.json({ error: "archivo requerido" }, { status: 400 });
 
+  const scope = resolveUploadScope(req);
+  const userDirectorySegments = resolveUserUploadDirectory(user.id, scope);
   const uploadDirs = resolveUploadDirs();
   const uploadsDir = uploadDirs[0];
   for (const dir of uploadDirs) {
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    const userScopedDir = path.join(dir, ...userDirectorySegments);
+    if (!fs.existsSync(userScopedDir)) fs.mkdirSync(userScopedDir, { recursive: true });
   }
 
   let chunkMeta: ReturnType<typeof parseChunkMetadata> = null;
@@ -92,7 +108,7 @@ export async function POST(req: Request) {
   }
 
   if (chunkMeta) {
-    const chunksRoot = path.join(uploadsDir, ".chunks");
+    const chunksRoot = path.join(uploadsDir, ".chunks", ...userDirectorySegments);
     const tempDir = path.join(chunksRoot, chunkMeta.uploadId);
     fs.mkdirSync(tempDir, { recursive: true });
 
@@ -106,8 +122,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, partial: true, chunkIndex: chunkMeta.chunkIndex });
     }
 
-    const filename = generateUniqueFilename(uploadsDir, `${Date.now()}-${chunkMeta.filename || file.name}`);
-    const finalPath = path.join(uploadsDir, filename);
+    const filename = generateUniqueFilename(uploadsDir, userDirectorySegments, `${Date.now()}-${chunkMeta.filename || file.name}`);
+    const relativePathSegments = [...userDirectorySegments, filename];
+    const finalPath = path.join(uploadsDir, ...relativePathSegments);
     const stream = fs.createWriteStream(finalPath);
     for (const partPath of expectedChunkPaths) {
       stream.write(fs.readFileSync(partPath));
@@ -120,27 +137,28 @@ export async function POST(req: Request) {
     });
 
     for (const dir of uploadDirs.slice(1)) {
-      fs.copyFileSync(finalPath, path.join(dir, filename));
+      fs.copyFileSync(finalPath, path.join(dir, ...relativePathSegments));
     }
 
     fs.rmSync(tempDir, { recursive: true, force: true });
 
-    const url = buildPublicUploadUrl(filename);
+    const url = buildPublicUploadUrl(relativePathSegments);
     const analysis = analyzeSensitiveMediaInput({ filename: chunkMeta.filename || file.name, mimeType: file.type });
-    return NextResponse.json({ ok: true, url, owner: user.id, sensitive: analysis });
+    return NextResponse.json({ ok: true, url, owner: user.id, scope, sensitive: analysis });
   }
 
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
 
-  const filename = generateUniqueFilename(uploadsDir, `${Date.now()}-${file.name}`);
+  const filename = generateUniqueFilename(uploadsDir, userDirectorySegments, `${Date.now()}-${file.name}`);
+  const relativePathSegments = [...userDirectorySegments, filename];
   for (const dir of uploadDirs) {
-    const filepath = path.join(dir, filename);
+    const filepath = path.join(dir, ...relativePathSegments);
     fs.writeFileSync(filepath, buffer);
   }
 
-  const url = buildPublicUploadUrl(filename);
+  const url = buildPublicUploadUrl(relativePathSegments);
   const analysis = analyzeSensitiveMediaInput({ filename: file.name, mimeType: file.type });
 
-  return NextResponse.json({ ok: true, url, owner: user.id, sensitive: analysis });
+  return NextResponse.json({ ok: true, url, owner: user.id, scope, sensitive: analysis });
 }
