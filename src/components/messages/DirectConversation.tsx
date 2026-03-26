@@ -841,13 +841,13 @@ export default function DirectConversation({
             </div>
           </div>
         )}
-        <div className="flex items-end gap-1.5 pr-0.5 sm:gap-2 sm:pr-1">
-          <div className="flex items-center gap-2">
+        <div className="flex min-w-0 items-end gap-1.5 pr-0.5 sm:gap-2 sm:pr-1">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             <input ref={fileInputRef} type="file" hidden accept="image/*,video/*,audio/*" onChange={handleFileChange} />
             <input ref={audioInputRef} type="file" hidden accept="audio/*" onChange={handleFileChange} />
             <button
               type="button"
-              className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wide transition ${oneTimeImageMode ? "border-amber-300 bg-amber-300/15 text-amber-200" : "border-border bg-input text-foreground hover:bg-muted"}`}
+              className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide transition sm:px-3 ${oneTimeImageMode ? "border-amber-300 bg-amber-300/15 text-amber-200" : "border-border bg-input text-foreground hover:bg-muted"}`}
               onClick={() => setOneTimeImageMode((prev) => !prev)}
               disabled={sending || uploading}
             >
@@ -855,7 +855,7 @@ export default function DirectConversation({
             </button>
             <button
               type="button"
-              className="inline-flex size-10 items-center justify-center rounded-full bg-input text-lg transition hover:bg-muted"
+              className="inline-flex size-9 items-center justify-center rounded-full bg-input text-lg transition hover:bg-muted sm:size-10"
               onClick={() => fileInputRef.current?.click()}
               disabled={sending || uploading}
               aria-label="Adjuntar"
@@ -863,7 +863,7 @@ export default function DirectConversation({
               {uploading ? "…" : "+"}
             </button>
           </div>
-          <div className="flex min-w-0 flex-1 items-end gap-1.5 rounded-[26px] bg-input px-2.5 py-2 ring-1 ring-border focus-within:ring-2 focus-within:ring-white/20 sm:gap-2 sm:px-3 sm:py-2.5">
+          <div className="flex min-w-0 flex-1 items-end gap-1.5 rounded-[24px] bg-input px-2 py-2 ring-1 ring-border focus-within:ring-2 focus-within:ring-white/20 sm:gap-2 sm:rounded-[26px] sm:px-3 sm:py-2.5">
             <textarea
               ref={textareaRef}
               id="dm-textarea"
@@ -889,7 +889,7 @@ export default function DirectConversation({
             <button
               type="button"
               onClick={() => setIsTrayOpen((prev) => !prev)}
-              className="pb-1 text-xl opacity-80 transition hover:opacity-100"
+              className="pb-1 pr-0.5 text-lg opacity-80 transition hover:opacity-100 sm:text-xl"
               aria-label="Abrir emojis y stickers"
             >
               🙂
@@ -898,7 +898,7 @@ export default function DirectConversation({
           {canSend ? (
             <button
               type="submit"
-              className="inline-flex size-11 items-center justify-center rounded-full bg-foreground text-base font-medium text-background shadow-sm transition hover:opacity-90"
+              className="inline-flex size-10 items-center justify-center rounded-full bg-foreground text-base font-medium text-background shadow-sm transition hover:opacity-90 sm:size-11"
               aria-label={strings.comments.send}
             >
               ➤
@@ -908,7 +908,7 @@ export default function DirectConversation({
               type="button"
               onClick={() => audioInputRef.current?.click()}
               disabled={sending || uploading}
-              className="inline-flex size-11 items-center justify-center rounded-full bg-foreground text-base font-medium text-background shadow-sm transition hover:opacity-90 disabled:opacity-60"
+              className="inline-flex size-10 items-center justify-center rounded-full bg-foreground text-base font-medium text-background shadow-sm transition hover:opacity-90 disabled:opacity-60 sm:size-11"
               aria-label="Enviar audio"
             >
               🎤

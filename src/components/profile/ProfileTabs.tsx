@@ -129,9 +129,9 @@ export default function ProfileTabs({
   if (!current) return null;
 
   return (
-    <div className="mx-auto max-w-2xl">
-      <nav className="sticky top-14 z-40 border-b border-border bg-surface px-4 sm:px-6">
-        <ul className="flex h-12 items-center gap-4 text-sm">
+    <div className="mx-auto max-w-2xl overflow-x-hidden">
+      <nav className="sticky top-14 z-40 overflow-x-auto border-b border-border bg-surface px-3 sm:px-6">
+        <ul className="flex h-12 min-w-max items-center gap-3 text-sm sm:min-w-0 sm:gap-4">
           {tabs.map((tab) => {
             const isActive = tab.id === current.id;
             return (
@@ -139,7 +139,7 @@ export default function ProfileTabs({
                 <button
                   id={`profile-tab-${tab.id}`}
                   type="button"
-                  className={`relative px-1 pb-2 font-medium transition ${
+                  className={`relative whitespace-nowrap px-1 pb-2 font-medium transition ${
                     isActive ? "text-foreground" : "opacity-60 hover:opacity-100"
                   }`}
                   onClick={() => selectTab(tab.id)}
