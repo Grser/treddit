@@ -65,9 +65,22 @@ export default function Feed({
   }, [source, userId, likesOf, limit, filter, communityId, tag, username]);
 
   useEffect(() => {
-    setPosts(dedupePosts(initialItems || []));
+    const incoming = dedupePosts(initialItems || []);
+    setPosts((prev) => {
+      if (!incoming.length) return prev;
+      if (!prev.length) return incoming;
+      const prevIds = new Set(prev.map((item) => item.id));
+      const highestKnownId = Math.max(...prev.map((item) => item.id));
+      const freshFromRefresh = incoming.filter((item) => !prevIds.has(item.id) && item.id > highestKnownId);
+      if (!freshFromRefresh.length) return prev;
+      return dedupePosts([...freshFromRefresh, ...prev]);
+    });
+    setPendingPosts((prev) => {
+      if (!prev.length || !incoming.length) return prev;
+      const incomingIds = new Set(incoming.map((item) => item.id));
+      return prev.filter((item) => !incomingIds.has(item.id));
+    });
     setLoading(false);
-    setPendingPosts([]);
   }, [initialItems]);
 
   useEffect(() => {
