@@ -45,7 +45,7 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
         });
-        if (res.ok) location.href = `/p/${id}`;
+        if (res.ok) location.reload();
         else alert("No se pudo actualizar");
       }}>
         <label className="block">
