@@ -63,7 +63,7 @@ function ConversationLayout({
   return (
     <div className="min-h-dvh bg-background text-foreground">
       <Navbar session={me} />
-      <main className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-6xl flex-col gap-4 px-4 py-6">
+      <main className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-6xl flex-col gap-3 px-2 py-4 sm:gap-4 sm:px-4 sm:py-6">
         <NotesBar notes={notes} me={me} />
         <MessagesRealtimeSync />
 
@@ -78,10 +78,10 @@ function ConversationLayout({
           </aside>
 
           <section className="flex h-full min-h-0 flex-col">
-            <div className="border-b border-border/80 px-4 py-2 lg:hidden">
+            <div className="border-b border-border/80 px-3 py-2 sm:px-4 lg:hidden">
               <Link href="/mensajes" className="text-sm font-medium text-brand hover:underline">← Volver a chats</Link>
             </div>
-            <header className="flex items-center gap-3 border-b border-border/80 px-4 py-3">
+            <header className="flex items-center gap-3 border-b border-border/80 px-3 py-3 sm:px-4">
               <Image
                 src={avatar}
                 alt={displayName}
@@ -100,7 +100,7 @@ function ConversationLayout({
               </div>
             </header>
 
-            <div className="min-h-0 flex-1 p-3 md:p-4">
+            <div className="min-h-0 flex-1 p-2 sm:p-3 md:p-4">
               <DirectConversation initialMessages={messages} viewerId={viewerId} recipient={participant} />
             </div>
           </section>
