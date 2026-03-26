@@ -11,6 +11,8 @@ export type DirectMessageAttachment = {
   type: "image" | "audio" | "video" | "file";
   name?: string | null;
   durationSeconds?: number | null;
+  viewOnce?: boolean;
+  viewedByRecipientAt?: string | null;
 };
 
 export type DirectMessageEntry = {
@@ -526,13 +528,72 @@ function parseAttachments(raw: string | null): DirectMessageAttachment[] {
           typeof row.durationSeconds === "number" && Number.isFinite(row.durationSeconds)
             ? Math.max(0, Math.min(Math.round(row.durationSeconds), 60))
             : null;
+        const viewOnce = Boolean(row.viewOnce);
+        const viewedByRecipientAt =
+          typeof row.viewedByRecipientAt === "string" && row.viewedByRecipientAt.trim().length > 0
+            ? row.viewedByRecipientAt
+            : null;
         if (!url) return null;
-        return { url, type, name, durationSeconds } satisfies DirectMessageAttachment;
+        return { url, type, name, durationSeconds, viewOnce, viewedByRecipientAt } satisfies DirectMessageAttachment;
       })
       .filter(Boolean) as DirectMessageAttachment[];
   } catch {
     return [];
   }
+}
+
+export async function markDirectAttachmentAsViewed(
+  viewerId: number,
+  messageId: number,
+  attachmentUrl: string,
+): Promise<{ updated: boolean; viewedAt: string | null }> {
+  const normalizedUrl = attachmentUrl.trim();
+  if (!normalizedUrl) {
+    throw new Error("INVALID_ATTACHMENT");
+  }
+  if (!isDatabaseConfigured()) {
+    return { updated: true, viewedAt: new Date().toISOString() };
+  }
+  await ensureMessageTables();
+  const [rows] = await db.query<RowDataPacket[]>(
+    `SELECT recipient_id, attachments_json
+     FROM Direct_Messages
+     WHERE id = ?
+     LIMIT 1`,
+    [messageId],
+  );
+  const row = rows[0];
+  if (!row) {
+    throw new Error("MESSAGE_NOT_FOUND");
+  }
+  const recipientId = Number(row.recipient_id);
+  if (recipientId !== viewerId) {
+    throw new Error("FORBIDDEN");
+  }
+  const attachments = parseAttachments(typeof row.attachments_json === "string" ? row.attachments_json : null);
+  let didUpdate = false;
+  const nowIso = new Date().toISOString();
+  const nextAttachments = attachments.map((item) => {
+    if (!item.viewOnce || item.url !== normalizedUrl || item.viewedByRecipientAt) {
+      return item;
+    }
+    didUpdate = true;
+    return { ...item, viewedByRecipientAt: nowIso };
+  });
+  if (!didUpdate) {
+    const existing = attachments.find((item) => item.url === normalizedUrl);
+    return {
+      updated: false,
+      viewedAt: existing?.viewedByRecipientAt ?? null,
+    };
+  }
+  await db.execute(
+    `UPDATE Direct_Messages
+     SET attachments_json = ?
+     WHERE id = ? AND recipient_id = ?`,
+    [JSON.stringify(nextAttachments), messageId, viewerId],
+  );
+  return { updated: true, viewedAt: nowIso };
 }
 
 export async function fetchConversationSummaries(
