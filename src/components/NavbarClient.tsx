@@ -56,8 +56,10 @@ export default function NavbarClient({ session }: { session?: SessionUser | null
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [notifications, setNotifications] = useState<HeaderNotification[]>([]);
   const [notificationUnreadCount, setNotificationUnreadCount] = useState(0);
+  const [pendingPostsCount, setPendingPostsCount] = useState(0);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const notificationBox = useRef<HTMLDivElement>(null);
+  const baseTitle = useRef("Treddit");
 
   useEffect(() => {
     const savedTheme = window.localStorage.getItem("treddit-theme");
@@ -176,7 +178,31 @@ export default function NavbarClient({ session }: { session?: SessionUser | null
     setUnreadMessages(0);
     setNotifications([]);
     setNotificationUnreadCount(0);
+    setPendingPostsCount(0);
   }, [resolvedSession?.id]);
+
+  useEffect(() => {
+    function handleNewPostsCount(event: Event) {
+      const customEvent = event as CustomEvent<{ count?: number }>;
+      setPendingPostsCount(Math.max(0, Number(customEvent.detail?.count) || 0));
+    }
+    window.addEventListener("treddit:new-posts-count", handleNewPostsCount as EventListener);
+    return () => window.removeEventListener("treddit:new-posts-count", handleNewPostsCount as EventListener);
+  }, []);
+
+  useEffect(() => {
+    baseTitle.current = document.title || "Treddit";
+  }, []);
+
+  useEffect(() => {
+    const appName = "Treddit";
+    const total = unreadMessages + notificationUnreadCount + pendingPostsCount;
+    const title = baseTitle.current || appName;
+    document.title = total > 0 ? `(${total > 9 ? "+9" : total}) ${title}` : title;
+    return () => {
+      document.title = title;
+    };
+  }, [notificationUnreadCount, pendingPostsCount, unreadMessages]);
 
   useEffect(() => {
     let active = true;
@@ -395,7 +421,7 @@ export default function NavbarClient({ session }: { session?: SessionUser | null
               >
                 {notificationUnreadCount > 0 && (
                   <span className="absolute -top-1 -right-1 inline-flex min-h-[1.25rem] min-w-[1.25rem] items-center justify-center rounded-full bg-brand px-1 text-xs font-semibold text-white">
-                    {notificationUnreadCount > 9 ? "9+" : notificationUnreadCount}
+                    {notificationUnreadCount > 9 ? "+9" : notificationUnreadCount}
                   </span>
                 )}
                 <BellIcon />
@@ -534,7 +560,7 @@ function IconLink({
     >
       {badge > 0 && (
         <span className="absolute -top-1 -right-1 inline-flex min-h-[1.25rem] min-w-[1.25rem] items-center justify-center rounded-full bg-brand px-1 text-xs font-semibold text-white">
-          {badge > 99 ? "99+" : badge}
+          {badge > 9 ? "+9" : badge}
         </span>
       )}
       {children}
