@@ -150,7 +150,7 @@ export default async function EditProfilePage({ params }: { params: Promise<{ us
             </div>
           </section>
 
-          <section className="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+          <section id="age-verification" className="rounded-3xl border border-border bg-surface p-5 shadow-sm">
             <h2 className="mb-4 text-lg font-semibold">Verificación de edad</h2>
             <p className="text-sm opacity-75">Estado actual: <span className="font-semibold">{ageStatus}</span></p>
             {!u.is_age_verified ? (
