@@ -58,8 +58,9 @@ export async function POST(req: Request) {
       const durationSeconds = Number.isFinite(durationSecondsRaw)
         ? Math.max(0, Math.min(Math.round(durationSecondsRaw), 3600))
         : null;
+      const viewOnce = Boolean(data.viewOnce) && type === "image";
       if (!url) return null;
-      return { url, type, name, durationSeconds } satisfies DirectMessageAttachment;
+      return { url, type, name, durationSeconds, viewOnce, viewedByRecipientAt: null } satisfies DirectMessageAttachment;
     })
     .filter(Boolean) as DirectMessageAttachment[];
 

@@ -125,6 +125,14 @@ export default function DirectConversation({
   const [isTrayOpen, setIsTrayOpen] = useState(false);
   const [sharedPostPreviews, setSharedPostPreviews] = useState<Record<number, SharedPostPreview | null>>({});
   const [revealedSensitivePosts, setRevealedSensitivePosts] = useState<Record<number, boolean>>({});
+  const [oneTimeImageMode, setOneTimeImageMode] = useState(false);
+  const [imageModal, setImageModal] = useState<{
+    src: string;
+    alt: string;
+    messageId: number;
+    isViewOnce: boolean;
+    isMine: boolean;
+  } | null>(null);
 
   useEffect(() => {
     setMessages(initialMessages);
@@ -304,12 +312,55 @@ export default function DirectConversation({
 
   function addQuickMedia(item: (typeof QUICK_MEDIA)[number]) {
     saveMedia(item.url, item.type);
-    setAttachments((prev) => [...prev, { url: item.url, type: "image", name: item.label }]);
+    setAttachments((prev) => [...prev, { url: item.url, type: "image", name: item.label, viewOnce: oneTimeImageMode }]);
   }
 
   function addSticker(url: string, label = "Sticker") {
     saveMedia(url, "sticker");
-    setAttachments((prev) => [...prev, { url, type: "image", name: label }]);
+    setAttachments((prev) => [...prev, { url, type: "image", name: label, viewOnce: oneTimeImageMode }]);
+  }
+
+  async function markViewOnceAttachmentSeen(messageId: number, attachmentUrl: string) {
+    try {
+      const res = await fetch("/api/messages/attachments/view", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId, attachmentUrl }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) return;
+      const viewedAt = typeof payload.viewedAt === "string" ? payload.viewedAt : new Date().toISOString();
+      setMessages((prev) => prev.map((message) => {
+        if (message.id !== messageId) return message;
+        return {
+          ...message,
+          attachments: (message.attachments || []).map((attachment) => {
+            if (attachment.url !== attachmentUrl || !attachment.viewOnce) {
+              return attachment;
+            }
+            return { ...attachment, viewedByRecipientAt: viewedAt };
+          }),
+        };
+      }));
+    } catch {
+      // noop
+    }
+  }
+
+  async function openImagePreview(file: DirectMessageAttachment, messageId: number, isMine: boolean) {
+    const isViewOnce = Boolean(file.viewOnce);
+    if (!file.url) return;
+    if (isViewOnce && !isMine && file.viewedByRecipientAt) return;
+    setImageModal({
+      src: file.url,
+      alt: file.name || "Imagen adjunta",
+      messageId,
+      isViewOnce,
+      isMine,
+    });
+    if (isViewOnce && !isMine) {
+      await markViewOnceAttachmentSeen(messageId, file.url);
+    }
   }
 
   async function handleReaction(messageId: number, emoji: string) {
@@ -384,6 +435,7 @@ export default function DirectConversation({
           type,
           name: file.name,
           durationSeconds,
+          viewOnce: type === "image" ? oneTimeImageMode : false,
         },
       ]);
     } catch (err) {
@@ -582,15 +634,35 @@ export default function DirectConversation({
                           <li key={`${msg.id}-${file.url}`} className="overflow-hidden rounded-2xl border border-white/10 bg-black/10">
                             {file.type === "image" ? (
                               <>
-                                <Image
-                                  src={file.url}
-                                  alt={file.name || "Imagen adjunta"}
-                                  width={320}
-                                  height={220}
-                                  className="h-[220px] w-[320px] max-w-full object-cover"
-                                  unoptimized
-                                />
+                                {Boolean(file.viewOnce && !isMine && file.viewedByRecipientAt) ? (
+                                  <div className="flex h-[220px] w-[320px] max-w-full items-center justify-center bg-black/50 px-4 text-center text-xs text-white/90">
+                                    Esta imagen era de una sola vista y ya no se puede abrir.
+                                  </div>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="relative block"
+                                    onClick={() => {
+                                      void openImagePreview(file, msg.id, isMine);
+                                    }}
+                                  >
+                                    <Image
+                                      src={file.url}
+                                      alt={file.name || "Imagen adjunta"}
+                                      width={320}
+                                      height={220}
+                                      className="h-[220px] w-[320px] max-w-full object-cover"
+                                      unoptimized
+                                    />
+                                    <span className="absolute bottom-2 right-2 rounded-full bg-black/70 px-2 py-0.5 text-[10px] text-white">
+                                      {file.viewOnce ? "1 sola vista" : "Toca para ampliar"}
+                                    </span>
+                                  </button>
+                                )}
                                 <div className="flex justify-end bg-black/10 px-2 py-1">
+                                  {Boolean(file.viewOnce && isMine && file.viewedByRecipientAt) ? (
+                                    <span className="mr-auto text-[11px] text-white/80">Visto por la otra persona</span>
+                                  ) : null}
                                   <button
                                     type="button"
                                     className="text-[11px] underline"
@@ -680,14 +752,19 @@ export default function DirectConversation({
             {attachments.map((file) => (
               <div key={file.url} className="relative overflow-hidden rounded-2xl border border-border bg-background/60">
                 {file.type === "image" ? (
-                  <Image
-                    src={file.url}
-                    alt={file.name || "Vista previa de imagen"}
-                    width={144}
-                    height={144}
-                    className="size-36 object-cover"
-                    unoptimized
-                  />
+                  <div className="relative">
+                    <Image
+                      src={file.url}
+                      alt={file.name || "Vista previa de imagen"}
+                      width={144}
+                      height={144}
+                      className="size-36 object-cover"
+                      unoptimized
+                    />
+                    {file.viewOnce ? (
+                      <span className="absolute bottom-1 left-1 rounded-full bg-black/70 px-2 py-0.5 text-[10px] text-white">1 sola vista</span>
+                    ) : null}
+                  </div>
                 ) : file.type === "video" ? (
                   <video src={file.url} className="size-36 object-cover" muted playsInline />
                 ) : file.type === "audio" ? (
@@ -742,7 +819,7 @@ export default function DirectConversation({
                 </button>
               ))}
               {savedGifs.slice(0, 4).map((url) => (
-                <button key={`gif-${url}`} type="button" onClick={() => setAttachments((prev) => [...prev, { url, type: "image", name: "GIF guardado" }])} className="rounded-full border border-border px-2 py-1 text-[11px] hover:bg-muted">gif</button>
+                <button key={`gif-${url}`} type="button" onClick={() => setAttachments((prev) => [...prev, { url, type: "image", name: "GIF guardado", viewOnce: oneTimeImageMode }])} className="rounded-full border border-border px-2 py-1 text-[11px] hover:bg-muted">gif</button>
               ))}
             </div>
             <div className="space-y-1">
@@ -768,6 +845,14 @@ export default function DirectConversation({
           <div className="flex items-center gap-2">
             <input ref={fileInputRef} type="file" hidden accept="image/*,video/*,audio/*" onChange={handleFileChange} />
             <input ref={audioInputRef} type="file" hidden accept="audio/*" onChange={handleFileChange} />
+            <button
+              type="button"
+              className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wide transition ${oneTimeImageMode ? "border-amber-300 bg-amber-300/15 text-amber-200" : "border-border bg-input text-foreground hover:bg-muted"}`}
+              onClick={() => setOneTimeImageMode((prev) => !prev)}
+              disabled={sending || uploading}
+            >
+              1 vez
+            </button>
             <button
               type="button"
               className="inline-flex size-10 items-center justify-center rounded-full bg-input text-lg transition hover:bg-muted"
@@ -831,6 +916,38 @@ export default function DirectConversation({
           )}
         </div>
       </form>
+
+      {imageModal && (
+        <div
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 p-4 backdrop-blur-md"
+          onClick={() => setImageModal(null)}
+        >
+          <div
+            className="relative max-h-[90vh] max-w-[95vw]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setImageModal(null)}
+              className="absolute -right-2 -top-2 z-10 inline-flex size-8 items-center justify-center rounded-full bg-black/75 text-lg text-white"
+              aria-label="Cerrar vista previa"
+            >
+              ×
+            </button>
+            <Image
+              src={imageModal.src}
+              alt={imageModal.alt}
+              width={1200}
+              height={1200}
+              className="max-h-[90vh] w-auto max-w-[95vw] rounded-2xl object-contain shadow-2xl"
+              unoptimized
+            />
+            {imageModal.isViewOnce && !imageModal.isMine ? (
+              <p className="mt-2 text-center text-xs text-white/90">Imagen de una sola vista. Al cerrar ya no podrás abrirla otra vez.</p>
+            ) : null}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
