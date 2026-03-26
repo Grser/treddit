@@ -401,7 +401,7 @@ export default function NavbarClient({ session }: { session?: SessionUser | null
                 <BellIcon />
               </button>
               {notificationsOpen && (
-                <div className="absolute right-0 mt-2 w-[22rem] max-w-[calc(100vw-1rem)] rounded-2xl border border-border bg-surface p-3 shadow-xl">
+                <div className="absolute right-0 z-[70] mt-2 w-[22rem] max-w-[calc(100vw-1rem)] rounded-2xl border border-border bg-surface p-3 shadow-xl max-sm:fixed max-sm:left-2 max-sm:right-2 max-sm:top-14 max-sm:mt-0 max-sm:w-auto">
                   <div className="mb-2 flex items-center justify-between">
                     <p className="text-sm font-semibold">Notificaciones</p>
                     <Link href="/notificaciones" className="text-xs text-blue-400 hover:underline">Ver todo</Link>
@@ -583,7 +583,7 @@ function AppearanceMenu({
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-72 rounded-xl border border-border bg-surface p-3 shadow-lg z-50">
+        <div className="absolute right-0 z-[70] mt-2 w-72 rounded-xl border border-border bg-surface p-3 shadow-lg max-sm:fixed max-sm:left-2 max-sm:right-2 max-sm:top-14 max-sm:mt-0 max-sm:w-auto">
           <p className="text-xs font-semibold uppercase tracking-wide opacity-70">Apariencia</p>
 
           <button
