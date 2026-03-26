@@ -450,7 +450,7 @@ export default function DirectConversation({
         {messages.length === 0 && (
           <p className="text-sm opacity-70">{strings.comments.none || "Aún no hay mensajes. Inicia la conversación."}</p>
         )}
-        <ul ref={scrollRef} className="hide-scrollbar mt-2 min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
+        <ul ref={scrollRef} className="hide-scrollbar mt-2 min-h-0 flex-1 space-y-1 overflow-x-hidden overflow-y-auto pr-0.5 sm:pr-1">
           {messages.map((msg, index) => {
             const isMine = msg.senderId === viewerId;
             const previous = messages[index - 1];
@@ -466,7 +466,7 @@ export default function DirectConversation({
             const avatar = !isMine ? msg.sender.avatar_url?.trim() || "/demo-reddit.png" : null;
             return (
               <li key={msg.id} className={`group/message flex ${isMine ? "justify-end" : "justify-start"} ${prevSameSender ? "mt-0.5" : "mt-2.5"}`}>
-                <div className={`flex max-w-[98%] items-end gap-2 md:max-w-[90%] ${isMine ? "flex-row-reverse" : "flex-row"}`}>
+                <div className={`flex max-w-[94%] items-end gap-1.5 sm:gap-2 md:max-w-[90%] ${isMine ? "flex-row-reverse" : "flex-row"}`}>
                   {!isMine && (
                     showAvatar ? (
                       <UserHoverPreview username={msg.sender.username}>
@@ -481,11 +481,11 @@ export default function DirectConversation({
                       </UserHoverPreview>
                     ) : <div className="size-8" />
                   )}
-                  <div className={`relative rounded-2xl px-4 py-2 text-sm shadow-sm ${bubbleClasses}`}>
+                  <div className={`relative min-w-0 rounded-2xl px-3 py-2 text-sm shadow-sm sm:px-4 ${bubbleClasses}`}>
                     <button
                       type="button"
                       onClick={() => setMessageMenuId((prev) => (prev === msg.id ? null : msg.id))}
-                      className={`absolute right-2 top-2 inline-flex size-6 items-center justify-center rounded-full text-xs transition ${isMine ? "bg-white/10 text-white/90 hover:bg-white/20" : "bg-background/80 text-foreground/80 hover:bg-muted"}`}
+                      className={`absolute right-1.5 top-1.5 inline-flex size-6 items-center justify-center rounded-full text-xs transition sm:right-2 sm:top-2 ${isMine ? "bg-white/10 text-white/90 hover:bg-white/20" : "bg-background/80 text-foreground/80 hover:bg-muted"}`}
                       aria-label="Abrir menú"
                     >
                       ▾
@@ -630,7 +630,7 @@ export default function DirectConversation({
                         ))}
                       </div>
                     )}
-                    <div className={`relative mt-1 flex flex-wrap items-center gap-2 pr-8 transition-opacity ${isMine ? "justify-end" : "justify-start"} ${messageMenuId === msg.id ? "opacity-100" : "opacity-0 group-hover/message:opacity-100"}`}>
+                    <div className={`relative mt-1 flex flex-wrap items-center gap-2 pr-7 sm:pr-8 transition-opacity ${isMine ? "justify-end" : "justify-start"} ${messageMenuId === msg.id ? "opacity-100" : "opacity-0 group-hover/message:opacity-100"}`}>
                       <p className={`text-[11px] ${isMine ? "text-white/70" : "opacity-70"}`}>{timeLabel}</p>
                       {!nextSameSender && (
                         <button
@@ -664,7 +664,7 @@ export default function DirectConversation({
         </ul>
       </div>
 
-      <form onSubmit={sendMessage} className="shrink-0 space-y-3 rounded-2xl border border-border bg-surface p-3.5 shadow-sm md:rounded-3xl md:p-4">
+      <form onSubmit={sendMessage} className="shrink-0 space-y-3 rounded-2xl border border-border bg-surface p-2.5 shadow-sm sm:p-3.5 md:rounded-3xl md:p-4">
         {replyingTo && (
           <div className="flex items-start justify-between rounded-xl border border-border bg-muted/40 px-3 py-2 text-xs">
             <div>
@@ -764,7 +764,7 @@ export default function DirectConversation({
             </div>
           </div>
         )}
-        <div className="flex items-end gap-2 pr-1">
+        <div className="flex items-end gap-1.5 pr-0.5 sm:gap-2 sm:pr-1">
           <div className="flex items-center gap-2">
             <input ref={fileInputRef} type="file" hidden accept="image/*,video/*,audio/*" onChange={handleFileChange} />
             <input ref={audioInputRef} type="file" hidden accept="audio/*" onChange={handleFileChange} />
@@ -778,7 +778,7 @@ export default function DirectConversation({
               {uploading ? "…" : "+"}
             </button>
           </div>
-          <div className="flex flex-1 items-end gap-2 rounded-[26px] bg-input px-3 py-2.5 ring-1 ring-border focus-within:ring-2 focus-within:ring-white/20">
+          <div className="flex min-w-0 flex-1 items-end gap-1.5 rounded-[26px] bg-input px-2.5 py-2 ring-1 ring-border focus-within:ring-2 focus-within:ring-white/20 sm:gap-2 sm:px-3 sm:py-2.5">
             <textarea
               ref={textareaRef}
               id="dm-textarea"
