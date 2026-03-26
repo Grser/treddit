@@ -10,7 +10,7 @@ import UserBadges from "./UserBadges";
 
 type HeaderNotification = {
   id: string;
-  type: "follow" | "like" | "repost" | "ad" | "mention";
+  type: "follow" | "like" | "repost" | "ad" | "mention" | "reply";
   created_at: string;
   username: string | null;
   nickname: string | null;
@@ -413,7 +413,17 @@ export default function NavbarClient({ session }: { session?: SessionUser | null
                       notifications.map((item) => (
                         <li key={item.id} className="rounded-xl border border-border/70 bg-background/70 px-3 py-2 text-xs">
                           <p className="font-medium">
-                            {item.type === "ad" ? "📣 Nuevo anuncio" : item.type === "follow" ? "👥 Nuevo seguidor" : item.type === "repost" ? "🔁 Repost" : item.type === "mention" ? "🏷️ Te mencionaron" : "❤️ Nuevo like"}
+                            {item.type === "ad"
+                              ? "📣 Nuevo anuncio"
+                              : item.type === "follow"
+                                ? "👥 Nuevo seguidor"
+                                : item.type === "repost"
+                                  ? "🔁 Repost"
+                                  : item.type === "mention"
+                                    ? "🏷️ Te mencionaron"
+                                    : item.type === "reply"
+                                      ? "💬 Te respondieron"
+                                      : "❤️ Nuevo like"}
                           </p>
                           <p className="mt-0.5 opacity-80">
                             {(item.nickname || item.username || "Treddit")}

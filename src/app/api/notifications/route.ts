@@ -14,7 +14,7 @@ import {
 
 type NotificationRow = RowDataPacket & {
   id: string;
-  type: "follow" | "like" | "repost" | "ad" | "mention";
+  type: "follow" | "like" | "repost" | "ad" | "mention" | "reply";
   created_at: string;
   username: string | null;
   nickname: string | null;
@@ -88,6 +88,20 @@ export async function GET() {
       AND ? = 1
       AND LOWER(COALESCE(c.text, '')) LIKE CONCAT('%@', LOWER(?), '%')
 
+    UNION ALL
+
+    SELECT CONCAT('cr-', c.id) AS id, 'reply' AS type, c.created_at, u.username, u.nickname, c.post AS post_id, c.text AS text
+    FROM Comments c
+    JOIN Users u ON u.id = c.user
+    JOIN Posts p ON p.id = c.post
+    LEFT JOIN Comments parent ON parent.id = c.comment
+    WHERE c.user <> ?
+      AND c.visible = 1
+      AND (
+        p.user = ?
+        OR parent.user = ?
+      )
+
     HAVING (? IS NULL OR created_at >= ?)
     ORDER BY created_at DESC
     LIMIT 20
@@ -108,6 +122,9 @@ export async function GET() {
       me.id,
       preferences.mentions ? 1 : 0,
       me.username,
+      me.id,
+      me.id,
+      me.id,
       preferences.clearedBefore,
       preferences.clearedBefore,
     ],
