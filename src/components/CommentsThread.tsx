@@ -193,18 +193,20 @@ function CommentList({
   postId,
   canInteract,
   onReplied,
+  depth = 0,
 }: {
   nodes: CommentNode[];
   postId: number;
   canInteract: boolean;
   onReplied: () => void;
+  depth?: number;
 }) {
   const { strings } = useLocale();
   if (!nodes?.length) return <p className="text-sm opacity-70">{strings.comments.none}</p>;
   return (
     <ul className="space-y-3">
       {nodes.map((n) => (
-        <CommentItem key={n.id} node={n} postId={postId} canInteract={canInteract} onReplied={onReplied} />
+        <CommentItem key={n.id} node={n} postId={postId} canInteract={canInteract} onReplied={onReplied} depth={depth} />
       ))}
     </ul>
   );
@@ -215,11 +217,13 @@ function CommentItem({
   postId,
   canInteract,
   onReplied,
+  depth,
 }: {
   node: CommentNode;
   postId: number;
   canInteract: boolean;
   onReplied: () => void;
+  depth: number;
 }) {
   const { strings } = useLocale();
   const t = strings.comments;
@@ -298,6 +302,9 @@ function CommentItem({
     onReplied();
   }
 
+  const cappedMobileDepth = Math.min(depth, 1);
+  const nestedIndentClass = cappedMobileDepth === 0 ? "pl-2 sm:pl-4" : "pl-0 sm:pl-4";
+
   return (
     <li className="flex gap-2">
       <Image
@@ -367,8 +374,8 @@ function CommentItem({
         )}
 
         {node.replies?.length > 0 && (
-          <div className="mt-2 border-l border-border/60 pl-4">
-            <CommentList nodes={node.replies} postId={postId} canInteract={canInteract} onReplied={onReplied} />
+          <div className={`mt-2 border-l border-border/60 ${nestedIndentClass}`}>
+            <CommentList nodes={node.replies} postId={postId} canInteract={canInteract} onReplied={onReplied} depth={depth + 1} />
           </div>
         )}
       </div>
