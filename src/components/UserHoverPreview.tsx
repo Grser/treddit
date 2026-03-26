@@ -30,7 +30,10 @@ export default function UserHoverPreview({
   const [open, setOpen] = useState(false);
   const [user, setUser] = useState<PreviewUser | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [showAbove, setShowAbove] = useState(false);
   const timerRef = useRef<number | null>(null);
+  const previewRef = useRef<HTMLSpanElement | null>(null);
+  const triggerRef = useRef<HTMLSpanElement | null>(null);
 
   useEffect(() => {
     return () => {
@@ -61,12 +64,46 @@ export default function UserHoverPreview({
     timerRef.current = window.setTimeout(() => setOpen(false), 120);
   };
 
+  useEffect(() => {
+    if (!open) {
+      setShowAbove(false);
+      return;
+    }
+
+    const updatePlacement = () => {
+      const trigger = triggerRef.current;
+      const preview = previewRef.current;
+      if (!trigger || !preview) return;
+
+      const triggerRect = trigger.getBoundingClientRect();
+      const previewRect = preview.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - triggerRect.bottom;
+      const spaceAbove = triggerRect.top;
+
+      const shouldShowAbove = spaceBelow < previewRect.height + 16 && spaceAbove > spaceBelow;
+      setShowAbove(shouldShowAbove);
+    };
+
+    updatePlacement();
+    window.addEventListener("resize", updatePlacement);
+    window.addEventListener("scroll", updatePlacement, true);
+    return () => {
+      window.removeEventListener("resize", updatePlacement);
+      window.removeEventListener("scroll", updatePlacement, true);
+    };
+  }, [open, user]);
+
   return (
-    <span className={`relative inline-block ${className || ""}`} onMouseEnter={handleOpen} onMouseLeave={handleClose}>
+    <span ref={triggerRef} className={`relative inline-block ${className || ""}`} onMouseEnter={handleOpen} onMouseLeave={handleClose}>
       {children}
 
       {open && (
-        <span className="absolute left-0 top-full z-40 mt-2 block w-80 overflow-hidden rounded-xl border border-border bg-surface shadow-2xl">
+        <span
+          ref={previewRef}
+          className={`absolute left-0 z-40 block w-80 overflow-hidden rounded-xl border border-border bg-surface shadow-2xl ${
+            showAbove ? "bottom-full mb-2" : "top-full mt-2"
+          }`}
+        >
           <span className="relative block aspect-[3/1] w-full bg-muted">
             {user?.banner_url ? (
               <Image src={user.banner_url} alt="" fill className="object-cover" unoptimized />
