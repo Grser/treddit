@@ -39,6 +39,7 @@ export default function Feed({
   const [loading, setLoading] = useState(initialItems?.length ? false : true);
   const [hasError, setHasError] = useState(false);
   const [errMsg, setErrMsg] = useState<string | null>(null);
+  const [pendingPosts, setPendingPosts] = useState<PostCardType[]>([]);
   const skipFirstLoad = useRef(Boolean(initialItems?.length));
   const shouldShowExploringBoundary = !filter && !userId && !likesOf && !communityId && !tag && !username;
 
@@ -66,6 +67,7 @@ export default function Feed({
   useEffect(() => {
     setPosts(dedupePosts(initialItems || []));
     setLoading(false);
+    setPendingPosts([]);
   }, [initialItems]);
 
   useEffect(() => {
@@ -109,6 +111,58 @@ export default function Feed({
     };
   }, [query]);
 
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent("treddit:new-posts-count", {
+        detail: { count: pendingPosts.length },
+      }),
+    );
+  }, [pendingPosts.length]);
+
+  useEffect(() => {
+    if (!posts.length) return;
+    let active = true;
+    let currentRequest: AbortController | null = null;
+
+    async function checkNewPosts() {
+      currentRequest?.abort();
+      const controller = new AbortController();
+      currentRequest = controller;
+      try {
+        const url = query ? `/api/posts?${query}` : "/api/posts";
+        const res = await fetch(url, { cache: "no-store", signal: controller.signal });
+        if (!res.ok) return;
+        const data = (await res.json().catch(() => ({}))) as ApiResponse;
+        if (!active) return;
+        const incoming = Array.isArray(data.items) ? dedupePosts(data.items) : [];
+        if (!incoming.length) return;
+        const existingIds = new Set([...posts, ...pendingPosts].map((item) => item.id));
+        const fresh = incoming.filter((item) => !existingIds.has(item.id));
+        if (!fresh.length) return;
+        setPendingPosts((prev) => dedupePosts([...fresh, ...prev]));
+      } catch {
+        if (controller.signal.aborted || !active) return;
+      } finally {
+        if (currentRequest === controller) {
+          currentRequest = null;
+        }
+      }
+    }
+
+    const interval = setInterval(checkNewPosts, 12_000);
+    return () => {
+      active = false;
+      currentRequest?.abort();
+      clearInterval(interval);
+    };
+  }, [query, posts, pendingPosts]);
+
+  function mergePendingPosts() {
+    if (!pendingPosts.length) return;
+    setPosts((prev) => dedupePosts([...pendingPosts, ...prev]));
+    setPendingPosts([]);
+  }
+
   if (loading && posts.length === 0) {
     return <p className="p-4">{strings.feed.loading}</p>;
   }
@@ -127,6 +181,15 @@ export default function Feed({
 
   return (
     <div className="space-y-4">
+      {pendingPosts.length > 0 && (
+        <button
+          type="button"
+          onClick={mergePendingPosts}
+          className="sticky top-16 z-20 mx-auto block rounded-full border border-brand/40 bg-brand px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:brightness-110"
+        >
+          ✨ Cosas nuevas ({pendingPosts.length > 9 ? "+9" : pendingPosts.length})
+        </button>
+      )}
       {posts.map((post, index) => {
         const showBoundary =
           shouldShowExploringBoundary &&
