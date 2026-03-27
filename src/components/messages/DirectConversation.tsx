@@ -133,14 +133,19 @@ export default function DirectConversation({
     isViewOnce: boolean;
     isMine: boolean;
   } | null>(null);
+  const shouldAutoScrollRef = useRef(true);
+  const initialScrollDoneRef = useRef(false);
 
   useEffect(() => {
     setMessages(initialMessages);
     latestIdRef.current = initialMessages[initialMessages.length - 1]?.id ?? 0;
+    shouldAutoScrollRef.current = true;
+    initialScrollDoneRef.current = false;
     const container = scrollRef.current;
     if (!container) return;
     requestAnimationFrame(() => {
       container.scrollTop = container.scrollHeight;
+      initialScrollDoneRef.current = true;
     });
   }, [initialMessages, recipient.id]);
 
@@ -156,12 +161,23 @@ export default function DirectConversation({
   useEffect(() => {
     const container = scrollRef.current;
     if (!container) return;
-    const distanceToBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
-    const shouldStickBottom = distanceToBottom < 120;
+    const handleScroll = () => {
+      const distanceToBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+      shouldAutoScrollRef.current = distanceToBottom < 140;
+    };
+    handleScroll();
+    container.addEventListener("scroll", handleScroll, { passive: true });
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, [recipient.id]);
+
+  useEffect(() => {
+    const container = scrollRef.current;
     latestIdRef.current = messages[messages.length - 1]?.id ?? 0;
-    if (shouldStickBottom) {
+    if (!container) return;
+    if (shouldAutoScrollRef.current || !initialScrollDoneRef.current) {
       requestAnimationFrame(() => {
         container.scrollTop = container.scrollHeight;
+        initialScrollDoneRef.current = true;
       });
     }
   }, [messages]);
