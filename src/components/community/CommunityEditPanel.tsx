@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import ImagePickerField from "@/components/profile/ImagePickerField";
+import CommunityRolesManager from "@/components/community/CommunityRolesManager";
 
 type CommunitySettings = {
   id: number;
@@ -185,6 +186,12 @@ export default function CommunityEditPanel({ communityId }: { communityId: numbe
             minHeight={300}
           />
         </div>
+      </section>
+
+
+
+      <section className="rounded-3xl border border-border bg-surface/70 p-5">
+        <CommunityRolesManager communityId={communityId} />
       </section>
 
       <div className="flex flex-wrap items-center gap-3">
