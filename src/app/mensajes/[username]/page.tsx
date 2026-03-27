@@ -21,6 +21,8 @@ import { loadActiveNotes } from "@/lib/storiesNotes";
 import {
   fetchConversationMessages,
   getDirectMessageAccess,
+  hasDirectConversation,
+  isConversationApprovedForSender,
 } from "@/lib/messages";
 
 export const dynamic = "force-dynamic";
@@ -82,22 +84,24 @@ function ConversationLayout({
               <Link href="/mensajes" className="text-sm font-medium text-brand hover:underline">← Volver a chats</Link>
             </div>
             <header className="flex items-center gap-3 border-b border-border/80 px-3 py-3 sm:px-4">
-              <Image
-                src={avatar}
-                alt={displayName}
-                width={52}
-                height={52}
-                className="size-12 rounded-full object-cover ring-1 ring-border"
-                unoptimized
-              />
-              <div className="min-w-0">
+              <Link href={`/u/${participant.username}`} className="inline-flex rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/70">
+                <Image
+                  src={avatar}
+                  alt={displayName}
+                  width={52}
+                  height={52}
+                  className="size-12 rounded-full object-cover ring-1 ring-border"
+                  unoptimized
+                />
+              </Link>
+              <Link href={`/u/${participant.username}`} className="min-w-0 hover:opacity-90">
                 <p className="flex items-center gap-2 text-base font-semibold">
                   <span className="truncate">{displayName}</span>
                   <UserBadges size="sm" isAdmin={participant.is_admin} isVerified={participant.is_verified} />
                 </p>
                 <p className="text-sm opacity-70">@{participant.username}</p>
                 {helperText && <p className="text-xs text-emerald-500">{helperText}</p>}
-              </div>
+              </Link>
             </header>
 
             <div className="min-h-0 flex-1 p-2 sm:p-3 md:p-4">
@@ -181,7 +185,23 @@ export default async function ConversationPage({ params }: ConversationParams) {
 
   const access = await getDirectMessageAccess(me.id, Number(target.id));
 
-  if (!access.canMessage) {
+  const hasConversation = await hasDirectConversation(me.id, Number(target.id));
+  const approvedByTarget = access.canMessage || (hasConversation && await isConversationApprovedForSender(me.id, Number(target.id)));
+
+  if (access.isBlockedByRecipient || access.hasBlockedRecipient) {
+    return (
+      <div className="min-h-dvh">
+        <Navbar />
+        <main className="mx-auto max-w-3xl px-4 py-8">
+          <div className="rounded-xl border border-border bg-surface p-6 text-sm opacity-80">
+            Este chat no está disponible porque existe un bloqueo entre ustedes.
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (!approvedByTarget) {
     return (
       <div className="min-h-dvh">
         <Navbar />
@@ -204,9 +224,9 @@ export default async function ConversationPage({ params }: ConversationParams) {
             </div>
           </header>
           <div className="rounded-xl border border-border bg-surface p-6 text-sm opacity-80">
-            {access.allowsAnyone
-              ? "Este usuario permite mensajes de terceros, pero debes seguirlo para iniciar una conversación."
-              : "Necesitan seguirse mutuamente para habilitar el chat directo."}
+            {hasConversation
+              ? "Tu solicitud de chat está pendiente. Espera a que este usuario la apruebe en Solicitudes."
+              : "Puedes enviar una solicitud inicial desde el chat, y este usuario deberá aprobarla en Solicitudes."}
           </div>
         </main>
       </div>
@@ -232,7 +252,7 @@ export default async function ConversationPage({ params }: ConversationParams) {
       participant={participant}
       messages={messages}
       viewerId={me.id}
-      helperText={participant.allowsAnyone ? "Acepta mensajes de cualquier usuario" : undefined}
+      helperText={participant.allowsAnyone ? "Acepta mensajes de cualquier usuario" : hasConversation ? "Solicitud enviada" : undefined}
       notes={notes}
       me={me}
     />

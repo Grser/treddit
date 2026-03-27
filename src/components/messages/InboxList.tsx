@@ -35,7 +35,7 @@ function normalizeStarterEntry(entry: InboxEntry): InboxEntry {
 export default function InboxList({ entries, currentUserId, activeUsername, className }: InboxListProps) {
   const [localEntries, setLocalEntries] = useState(() => entries.map(normalizeStarterEntry));
   const [query, setQuery] = useState("");
-  const [tab, setTab] = useState<"all" | "archived" | "groups">("all");
+  const [tab, setTab] = useState<"all" | "archived" | "groups" | "requests">("all");
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [groupName, setGroupName] = useState("");
   const [groupDescription, setGroupDescription] = useState("");
@@ -157,6 +157,10 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
     () => combinedEntries.some((entry) => entry.type !== "group" && !entry.isStarter && entry.isArchived && entry.unreadCount > 0),
     [combinedEntries],
   );
+  const pendingRequestsCount = useMemo(
+    () => combinedEntries.filter((entry) => entry.type !== "group" && !entry.isStarter && entry.isRequest).length,
+    [combinedEntries],
+  );
 
   const visibleEntries = useMemo(() => {
     if (tab === "groups") {
@@ -165,7 +169,10 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
     if (tab === "archived") {
       return combinedEntries.filter((entry) => entry.type !== "group" && !entry.isStarter && entry.isArchived);
     }
-    return combinedEntries.filter((entry) => entry.type === "group" || entry.isStarter || !entry.isArchived);
+    if (tab === "requests") {
+      return combinedEntries.filter((entry) => entry.type !== "group" && !entry.isStarter && entry.isRequest);
+    }
+    return combinedEntries.filter((entry) => entry.type === "group" || entry.isStarter || (!entry.isArchived && !entry.isRequest));
   }, [combinedEntries, tab]);
 
   async function applyConversationAction(username: string, action: string, enabled = true) {
@@ -193,6 +200,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
           if (action === "archive") return { ...entry, isArchived: nextValue };
           if (action === "mute") return { ...entry, isMuted: nextValue };
           if (action === "pin") return { ...entry, isPinned: nextValue };
+          if (action === "list") return { ...entry, isListed: nextValue, isRequest: !nextValue && entry.lastSenderId === entry.userId };
           return entry;
         }),
       );
@@ -297,6 +305,10 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
             {hasArchivedUnread && <span className="absolute -right-1 -top-1 size-2.5 rounded-full bg-brand" aria-hidden />}
           </button>
           <button type="button" onClick={() => setTab("groups")} className={`rounded-full border px-3 py-1.5 transition ${tab === "groups" ? "border-brand bg-brand/20 text-foreground" : "border-border text-foreground/80 hover:bg-background/70"}`}>Grupos</button>
+          <button type="button" onClick={() => setTab("requests")} className={`relative rounded-full border px-3 py-1.5 transition ${tab === "requests" ? "border-brand bg-brand/20 text-foreground" : "border-border text-foreground/80 hover:bg-background/70"}`}>
+            Solicitudes
+            {pendingRequestsCount > 0 && <span className="ml-1 rounded-full bg-brand px-1.5 py-0.5 text-[10px] font-semibold text-white">{pendingRequestsCount}</span>}
+          </button>
         </div>
 
         <div className="mt-3">
@@ -402,7 +414,11 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
             const isStarter = Boolean(item.isStarter);
             const avatar = item.avatar_url?.trim() || "/demo-reddit.png";
             const displayName = item.nickname || item.username;
-            const preview = isStarter ? "Síguense mutuamente · toca para iniciar chat" : item.lastMessage?.trim() || "Archivo adjunto";
+            const preview = isStarter
+              ? "Síguense mutuamente · toca para iniciar chat"
+              : item.isRequest
+                ? "Solicitud de mensaje"
+                : item.lastMessage?.trim() || "Archivo adjunto";
             const unread = item.unreadCount > 0;
             const isMine = item.lastSenderId === currentUserId;
             const isActive = activeUsername === item.username;
@@ -447,6 +463,19 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
                     </p>
                     {isStarter && (
                       <p className="text-xs font-medium text-brand/90">Contacto disponible para nuevo chat</p>
+                    )}
+                    {item.isRequest && (
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          void applyConversationAction(item.username, "list", true);
+                        }}
+                        className="mt-1 inline-flex rounded-full border border-brand/50 bg-brand/20 px-2.5 py-1 text-xs font-semibold text-brand hover:bg-brand/30"
+                      >
+                        Aprobar chat
+                      </button>
                     )}
                   </div>
                   {unread && (

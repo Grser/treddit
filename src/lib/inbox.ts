@@ -22,6 +22,7 @@ export type InboxEntry = {
   isListed?: boolean;
   isBlocked?: boolean;
   isStarter?: boolean;
+  isRequest?: boolean;
   groupId?: number;
 };
 
@@ -71,6 +72,7 @@ export async function loadInbox(userId: number): Promise<InboxEntry[]> {
     isFavorite: row.isFavorite,
     isListed: row.isListed,
     isBlocked: row.isBlocked,
+    isRequest: !row.isListed && row.lastSenderId === row.userId,
   }));
 
   const existing = new Set(conversations.map((entry) => entry.userId));

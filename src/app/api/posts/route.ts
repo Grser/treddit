@@ -11,6 +11,7 @@ import { ensurePostsSensitiveColumn, getPostsSensitiveColumn } from "@/lib/postS
 import { isUserAgeVerified } from "@/lib/ageVerification";
 import { estimatePostViews } from "@/lib/postStats";
 import { isImageMediaUrl } from "@/lib/sensitiveMedia";
+import { ensureBlockTables } from "@/lib/blocks";
 
 type PostRow = {
   id: number;
@@ -158,6 +159,12 @@ export async function GET(req: Request) {
     whereParts.push("NOT EXISTS (SELECT 1 FROM Follows fExplore WHERE fExplore.follower = ? AND fExplore.followed = p.user)");
     whereParams.push(meId);
   }
+  if (meId) {
+    whereParts.push(
+      "NOT EXISTS (SELECT 1 FROM User_Blocks ub WHERE (ub.blocker_id = p.user AND ub.blocked_id = ?) OR (ub.blocker_id = ? AND ub.blocked_id = p.user))",
+    );
+    whereParams.push(meId, meId);
+  }
 
   const canUseAnonCache = shouldUseAnonFeedCache(url, meId);
   const canUseAuthCache = shouldUseAuthFeedCache(url, meId);
@@ -216,6 +223,7 @@ export async function GET(req: Request) {
   const [communityColumn, sensitiveColumn] = await Promise.all([
     getPostsCommunityColumn(),
     getPostsSensitiveColumn(),
+    ensureBlockTables(),
   ]);
   const hasCommunityColumn = Boolean(communityColumn);
   const hasSensitiveColumn = Boolean(sensitiveColumn);
