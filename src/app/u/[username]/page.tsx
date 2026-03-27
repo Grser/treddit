@@ -11,6 +11,7 @@ import { getDemoFeed, resolveDemoUserByUsername } from "@/lib/demoStore";
 import { getPostsCommunityColumn } from "@/lib/communityColumns";
 import { getPostsSensitiveColumn } from "@/lib/postSensitivity";
 import { isUserAgeVerified } from "@/lib/ageVerification";
+import { getBlockRelation } from "@/lib/blocks";
 
 export const dynamic = "force-dynamic";
 
@@ -142,7 +143,7 @@ export default async function UserPage({
     is_age_verified: Boolean(userRow.is_age_verified),
   };
 
-  const [postCountResult, followingResult, followerResult, followStatusResult, canMessageResult] = await Promise.all([
+  const [postCountResult, followingResult, followerResult, followStatusResult, canMessageResult, blockRelation] = await Promise.all([
     db.query<CountRow[]>("SELECT COUNT(*) AS posts FROM Posts WHERE user=?", [user.id]),
     db.query<CountRow[]>("SELECT COUNT(*) AS following FROM Follows WHERE follower=?", [user.id]),
     db.query<CountRow[]>("SELECT COUNT(*) AS followers FROM Follows WHERE followed=?", [user.id]),
@@ -153,7 +154,21 @@ export default async function UserPage({
         )
       : Promise.resolve([[{ isFollowing: 0 } as FollowStatusRow], []] as const),
     me && me.id !== user.id ? canSendDirectMessage(me.id, user.id) : Promise.resolve(false),
+    me && me.id !== user.id ? getBlockRelation(me.id, user.id) : Promise.resolve({ aBlockedB: false, bBlockedA: false }),
   ]);
+
+  if (blockRelation.bBlockedA) {
+    return (
+      <div className="min-h-dvh">
+        <Navbar session={me} />
+        <main className="mx-auto max-w-2xl px-4 py-8">
+          <div className="rounded-xl border border-border bg-surface p-6 text-sm opacity-80">
+            Este usuario te bloqueó. No puedes ver su perfil ni su contenido.
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   const posts = Number(postCountResult[0][0]?.posts ?? 0);
   const following = Number(followingResult[0][0]?.following ?? 0);
@@ -274,6 +289,7 @@ export default async function UserPage({
         initiallyFollowing={isFollowing}
         canMessage={canMessage}
         messageHref={messageHref}
+        initiallyBlocked={blockRelation.aBlockedB}
       />
       <ProfileTabs
         profileId={user.id}

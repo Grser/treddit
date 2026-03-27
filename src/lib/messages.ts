@@ -3,6 +3,7 @@ import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import { db, isDatabaseConfigured } from "@/lib/db";
 import { appendDemoMessage, getDemoConversation } from "@/lib/demoStore";
 import type { SessionUser } from "@/lib/auth";
+import { ensureBlockTables, getBlockRelation } from "@/lib/blocks";
 
 let tablesReady = false;
 
@@ -284,6 +285,8 @@ export type DirectMessageAccess = {
   canMessage: boolean;
   allowsAnyone: boolean;
   mutualFollow: boolean;
+  isBlockedByRecipient: boolean;
+  hasBlockedRecipient: boolean;
 };
 
 type ConversationRow = RowDataPacket & {
@@ -380,9 +383,10 @@ export async function setAllowMessagesFromAnyone(userId: number, allow: boolean)
 
 export async function getDirectMessageAccess(senderId: number, recipientId: number): Promise<DirectMessageAccess> {
   if (!isDatabaseConfigured()) {
-    return { canMessage: true, allowsAnyone: true, mutualFollow: true };
+    return { canMessage: true, allowsAnyone: true, mutualFollow: true, isBlockedByRecipient: false, hasBlockedRecipient: false };
   }
-  await ensureMessageTables();
+  await Promise.all([ensureMessageTables(), ensureBlockTables()]);
+  const blockRelation = await getBlockRelation(senderId, recipientId);
   const [rows] = await db.query<DirectMessageAccessRow[]>(
     `
     SELECT
@@ -396,15 +400,30 @@ export async function getDirectMessageAccess(senderId: number, recipientId: numb
   const mutualFollow = Boolean(relation.iFollow) && Boolean(relation.followsMe);
   const allowsAnyone = Boolean(relation.allowFromAnyone);
   return {
-    canMessage: mutualFollow || allowsAnyone,
+    canMessage: (mutualFollow || allowsAnyone) && !blockRelation.bBlockedA && !blockRelation.aBlockedB,
     allowsAnyone,
     mutualFollow,
+    isBlockedByRecipient: blockRelation.bBlockedA,
+    hasBlockedRecipient: blockRelation.aBlockedB,
   };
 }
 
 export async function canSendDirectMessage(senderId: number, recipientId: number): Promise<boolean> {
   const access = await getDirectMessageAccess(senderId, recipientId);
   return access.canMessage;
+}
+
+export async function hasDirectConversation(userId: number, otherUserId: number): Promise<boolean> {
+  if (!isDatabaseConfigured()) return true;
+  await ensureMessageTables();
+  const [rows] = await db.query<RowDataPacket[]>(
+    `SELECT id
+     FROM Direct_Messages
+     WHERE (sender_id = ? AND recipient_id = ?) OR (sender_id = ? AND recipient_id = ?)
+     LIMIT 1`,
+    [userId, otherUserId, otherUserId, userId],
+  );
+  return Boolean(rows[0]?.id);
 }
 
 export async function fetchConversationMessages(
@@ -718,6 +737,37 @@ export async function updateConversationSettings(
      SET ${setClause}, updated_at = NOW()
      WHERE user_id = ? AND other_user_id = ?`,
     [...values, userId, otherUserId],
+  );
+}
+
+export async function isConversationApprovedForSender(senderId: number, recipientId: number): Promise<boolean> {
+  if (!isDatabaseConfigured()) return true;
+  await ensureMessageTables();
+  const [rows] = await db.query<RowDataPacket[]>(
+    `SELECT is_listed
+     FROM Direct_Message_Conversation_Settings
+     WHERE user_id = ? AND other_user_id = ?
+     LIMIT 1`,
+    [recipientId, senderId],
+  );
+  if (!rows[0]) return false;
+  return Boolean(rows[0].is_listed);
+}
+
+export async function setConversationRequestState(senderId: number, recipientId: number) {
+  if (!isDatabaseConfigured()) return;
+  await ensureMessageTables();
+  await db.execute(
+    `INSERT INTO Direct_Message_Conversation_Settings (user_id, other_user_id, is_listed, updated_at)
+     VALUES (?, ?, 1, NOW())
+     ON DUPLICATE KEY UPDATE is_listed = 1, updated_at = NOW()`,
+    [senderId, recipientId],
+  );
+  await db.execute(
+    `INSERT INTO Direct_Message_Conversation_Settings (user_id, other_user_id, is_listed, updated_at)
+     VALUES (?, ?, 0, NOW())
+     ON DUPLICATE KEY UPDATE updated_at = NOW()`,
+    [recipientId, senderId],
   );
 }
 

@@ -3,12 +3,15 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { isDatabaseConfigured } from "@/lib/db";
 import {
-  canSendDirectMessage,
   createDirectMessage,
   ensureMessageTables,
   fetchConversationMessages,
   deleteDirectMessage,
   type DirectMessageAttachment,
+  getDirectMessageAccess,
+  hasDirectConversation,
+  isConversationApprovedForSender,
+  setConversationRequestState,
 } from "@/lib/messages";
 
 type DirectMessagePayload = {
@@ -87,9 +90,14 @@ export async function POST(req: Request) {
     await ensureMessageTables();
   }
 
-  const allowed = await canSendDirectMessage(me.id, recipientId);
-  if (!allowed) {
+  const access = await getDirectMessageAccess(me.id, recipientId);
+  if (access.isBlockedByRecipient || access.hasBlockedRecipient) {
     return NextResponse.json({ error: "No puedes enviar mensajes a este usuario" }, { status: 403 });
+  }
+  const hasConversation = await hasDirectConversation(me.id, recipientId);
+  const approved = access.canMessage || (hasConversation && await isConversationApprovedForSender(me.id, recipientId));
+  if (!approved && hasConversation) {
+    return NextResponse.json({ error: "Tu solicitud está pendiente de aprobación" }, { status: 403 });
   }
 
   try {
@@ -100,6 +108,9 @@ export async function POST(req: Request) {
       attachments,
       Number.isFinite(replyToMessageId) && replyToMessageId > 0 ? replyToMessageId : null,
     );
+    if (!approved) {
+      await setConversationRequestState(me.id, recipientId);
+    }
     return NextResponse.json({ message }, { status: 201 });
   } catch (error) {
     console.error("Failed to create direct message", error);
@@ -127,8 +138,10 @@ export async function GET(req: Request) {
     await ensureMessageTables();
   }
 
-  const canMessage = await canSendDirectMessage(me.id, recipientId);
-  if (!canMessage) {
+  const access = await getDirectMessageAccess(me.id, recipientId);
+  const hasConversation = await hasDirectConversation(me.id, recipientId);
+  const approved = access.canMessage || (hasConversation && await isConversationApprovedForSender(me.id, recipientId));
+  if ((access.isBlockedByRecipient || access.hasBlockedRecipient) || !approved) {
     return NextResponse.json({ error: "No puedes ver esta conversación" }, { status: 403 });
   }
 

@@ -34,6 +34,7 @@ export default function ProfileHeader({
   initiallyFollowing = false,
   canMessage = false,
   messageHref = null,
+  initiallyBlocked = false,
 }: {
   viewerId?: number | null;
   user: ProfileUser;
@@ -41,12 +42,15 @@ export default function ProfileHeader({
   initiallyFollowing?: boolean;
   canMessage?: boolean;
   messageHref?: string | null;
+  initiallyBlocked?: boolean;
 }) {
   const { strings } = useLocale();
   const isOwner = viewerId === user.id;
   const avatar = user?.avatar_url?.trim() || "/demo-reddit.png";
   const displayName = user?.nickname?.trim() || user.username;
   const [followers, setFollowers] = useState(stats.followers);
+  const [isBlocked, setIsBlocked] = useState(initiallyBlocked);
+  const [isBlockLoading, setIsBlockLoading] = useState(false);
   const followerLabel = useMemo(() => Math.max(0, followers), [followers]);
 
   return (
@@ -101,6 +105,37 @@ export default function ProfileHeader({
                   setFollowers((prev) => Math.max(0, prev + (value ? 1 : -1)));
                 }}
               />
+              <button
+                type="button"
+                disabled={!viewerId || isBlockLoading}
+                onClick={async () => {
+                  if (!viewerId) return;
+                  setIsBlockLoading(true);
+                  try {
+                    const method = isBlocked ? "DELETE" : "POST";
+                    const res = await fetch("/api/blocks", {
+                      method,
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ userId: user.id }),
+                    });
+                    if (!res.ok) {
+                      const payload = await res.json().catch(() => ({}));
+                      throw new Error(typeof payload.error === "string" ? payload.error : "No se pudo actualizar el bloqueo");
+                    }
+                    setIsBlocked((prev) => !prev);
+                    if (!isBlocked) {
+                      window.location.reload();
+                    }
+                  } catch (error) {
+                    alert(error instanceof Error ? error.message : "No se pudo actualizar el bloqueo");
+                  } finally {
+                    setIsBlockLoading(false);
+                  }
+                }}
+                className="inline-flex h-9 items-center justify-center rounded-full border border-border px-4 text-sm hover:bg-muted/60 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isBlockLoading ? "..." : isBlocked ? "Desbloquear" : "Bloquear"}
+              </button>
             </>
           )}
           {isOwner && (
