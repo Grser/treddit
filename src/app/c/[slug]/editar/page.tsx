@@ -71,7 +71,7 @@ export default async function EditCommunityPage({ params }: PageProps) {
   }
 
   const access = await getCommunityAccessControl(Number(community.id), me.id);
-  const canEdit = Boolean(me.is_admin || access?.permissions.can_edit_community || access?.role === "owner" || access?.role === "admin");
+  const canEdit = Boolean(me.is_admin || access?.permissions.can_edit_community || access?.baseRole === "owner" || access?.baseRole === "admin");
 
   if (!canEdit) {
     return (
