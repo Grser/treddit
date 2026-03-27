@@ -654,7 +654,7 @@ export async function fetchConversationSummaries(
       COALESCE(dmcs.is_muted, 0) AS is_muted,
       COALESCE(dmcs.is_pinned, 0) AS is_pinned,
       COALESCE(dmcs.is_favorite, 0) AS is_favorite,
-      COALESCE(dmcs.is_listed, 0) AS is_listed,
+      COALESCE(dmcs.is_listed, 1) AS is_listed,
       COALESCE(dmcs.is_blocked, 0) AS is_blocked
     FROM (
       SELECT MAX(id) AS id
@@ -750,7 +750,7 @@ export async function isConversationApprovedForSender(senderId: number, recipien
      LIMIT 1`,
     [recipientId, senderId],
   );
-  if (!rows[0]) return false;
+  if (!rows[0]) return true;
   return Boolean(rows[0].is_listed);
 }
 
