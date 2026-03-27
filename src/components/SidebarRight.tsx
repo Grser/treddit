@@ -17,22 +17,14 @@ type UserRec = {
   is_admin?: boolean;
   is_verified?: boolean;
 };
-type PopularCommunity = {
-  id: number;
-  slug: string;
-  name: string;
-  members?: number;
-};
 
 export default function SidebarRight({
   trending = [],
   recommended = [],
-  popularCommunities = [],
   canInteract = false,
 }: {
   trending?: Trend[];
   recommended?: UserRec[];
-  popularCommunities?: PopularCommunity[];
   canInteract?: boolean;
 }) {
   const { strings, locale } = useLocale();
@@ -60,35 +52,6 @@ export default function SidebarRight({
 
   return (
     <aside className="w-80 hidden lg:flex flex-col gap-4 p-4 border-l border-border">
-      {popularCommunities.length > 0 && (
-        <div className="bg-surface rounded-lg p-4 border border-border">
-          <div className="flex items-center justify-between">
-            <h2 className="font-semibold">Comunidades populares</h2>
-            <Link href="/explorar" className="text-sm text-blue-400 hover:underline">
-              Top
-            </Link>
-          </div>
-
-          <ul className="mt-2 space-y-2 text-sm">
-            {popularCommunities.slice(0, 5).map((community, idx) => (
-              <li key={community.id}>
-                <Link
-                  href={`/c/${encodeURIComponent(community.slug)}`}
-                  className="flex items-center justify-between gap-2 rounded-lg border border-transparent px-2 py-2 transition hover:border-brand/60 hover:bg-brand/5"
-                >
-                  <div className="min-w-0">
-                    <p className="text-[11px] uppercase opacity-60">#{idx + 1} en comunidades</p>
-                    <p className="truncate font-semibold">{community.name}</p>
-                    <p className="truncate text-xs opacity-70">c/{community.slug}</p>
-                  </div>
-                  <span className="text-xs opacity-75 whitespace-nowrap">{numberFormatter.format(community.members ?? 0)} miembros</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
       <div className="bg-surface rounded-lg p-4 border border-border">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold">{t.happening}</h2>

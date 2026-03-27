@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 import ImagePickerField from "@/components/profile/ImagePickerField";
 
@@ -30,6 +31,7 @@ function roleLabel(role?: string | null) {
 }
 
 export default function CommunityManagerCard({ community }: { community: Community }) {
+  const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -112,6 +114,13 @@ export default function CommunityManagerCard({ community }: { community: Communi
   }
 
   const badge = useMemo(() => roleLabel(community.role), [community.role]);
+  const editingCommunityId = searchParams.get("editar");
+
+  useEffect(() => {
+    if (editingCommunityId === String(community.id)) {
+      setOpen(true);
+    }
+  }, [community.id, editingCommunityId]);
 
   return (
     <li className="rounded-2xl border border-border/70 bg-surface/70 p-4">

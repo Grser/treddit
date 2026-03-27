@@ -173,7 +173,7 @@ export default async function Page() {
     <div className="min-h-dvh">
       <Navbar session={session} />
       <div className="mx-auto grid max-w-7xl grid-cols-1 gap-4 px-3 py-4 sm:px-4 lg:grid-cols-[14rem_1fr] xl:grid-cols-[14rem_1fr_20rem]">
-        <SidebarLeft communities={communities.items} />
+        <SidebarLeft communities={communities.items} popularCommunities={popularCommunities.items} />
 
         <main className="space-y-4">
           {!canInteract && <AuthBanner />}
@@ -200,7 +200,6 @@ export default async function Page() {
         <SidebarRight
           trending={discovery.trendingTags}
           recommended={discovery.recommendedUsers}
-          popularCommunities={popularCommunities.items}
           canInteract={canInteract}
         />
       </div>

@@ -8,9 +8,16 @@ type SidebarCommunity = {
   id: number;
   slug: string;
   name: string;
+  members?: number;
 };
 
-export default function SidebarLeft({ communities = [] as SidebarCommunity[] }) {
+export default function SidebarLeft({
+  communities = [] as SidebarCommunity[],
+  popularCommunities = [] as SidebarCommunity[],
+}: {
+  communities?: SidebarCommunity[];
+  popularCommunities?: SidebarCommunity[];
+}) {
   const { strings } = useLocale();
   const t = strings.sidebarLeft;
 
@@ -55,6 +62,33 @@ export default function SidebarLeft({ communities = [] as SidebarCommunity[] }) 
           </Link>
         )}
       </div>
+
+      {popularCommunities.length > 0 && (
+        <>
+          <hr className="my-3 border-border" />
+          <div className="space-y-2">
+            <div className="flex items-center justify-between px-3">
+              <p className="text-xs opacity-70">{t.popularCommunities}</p>
+              <Link href="/explorar" className="text-xs text-brand hover:underline">
+                {t.top}
+              </Link>
+            </div>
+            <div className="flex flex-col text-sm">
+              {popularCommunities.slice(0, 5).map((community, idx) => (
+                <Link
+                  key={community.id}
+                  href={`/c/${encodeURIComponent(community.slug)}`}
+                  className="rounded-lg px-3 py-2 hover:bg-muted/60"
+                  title={community.name}
+                >
+                  <p className="text-[11px] uppercase opacity-60">#{idx + 1}</p>
+                  <p className="truncate font-medium">{community.name}</p>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
     </aside>
   );
 }

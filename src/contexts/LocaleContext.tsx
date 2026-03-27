@@ -69,6 +69,8 @@ export type LocaleStrings = {
     popular: string;
     explore: string;
     communities: string;
+    popularCommunities: string;
+    top: string;
     empty: string;
     createCommunity: string;
   };
@@ -307,6 +309,8 @@ const translations: Record<Locale, LocaleStrings> = {
       popular: "Popular",
       explore: "Explorar",
       communities: "Comunidades",
+      popularCommunities: "Comunidades populares",
+      top: "Top",
       empty: "Sin datos",
       createCommunity: "Crear comunidad",
     },
@@ -584,6 +588,8 @@ const translations: Record<Locale, LocaleStrings> = {
       popular: "Popular",
       explore: "Explore",
       communities: "Communities",
+      popularCommunities: "Popular communities",
+      top: "Top",
       empty: "No data",
       createCommunity: "Create community",
     },
@@ -860,6 +866,8 @@ const translations: Record<Locale, LocaleStrings> = {
       popular: "Популярное",
       explore: "Обзор",
       communities: "Сообщества",
+      popularCommunities: "Популярные сообщества",
+      top: "Топ",
       empty: "Нет данных",
       createCommunity: "Создать сообщество",
     },

@@ -48,7 +48,7 @@ export default async function ExplorePage() {
     <div className="min-h-dvh bg-background text-foreground">
       <Navbar session={session} />
       <div className="mx-auto grid max-w-7xl grid-cols-1 gap-4 px-3 py-4 sm:px-4 lg:grid-cols-[14rem_1fr] xl:grid-cols-[14rem_1fr_20rem]">
-        <SidebarLeft communities={popularCommunities.items} />
+        <SidebarLeft communities={popularCommunities.items} popularCommunities={popularCommunities.items} />
 
         <main className="space-y-6">
           <section className="rounded-2xl border border-border bg-surface p-5">
@@ -84,7 +84,6 @@ export default async function ExplorePage() {
         <SidebarRight
           trending={discovery.trendingTags}
           recommended={discovery.recommendedUsers}
-          popularCommunities={popularCommunities.items}
           canInteract={Boolean(session)}
         />
       </div>
