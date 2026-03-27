@@ -247,7 +247,7 @@ export default function PostCard({
 
       {mediaUrl && (
 
-        <div className="relative mb-2 overflow-hidden rounded-lg ring-1 ring-border">
+        <div className="relative mb-2 overflow-hidden rounded-lg bg-black/20 ring-1 ring-border">
           {isVideoUrl(mediaUrl) ? (
             <div className="space-y-2 bg-black/30 p-2">
               <video src={mediaUrl} controls className="h-auto max-h-[70vh] w-full" preload="metadata" />
@@ -262,7 +262,12 @@ export default function PostCard({
             </div>
           ) : isAnimatedImage(mediaUrl) || isLocalUploadedMedia(mediaUrl) ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={mediaUrl} alt="" className={`block h-auto w-full object-cover ${shouldBlurSensitiveImage ? "blur-2xl" : ""}`} loading="lazy" />
+            <img
+              src={mediaUrl}
+              alt=""
+              className={`mx-auto block max-h-[70vh] h-auto w-auto max-w-full object-contain ${shouldBlurSensitiveImage ? "blur-2xl" : ""}`}
+              loading="lazy"
+            />
           ) : (
             <Image
               src={mediaUrl}
@@ -270,7 +275,7 @@ export default function PostCard({
               width={1200}
               height={675}
               sizes="(min-width: 768px) 600px, 100vw"
-              className={`block h-auto w-full object-cover ${shouldBlurSensitiveImage ? "blur-2xl" : ""}`}
+              className={`mx-auto block max-h-[70vh] h-auto w-auto max-w-full object-contain ${shouldBlurSensitiveImage ? "blur-2xl" : ""}`}
             />
           )}
 
