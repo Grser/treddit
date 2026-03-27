@@ -9,7 +9,6 @@ import { getSessionUser } from "@/lib/auth";
 import { db, isDatabaseConfigured } from "@/lib/db";
 import { getRequestBaseUrl } from "@/lib/requestBaseUrl";
 import type { Post as PostCardType } from "@/components/PostCard";
-import CommunityRolesManager from "@/components/community/CommunityRolesManager";
 import { getCommunityAccessControl } from "@/lib/communityPermissions";
 
 export const dynamic = "force-dynamic";
@@ -117,7 +116,6 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
   const isAuthorized = community.visible || community.isMember || me?.is_admin;
   const isCommunityManager = Boolean(community.myRole) && community.myRole !== "member";
   const canEditCommunity = Boolean(me?.is_admin || community.accessControl?.canEditCommunity || isCommunityManager);
-  const canManageRoles = Boolean(me?.is_admin || community.accessControl?.canManageRoles);
   const canWriteInChat = Boolean(me?.is_admin || (community.accessControl?.canChat && !community.accessControl?.isMuted));
 
   return (
@@ -225,9 +223,6 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
                 )}
               </section>
 
-              {canManageRoles && (
-                <CommunityRolesManager communityId={community.id} />
-              )}
             </aside>
           </section>
         )}
