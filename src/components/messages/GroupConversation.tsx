@@ -133,6 +133,7 @@ export default function GroupConversation({
   const [revealedSensitivePosts, setRevealedSensitivePosts] = useState<Record<number, boolean>>({});
   const [messageMenuId, setMessageMenuId] = useState<number | null>(null);
   const [showStickerTray, setShowStickerTray] = useState(false);
+  const [manageView, setManageView] = useState<"general" | "members" | "roles">("general");
   const groupAvatar = avatarUrl || "/demo-reddit.png";
 
   const myMember = members.find((member) => member.id === viewerId);
@@ -187,6 +188,28 @@ export default function GroupConversation({
     };
     void markRead();
   }, [groupId, messages]);
+
+  useEffect(() => {
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+      if (!target.closest("[data-message-menu-root='true']")) {
+        setMessageMenuId(null);
+      }
+    };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setMessageMenuId(null);
+      setShowStickerTray(false);
+      setShowSettings(false);
+    };
+    window.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("keydown", handleEscape);
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, []);
 
 
   async function handleReaction(messageId: number, emoji: string) {
@@ -298,10 +321,13 @@ export default function GroupConversation({
         </div>
         <button
           type="button"
-          onClick={() => setShowSettings((prev) => !prev)}
+          onClick={() => {
+            setShowSettings((prev) => !prev);
+            setManageView("general");
+          }}
           className="shrink-0 rounded-full border border-border px-3 py-1 text-xs"
         >
-          Info del grupo
+          {canManage ? "Editar grupo" : "Info del grupo"}
         </button>
       </div>
       {showSettings && (
@@ -325,6 +351,32 @@ export default function GroupConversation({
           </div>
 
           {canManage && (
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setManageView("general")}
+                className={`rounded-full border px-3 py-1.5 text-xs ${manageView === "general" ? "border-brand bg-brand/20 text-white" : "border-border text-foreground/80"}`}
+              >
+                General
+              </button>
+              <button
+                type="button"
+                onClick={() => setManageView("members")}
+                className={`rounded-full border px-3 py-1.5 text-xs ${manageView === "members" ? "border-brand bg-brand/20 text-white" : "border-border text-foreground/80"}`}
+              >
+                Miembros
+              </button>
+              <button
+                type="button"
+                onClick={() => setManageView("roles")}
+                className={`rounded-full border px-3 py-1.5 text-xs ${manageView === "roles" ? "border-brand bg-brand/20 text-white" : "border-border text-foreground/80"}`}
+              >
+                Roles y permisos
+              </button>
+            </div>
+          )}
+
+          {canManage && manageView === "general" && (
             <section className="rounded-2xl border border-border/70 bg-background/40 p-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-brand/90">Ajustes de admin</p>
               <input
@@ -438,8 +490,11 @@ export default function GroupConversation({
             </section>
           )}
 
-          <p className="text-xs font-semibold uppercase tracking-wide opacity-70">Miembros</p>
-
+          {(!canManage || manageView !== "general") && (
+          <>
+          <p className="text-xs font-semibold uppercase tracking-wide opacity-70">
+            {canManage && manageView === "roles" ? "Roles y permisos" : "Miembros"}
+          </p>
           <div className="space-y-2">
             {members.map((member) => (
                 
@@ -456,7 +511,7 @@ export default function GroupConversation({
                   {member.nickname || member.username} <span className="opacity-65">@{member.username}</span>
                 </Link>
                 <span className="rounded-full border border-brand/30 bg-brand/10 px-2 py-0.5">{roleLabel(member.role)}</span>
-                {canManage && member.id !== viewerId && member.role !== "owner" && (
+                {canManage && manageView !== "general" && member.id !== viewerId && member.role !== "owner" && (
                   <button
                     type="button"
                     className="rounded-full border border-border px-2 py-0.5"
@@ -477,7 +532,7 @@ export default function GroupConversation({
                     {member.can_send_messages ? "Silenciar" : "Permitir hablar"}
                   </button>
                 )}
-                {canManage && member.id !== viewerId && member.role !== "owner" && (
+                {canManage && manageView === "roles" && member.id !== viewerId && member.role !== "owner" && (
                   <>
                     <button
                       type="button"
@@ -519,6 +574,8 @@ export default function GroupConversation({
               </div>
             ))}
           </div>
+          </>
+          )}
 
           <div className="flex flex-wrap gap-2 pt-1">
             {canManage && (
@@ -609,7 +666,7 @@ export default function GroupConversation({
               </button>
             )}
           </div>
-          {canManage && speakerRequests.length > 0 && (
+          {canManage && manageView === "roles" && speakerRequests.length > 0 && (
             <div className="mt-3 rounded-xl border border-border bg-input/40 p-3">
               <p className="text-xs font-semibold uppercase tracking-wide opacity-70">Solicitudes para hablar</p>
               <div className="mt-2 space-y-2">
@@ -641,6 +698,11 @@ export default function GroupConversation({
                 ))}
               </div>
             </div>
+          )}
+          {!canManage && (
+            <p className="text-xs opacity-70">
+              Solo administradores pueden editar nombre, foto, miembros y roles del grupo.
+            </p>
           )}
           {settingsError && <p className="mt-2 text-xs text-rose-400">{settingsError}</p>}
         </div>
@@ -684,14 +746,16 @@ export default function GroupConversation({
                     mine ? "bg-brand text-white" : "bg-input text-foreground"
                   }`}
                 >
-                  <button
-                    type="button"
-                    onClick={() => setMessageMenuId((prev) => (prev === msg.id ? null : msg.id))}
-                    className={`absolute right-2 top-2 inline-flex size-6 items-center justify-center rounded-full text-xs transition ${mine ? "bg-white/10 text-white/90 hover:bg-white/20" : "bg-background/80 text-foreground/80 hover:bg-muted"}`}
-                    aria-label="Abrir menú"
-                  >
-                    ▾
-                  </button>
+                  <div data-message-menu-root="true">
+                    <button
+                      type="button"
+                      onClick={() => setMessageMenuId((prev) => (prev === msg.id ? null : msg.id))}
+                      className={`absolute right-2 top-2 inline-flex size-6 items-center justify-center rounded-full text-xs transition ${mine ? "bg-white/10 text-white/90 hover:bg-white/20" : "bg-background/80 text-foreground/80 hover:bg-muted"}`}
+                      aria-label="Abrir menú"
+                    >
+                      ▾
+                    </button>
+                  </div>
                   {showHeader && (
                     <p className="mb-1 text-[11px] font-semibold text-brand/90">
                       <Link href={`/u/${msg.sender.username}`} className="hover:underline">{msg.sender.nickname || msg.sender.username}</Link>
@@ -778,7 +842,7 @@ export default function GroupConversation({
                       ))}
                     </div>
                   )}
-                  <div className={`relative mt-1 flex flex-wrap items-center gap-2 pr-8 transition-opacity ${mine ? "justify-end" : "justify-start"} ${messageMenuId === msg.id ? "opacity-100" : "opacity-0 group-hover/message:opacity-100"}`}>
+                  <div data-message-menu-root="true" className={`relative mt-1 flex flex-wrap items-center gap-2 pr-8 transition-opacity ${mine ? "justify-end" : "justify-start"} ${messageMenuId === msg.id ? "opacity-100" : "opacity-0 group-hover/message:opacity-100"}`}>
                     {messageMenuId === msg.id && (
                       <div className={`absolute bottom-8 z-20 w-52 max-w-[min(13rem,calc(100vw-2.5rem))] rounded-2xl border border-border bg-surface/95 p-2 shadow-xl backdrop-blur ${mine ? "right-0" : "left-0"}`}>
                         <div className="mb-2 flex flex-wrap gap-1 border-b border-border pb-2">
@@ -786,6 +850,7 @@ export default function GroupConversation({
                             <button key={`${msg.id}-${emoji}`} type="button" className="rounded-full border border-transparent px-2 py-1 text-base transition hover:border-border hover:bg-muted" onClick={() => handleReaction(msg.id, emoji)}>{emoji}</button>
                           ))}
                         </div>
+                        <button type="button" className="block w-full rounded px-2 py-1 text-left text-xs hover:bg-muted" onClick={() => setMessageMenuId(null)}>Cerrar</button>
                         {mine ? <button type="button" className="block w-full rounded px-2 py-1 text-left text-xs text-rose-300 hover:bg-rose-500/10" onClick={() => handleDeleteMessage(msg.id)}>Eliminar mensaje</button> : null}
                       </div>
                     )}
