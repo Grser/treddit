@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useLocale } from "@/contexts/LocaleContext";
 import UserBadges from "./UserBadges";
 import MentionUserLink from "./MentionUserLink";
+import SafeExternalLink from "./SafeExternalLink";
 
 type CommentNode = {
   id: number;
@@ -384,8 +385,17 @@ function CommentItem({
 }
 
 function renderCommentText(text: string) {
-  const parts = text.split(/([#@][\p{L}\p{N}_]+)/gu);
+  const parts = text.split(/(https?:\/\/[^\s]+|[#@][\p{L}\p{N}_]+)/gu);
   return parts.map((part, index) => {
+    if (/^https?:\/\//i.test(part)) {
+      const normalized = sanitizeUrlToken(part);
+      return (
+        <SafeExternalLink key={`url-${index}-${normalized}`} href={normalized} className="text-sky-400 hover:underline">
+          {normalized}
+        </SafeExternalLink>
+      );
+    }
+
     if (/^#[\p{L}\p{N}_]+$/u.test(part)) {
       return (
         <a key={`tag-${index}-${part}`} href={`/buscar?q=${encodeURIComponent(part)}`} className="font-semibold text-brand hover:underline">
@@ -401,4 +411,8 @@ function renderCommentText(text: string) {
 
     return <span key={`text-${index}`}>{part}</span>;
   });
+}
+
+function sanitizeUrlToken(value: string) {
+  return value.replace(/[),.!?]+$/g, "");
 }

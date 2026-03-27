@@ -7,6 +7,7 @@ import PostPoll from "./PostPoll";
 import PostMenu from "./PostMenu";
 import UserBadges from "./UserBadges";
 import MentionUserLink from "./MentionUserLink";
+import SafeExternalLink from "./SafeExternalLink";
 
 import { useLocale } from "@/contexts/LocaleContext";
 import { useEffect, useRef, useState } from "react";
@@ -232,16 +233,14 @@ export default function PostCard({
       {previewUrl && (
         <div onMouseEnter={handlePreviewEnter} onMouseLeave={handlePreviewLeave}>
           {showLinkPreview && (
-        <a
+        <SafeExternalLink
           href={previewUrl}
-          target="_blank"
-          rel="noreferrer"
           className="mb-2 block rounded-lg border border-border bg-input/60 p-3 hover:bg-input"
         >
           <p className="text-xs uppercase tracking-wide opacity-60">Vista previa del enlace</p>
           <p className="mt-1 truncate text-sm font-medium">{getUrlHostname(previewUrl)}</p>
           <p className="truncate text-xs opacity-70">{previewUrl}</p>
-        </a>
+        </SafeExternalLink>
           )}
         </div>
       )}
@@ -383,15 +382,13 @@ function renderDescription(text: string) {
     if (/^https?:\/\//i.test(part)) {
       const normalized = sanitizeUrlToken(part);
       return (
-        <a
+        <SafeExternalLink
           key={`url-${index}-${normalized}`}
           href={normalized}
-          target="_blank"
-          rel="noreferrer"
           className="text-sky-400 hover:underline"
         >
           {normalized}
-        </a>
+        </SafeExternalLink>
       );
     }
 
