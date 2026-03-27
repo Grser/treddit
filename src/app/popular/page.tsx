@@ -51,6 +51,7 @@ export default async function PopularPage() {
         <SidebarRight
           trending={discovery.trendingTags}
           recommended={discovery.recommendedUsers}
+          popularCommunities={popularCommunities.items}
           canInteract={Boolean(me)}
         />
       </div>

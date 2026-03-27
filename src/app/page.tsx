@@ -149,13 +149,18 @@ export default async function Page() {
     includeCookies: hasSessionCookie,
     revalidateSeconds: hasSessionCookie ? undefined : 60,
   });
+  const popularCommunitiesPromise = getCommunities(base, cookieHeader, false, {
+    includeCookies: hasSessionCookie,
+    revalidateSeconds: 60,
+  });
 
-  const [session, { items }, discovery, stories, initialCommunities] = await Promise.all([
+  const [session, { items }, discovery, stories, initialCommunities, popularCommunities] = await Promise.all([
     sessionPromise,
     feedPromise,
     discoveryPromise,
     storiesPromise,
     communitiesPromise,
+    popularCommunitiesPromise,
   ]);
 
   const communities = !session && hasSessionCookie
@@ -195,6 +200,7 @@ export default async function Page() {
         <SidebarRight
           trending={discovery.trendingTags}
           recommended={discovery.recommendedUsers}
+          popularCommunities={popularCommunities.items}
           canInteract={canInteract}
         />
       </div>

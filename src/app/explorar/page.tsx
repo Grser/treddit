@@ -56,27 +56,6 @@ export default async function ExplorePage() {
             <p className="mt-2 text-sm opacity-75">Aquí verás comunidades populares y publicaciones de gente nueva.</p>
           </section>
 
-          <section className="rounded-2xl border border-border bg-surface p-5">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 className="text-xl font-semibold">Comunidades populares</h2>
-              <span className="text-xs opacity-70">Top de hoy</span>
-            </div>
-            <ul className="space-y-2">
-              {popularCommunities.items.map((community, idx) => (
-                <li key={community.id} className="flex items-center justify-between rounded-xl border border-border/70 px-4 py-3">
-                  <div>
-                    <p className="text-xs uppercase opacity-60">#{idx + 1} en comunidades</p>
-                    <Link href={`/c/${encodeURIComponent(community.slug)}`} className="text-base font-semibold hover:text-brand">
-                      {community.name}
-                    </Link>
-                    <p className="text-xs opacity-70">c/{community.slug}</p>
-                  </div>
-                  <span className="text-xs opacity-80">{(community.members ?? 0).toLocaleString()} miembros</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-
           <section className="space-y-4">
             <h2 className="text-xl font-semibold">Gente que no sigues</h2>
             <Feed canInteract={Boolean(session)} filter="exploring" />
@@ -105,6 +84,7 @@ export default async function ExplorePage() {
         <SidebarRight
           trending={discovery.trendingTags}
           recommended={discovery.recommendedUsers}
+          popularCommunities={popularCommunities.items}
           canInteract={Boolean(session)}
         />
       </div>
