@@ -305,7 +305,7 @@ export default function GroupConversation({
         </button>
       </div>
       {showSettings && (
-        <div className="rounded-2xl border border-border/80 bg-background/60 p-3">
+        <div className="space-y-3 rounded-3xl border border-border/80 bg-gradient-to-b from-background/70 to-surface/60 p-3.5">
           <div className="rounded-2xl border border-border/80 bg-input/40 p-3">
             <div className="flex items-center gap-3">
               <Image
@@ -325,18 +325,18 @@ export default function GroupConversation({
           </div>
 
           {canManage && (
-            <>
-              <p className="mt-3 text-xs font-semibold uppercase tracking-wide opacity-70">Ajustes de admin</p>
+            <section className="rounded-2xl border border-border/70 bg-background/40 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-brand/90">Ajustes de admin</p>
               <input
                 value={name}
                 onChange={(event) => setName(event.target.value)}
-                className="mt-2 w-full rounded-xl border border-border bg-input px-3 py-2 text-sm"
+                className="mt-2 w-full rounded-xl border border-border bg-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand/40"
                 placeholder="Nombre"
               />
               <input
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
-                className="mt-2 w-full rounded-xl border border-border bg-input px-3 py-2 text-sm"
+                className="mt-2 w-full rounded-xl border border-border bg-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand/40"
                 placeholder="Descripción"
               />
               <div className="mt-2 rounded-xl border border-border bg-input/60 p-2 text-xs">
@@ -404,7 +404,7 @@ export default function GroupConversation({
                     setUserResults((payload.items as SearchUser[]).filter((item) => !existing.has(item.id)));
                   }
                 }}
-                className="mt-2 w-full rounded-xl border border-border bg-input px-3 py-2 text-sm"
+                className="mt-2 w-full rounded-xl border border-border bg-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand/40"
                 placeholder="Agregar personas"
               />
               {userResults.length > 0 && (
@@ -435,15 +435,15 @@ export default function GroupConversation({
                   ))}
                 </div>
               )}
-            </>
+            </section>
           )}
 
-          <p className="mt-3 text-xs font-semibold uppercase tracking-wide opacity-70">Miembros</p>
+          <p className="text-xs font-semibold uppercase tracking-wide opacity-70">Miembros</p>
 
-          <div className="mt-3 space-y-2">
+          <div className="space-y-2">
             {members.map((member) => (
                 
-              <div key={member.id} className="flex items-center gap-2 rounded-xl border border-border/70 px-2 py-1.5 text-xs">
+              <div key={member.id} className="flex flex-wrap items-center gap-2 rounded-xl border border-border/70 bg-background/40 px-2 py-2 text-xs">
                 <Image
                   src={member.avatar_url || "/demo-reddit.png"}
                   alt={member.nickname || member.username}
@@ -520,7 +520,7 @@ export default function GroupConversation({
             ))}
           </div>
 
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 pt-1">
             {canManage && (
               <button
                 type="button"
