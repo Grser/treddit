@@ -1,103 +1,346 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Treddit
 
-## Getting Started
+Treddit es una red social tipo microblogging/comunidades construida con **Next.js App Router + MySQL**. Permite publicar, comentar, seguir usuarios, crear comunidades, enviar mensajes privados/grupales, gestionar contenido sensible y operar un panel administrativo.
 
-First, run the development server:
+---
+
+## 1) Stack técnico
+
+- **Framework:** Next.js 15 (App Router)
+- **UI:** React 19 + Tailwind CSS 4
+- **Backend:** Route Handlers (`src/app/api/*`)
+- **DB:** MySQL (`mysql2/promise`)
+- **Auth:** JWT por cookie `treddit_token`
+- **Validación:** Zod
+- **Correo:** Nodemailer (recuperación de contraseña)
+
+---
+
+## 2) Arranque local
+
+### Requisitos
+
+- Node.js 20+
+- pnpm (recomendado), npm, yarn o bun
+- MySQL accesible
+
+### Instalar dependencias
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
+```
+
+### Ejecutar en desarrollo
+
+```bash
 pnpm dev
-# or
-bun dev
 ```
 
-Open the URL shown by the development server in your browser to see the result.
+Abre la URL que aparece en consola (normalmente `http://localhost:3000`).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Build de producción
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-
-
-## Configuración de redirección para login con Google
-
-Si después de autenticar con Google te redirige a un dominio incorrecto, define explícitamente estas variables de entorno:
-
+```bash
+pnpm build
+pnpm start
 ```
-# URL base pública de tu app (prioridad para OAuth)
-GOOGLE_OAUTH_BASE_URL=https://tu-dominio.com
 
-# Alias soportado (más genérico)
+---
+
+## 3) Variables de entorno
+
+### Base de datos (obligatorias para modo real)
+
+```env
+DATABASE_HOST=127.0.0.1
+DATABASE_USER=root
+DATABASE_PASS=tu_password
+DATABASE_NAME=treddit
+DATABASE_POOL_SIZE=10
+```
+
+> Si faltan variables de DB, la app entra en modo degradado/demo para varias vistas.
+
+### Sesión/JWT
+
+```env
+JWT_SECRET=una_clave_larga_y_segura
+JWT_EXPIRES=7d
+```
+
+### URL base pública
+
+```env
+NEXT_PUBLIC_BASE_URL=https://tu-dominio.com
 AUTH_BASE_URL=https://tu-dominio.com
+GOOGLE_OAUTH_BASE_URL=https://tu-dominio.com
+```
 
-# Callback final exacto de Google (máxima prioridad)
+### Google OAuth
+
+```env
+GOOGLE_CLIENT_ID=xxxxx.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=xxxxx
 GOOGLE_REDIRECT_URI=https://tu-dominio.com/api/auth/google/callback
-
-# Alias soportado para la callback
 GOOGLE_CALLBACK_URL=https://tu-dominio.com/api/auth/google/callback
 ```
 
-Prioridad usada por el backend:
+### Correo SMTP (recuperación de contraseña)
 
-1. `GOOGLE_REDIRECT_URI` o `GOOGLE_CALLBACK_URL` (callback completa).
-2. `GOOGLE_OAUTH_BASE_URL` o `AUTH_BASE_URL` (origen base).
-3. `NEXT_PUBLIC_BASE_URL`.
-4. Detección automática por headers/proxy.
-
-Si no encuentra nada válido, cae en `https://treddit.com`.
-
-
-## Solución rápida: Error 400 `invalid_request` con Google
-
-Si Google muestra *"You can't sign in to this app because it doesn't comply with Google's OAuth 2.0 policy"*, revisa:
-
-1. `GOOGLE_CLIENT_ID` debe ser un Client ID de tipo **Web application** (`*.apps.googleusercontent.com`).
-2. En Google Cloud Console, la URI autorizada debe incluir exactamente:
-   - `https://tu-dominio.com/api/auth/google/callback`
-3. En tu `.env`, define `GOOGLE_REDIRECT_URI` con esa misma URL exacta.
-4. Si la app OAuth está en modo **Testing**, agrega el correo del usuario como **Test user** o publica la app.
-
-La ruta `/api/auth/google/start` ahora redirige a `/auth/login` con un mensaje de configuración cuando detecta una configuración inválida.
-
-## Configuración de correo para recuperación de contraseña
-
-Para que la función de recuperación por código funcione necesitas configurar un servidor SMTP mediante variables de entorno:
-
-```
+```env
 SMTP_HOST=mail.tu-dominio.com
 SMTP_PORT=587
-SMTP_SECURE=false # o true si usas 465
+SMTP_SECURE=false
 SMTP_USER=usuario
 SMTP_PASS=contraseña
 MAIL_FROM="Treddit <no-reply@tu-dominio.com>"
+APP_NAME=Treddit
+SMTP_VERIFY_ON_START=false
 ```
 
-Opcionalmente puedes definir `APP_NAME` y `NEXT_PUBLIC_BASE_URL` para personalizar los mensajes enviados al usuario.
+### Subidas de archivos (opcional)
 
-> Nota: la verificación activa de SMTP (`transporter.verify`) se desactiva por defecto para evitar errores en entornos sin shell del sistema (`/bin/sh`).
-> Si quieres forzarla al iniciar, define `SMTP_VERIFY_ON_START=true`.
+```env
+TREDDIT_UPLOAD_DIR=/ruta/absoluta/para/uploads
+```
 
-## Instrucciones básicas para usar la página (convivencia)
+---
 
-- Habla con respeto y espera el mismo respeto de la otra persona.
-- Si no estás de acuerdo, responde con calma y sin insultos.
-- Antes de enviar contenido sensible, avisa a la otra persona.
-- Si alguien te molesta, usa las opciones de bloqueo/reportes y evita escalar la discusión.
-- En grupos, sigan reglas mutuas: escuchar, turnarse y no compartir datos privados de otros.
+## 4) Qué tiene la plataforma (visión funcional completa)
+
+## 4.1 Feed y publicaciones
+
+- Feed principal (`/`) con:
+  - barra de historias/notas,
+  - compositor de publicaciones,
+  - timeline con interacciones.
+- Feed popular (`/popular`) y descubrimiento (`/explorar`).
+- Vista de publicación individual (`/p/[id]`).
+- Edición de publicación (`/p/[id]/edit`).
+- Comentarios en hilo y respuestas.
+- Likes en posts y comentarios.
+- Reposts.
+- Guardados (bookmarks).
+- Encuestas (polls) con voto.
+- Menú de post con acciones contextuales.
+- Soporte de media y marcado de contenido sensible.
+
+## 4.2 Cuentas y autenticación
+
+- Registro (`/auth/registrar`).
+- Login (`/auth/login`).
+- Login social con Google.
+- Cierre de sesión.
+- Recuperación de contraseña por código (`/auth/recuperar`) vía email.
+- Lectura de sesión por API (`/api/auth/me`).
+
+## 4.3 Perfiles
+
+- Perfil público (`/u/[username]`).
+- Pestañas de perfil (posts, respuestas, guardados/likes según privacidad).
+- Perfil editable (`/u/[username]/edit`).
+- Redirección rápida a edición propia (`/u/me/edit`).
+- Campos del perfil:
+  - nickname,
+  - avatar,
+  - banner,
+  - biografía,
+  - ubicación,
+  - web,
+  - país de origen,
+  - fecha de nacimiento,
+  - post fijado.
+- Configuración de privacidad:
+  - mostrar likes,
+  - mostrar guardados,
+  - aceptar mensajes de terceros.
+
+## 4.4 Seguir usuarios (follow/unfollow)
+
+- Desde recomendaciones o perfil puedes seguir/dejar de seguir.
+- Listas:
+  - seguidores (`/u/[username]/seguidores`),
+  - siguiendo (`/u/[username]/siguiendo`).
+- Reglas:
+  - no puedes seguirte a ti mismo,
+  - requiere sesión activa.
+
+## 4.5 Verificación de edad
+
+- Estado consultable por API: `/api/age-verification/status`.
+- Flujo del usuario (perfil > editar > sección “Verificación de edad”):
+  1. Completa **fecha de nacimiento**.
+  2. Selecciona **país de origen**.
+  3. Sube foto de **DNI/Carnet/Pasaporte**.
+  4. Marca “Enviar solicitud”.
+  5. Guarda cambios.
+- Validaciones:
+  - si falta uno de esos 3 datos, el backend rechaza la solicitud.
+- Flujo administrativo:
+  - en `/admin/users` aparecen solicitudes pendientes,
+  - admins pueden aprobar o rechazar,
+  - al aprobar, el usuario queda `is_age_verified=1`.
+- Impacto funcional:
+  - el estado de edad verificada se usa para habilitar visualización de contenido sensible cuando aplica.
+
+## 4.6 Comunidades
+
+- Crear comunidad (`/crear`).
+- Explorar comunidades (`/explorar`).
+- Vista por comunidad (`/c/[slug]`).
+- Unirte/salirte de comunidad.
+- Reclamar administración de comunidad (si aplica por permisos).
+- Ajustes de comunidad para gestores/admin.
+- Chat interno por comunidad (`/api/communities/[id]/chat`).
+
+## 4.7 Mensajería
+
+- Bandeja (`/mensajes`).
+- Conversación directa (`/mensajes/[username]`).
+- Grupos (`/mensajes/grupos/[id]`).
+- Funciones:
+  - enviar texto,
+  - adjuntos (imagen/audio/video/archivo),
+  - responder mensajes,
+  - reaccionar con emoji,
+  - marcar leído/no leído,
+  - ocultar conversaciones,
+  - previsualizaciones y objetivos para compartir.
+
+## 4.8 Notificaciones y descubrimiento
+
+- Centro de notificaciones (`/notificaciones`).
+- Tipos comunes: follow, like, repost, mención, reply, anuncios.
+- Recomendaciones de usuarios (`/api/recommendations/users`).
+- Tendencias/tags en sidebar.
+- Búsqueda (`/buscar`) y sección gente (`/gente`).
+
+## 4.9 Administración
+
+Ruta base: `/admin`.
+
+Módulos:
+
+- `/admin/users`: gestión de usuarios, verificación de cuentas y verificación de edad.
+- `/admin/posts`: moderación de posts.
+- `/admin/communities`: gestión de comunidades.
+- `/admin/groups`: moderación de grupos/mensajes.
+- `/admin/anuncios`: gestión de anuncios.
+- `/admin/series`: búsqueda/preview de series (integración Kitsu API).
+
+---
+
+## 5) Cómo hacer tareas típicas
+
+## 5.1 Seguir a alguien
+
+1. Inicia sesión.
+2. Entra a su perfil (`/u/usuario`) o ve sugerencias en el sidebar.
+3. Pulsa **Seguir**.
+4. Para revertir, vuelve a pulsar (estado **Siguiendo** → **Dejar de seguir** al hover).
+
+## 5.2 Verificar edad paso a paso
+
+1. Abre `/u/me/edit` (redirige a tu editor y foco en `#age-verification`).
+2. En “Verificación de edad” carga documento válido.
+3. Completa fecha de nacimiento y país de origen.
+4. Activa la casilla de solicitud.
+5. Guarda cambios.
+6. Espera aprobación de admin.
+7. Consulta estado desde UI o por `/api/age-verification/status`.
+
+## 5.3 Recuperar contraseña
+
+1. Ve a `/auth/recuperar`.
+2. Solicita código.
+3. Revisa correo (SMTP configurado).
+4. Introduce código y nueva contraseña.
+
+## 5.4 Crear comunidad
+
+1. Ve a `/crear`.
+2. Define nombre/slug y opciones.
+3. Publica.
+4. Administra desde la vista de comunidad y/o panel admin.
+
+---
+
+## 6) APIs principales (resumen)
+
+- Auth: `/api/auth/*`
+- Posts: `/api/posts`, `/api/posts/[id]`, `/api/posts/[id]/comments`, `/api/posts/repost`, `/api/posts/saved`
+- Comentarios: `/api/comments`
+- Likes: `/api/likes/post`, `/api/likes/comment`
+- Follows: `/api/follows`
+- Perfil: `/api/profile`, `/api/profile/replies`
+- Edad: `/api/age-verification/status`
+- Comunidades: `/api/communities/*`
+- Mensajes: `/api/messages/*`
+- Notificaciones: `/api/notifications`
+- Descubrimiento: `/api/discovery`, `/api/recommendations/users`
+- Uploads: `/api/upload`, `/api/upload/[...path]`
+- Admin: `/api/admin/*`
+
+---
+
+## 7) Problemas comunes y solución
+
+## 7.1 Error 400 con Google OAuth (`invalid_request`)
+
+Revisa que:
+
+1. `GOOGLE_CLIENT_ID` sea de tipo **Web application**.
+2. En Google Cloud Console esté autorizada exactamente:
+   - `https://tu-dominio.com/api/auth/google/callback`
+3. `GOOGLE_REDIRECT_URI` coincida al 100% con esa URI.
+4. Si OAuth está en **Testing**, agrega el usuario como **Test user**.
+
+Prioridad de resolución de callback/base URL en backend:
+
+1. `GOOGLE_REDIRECT_URI` o `GOOGLE_CALLBACK_URL`
+2. `GOOGLE_OAUTH_BASE_URL` o `AUTH_BASE_URL`
+3. `NEXT_PUBLIC_BASE_URL`
+4. headers/proxy
+5. fallback final: `https://treddit.com`
+
+## 7.2 No llega correo de recuperación
+
+- Verifica credenciales SMTP.
+- Revisa firewall/puerto (587/465).
+- Comprueba `MAIL_FROM` válido para tu proveedor.
+- Usa `SMTP_VERIFY_ON_START=true` si quieres validar transporte al iniciar.
+
+---
+
+## 8) Convivencia básica recomendada
+
+- Habla con respeto.
+- Evita insultos y escalamiento de conflictos.
+- Advierte antes de publicar contenido sensible.
+- Usa bloqueo/reportes ante acoso.
+- No compartas datos privados de terceros.
+
+---
+
+## 9) Scripts disponibles
+
+```bash
+pnpm dev     # desarrollo
+pnpm build   # build producción
+pnpm start   # correr build
+pnpm lint    # lint
+```
+
+---
+
+## 10) Notas finales
+
+Si vas a desplegar en producción, prioriza:
+
+- `JWT_SECRET` robusto,
+- cookies seguras en HTTPS,
+- backups de MySQL,
+- permisos de admin mínimos,
+- monitoreo de colas/carga de DB,
+- almacenamiento seguro para archivos subidos.
+
