@@ -31,6 +31,7 @@ type PostDetailsRow = RowDataPacket & {
   likedByMe: number;
   repostedByMe: number;
   is_sensitive: number | boolean | null;
+  reply_scope: number | null;
 };
 
 type PostPatchBody = {
@@ -72,6 +73,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       u.is_verified,
       p.description,
       p.created_at,
+      p.reply_scope,
       (SELECT route FROM Files f WHERE f.postid = p.id ORDER BY f.id DESC LIMIT 1) AS mediaUrl,
       (SELECT COUNT(*) FROM Like_Posts lp WHERE lp.post = p.id) AS likes,
       (SELECT COUNT(*) FROM Comments c WHERE c.post = p.id AND c.visible = 1) AS comments,
@@ -115,6 +117,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       hasPoll: Number(row.hasPoll) > 0,
       likedByMe: Number(row.likedByMe) > 0,
       repostedByMe: Number(row.repostedByMe) > 0,
+      reply_scope: ([0, 1, 2].includes(Number(row.reply_scope ?? 0)) ? Number(row.reply_scope ?? 0) : 0) as 0 | 1 | 2,
       is_sensitive: isSensitive,
       can_view_sensitive: canViewSensitive,
     },
@@ -201,7 +204,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       await db.execute("UPDATE Users SET pinned_post_id=NULL WHERE id=?", [me.id]);
       break;
     case "who_can_reply":
-      await db.execute("UPDATE Posts SET reply_scope=? WHERE id=?", [Number(patchBody.value) || 0, id]);
+      await db.execute("UPDATE Posts SET reply_scope=? WHERE id=?", [
+        Math.min(2, Math.max(0, Math.trunc(Number(patchBody.value) || 0))),
+        id,
+      ]);
       break;
     case "feature":
       // marca destacada (si quieres una tabla aparte)
