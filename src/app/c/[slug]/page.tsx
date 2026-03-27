@@ -153,7 +153,7 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
                 />
                 {canEditCommunity && (
                   <a
-                    href="/crear"
+                    href={`/crear?editar=${community.id}`}
                     className="inline-flex h-9 items-center justify-center rounded-full border border-border px-4 text-sm hover:bg-muted/60"
                   >
                     Editar comunidad
