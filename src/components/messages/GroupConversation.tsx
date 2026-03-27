@@ -134,6 +134,8 @@ export default function GroupConversation({
   const [messageMenuId, setMessageMenuId] = useState<number | null>(null);
   const [showStickerTray, setShowStickerTray] = useState(false);
   const [manageView, setManageView] = useState<"general" | "members" | "roles">("general");
+  const shouldAutoScrollRef = useRef(true);
+  const initialScrollDoneRef = useRef(false);
   const groupAvatar = avatarUrl || "/demo-reddit.png";
 
   const myMember = members.find((member) => member.id === viewerId);
@@ -153,23 +155,36 @@ export default function GroupConversation({
 
   useEffect(() => {
     const container = messagesListRef.current;
-    const distanceToBottom = container
-      ? container.scrollHeight - container.scrollTop - container.clientHeight
-      : 0;
-    const shouldStickBottom = distanceToBottom < 120;
+    if (!container) return;
+    const handleScroll = () => {
+      const distanceToBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+      shouldAutoScrollRef.current = distanceToBottom < 140;
+    };
+    handleScroll();
+    container.addEventListener("scroll", handleScroll, { passive: true });
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, [groupId]);
+
+  useEffect(() => {
+    const container = messagesListRef.current;
     latestIdRef.current = messages[messages.length - 1]?.id ?? 0;
-    if (container && shouldStickBottom) {
+    if (!container) return;
+    if (shouldAutoScrollRef.current || !initialScrollDoneRef.current) {
       requestAnimationFrame(() => {
         container.scrollTop = container.scrollHeight;
+        initialScrollDoneRef.current = true;
       });
     }
   }, [messages]);
 
   useEffect(() => {
     const container = messagesListRef.current;
+    shouldAutoScrollRef.current = true;
+    initialScrollDoneRef.current = false;
     if (!container) return;
     requestAnimationFrame(() => {
       container.scrollTop = container.scrollHeight;
+      initialScrollDoneRef.current = true;
     });
   }, [groupId]);
 
@@ -331,7 +346,18 @@ export default function GroupConversation({
         </button>
       </div>
       {showSettings && (
-        <div className="space-y-3 rounded-3xl border border-border/80 bg-gradient-to-b from-background/70 to-surface/60 p-3.5">
+        <div className="fixed inset-0 z-[90] flex items-start justify-center bg-black/50 p-3 backdrop-blur-sm md:items-center md:p-6">
+          <div className="hide-scrollbar max-h-[92dvh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-border/80 bg-gradient-to-b from-background/95 to-surface/90 p-3.5 shadow-2xl md:max-h-[85dvh]">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold">Editar grupo</p>
+              <button
+                type="button"
+                onClick={() => setShowSettings(false)}
+                className="rounded-full border border-border px-3 py-1 text-xs"
+              >
+                Cerrar
+              </button>
+            </div>
           <div className="rounded-2xl border border-border/80 bg-input/40 p-3">
             <div className="flex items-center gap-3">
               <Image
@@ -705,9 +731,10 @@ export default function GroupConversation({
             </p>
           )}
           {settingsError && <p className="mt-2 text-xs text-rose-400">{settingsError}</p>}
+          </div>
         </div>
       )}
-      <ul ref={messagesListRef} className="hide-scrollbar flex-1 space-y-2 overflow-y-auto rounded-2xl border border-border bg-surface/90 p-3">
+      <ul ref={messagesListRef} className="hide-scrollbar min-h-0 flex-1 space-y-2 overflow-y-auto rounded-2xl border border-border bg-surface/90 p-3">
         {messages.map((msg, index) => {
           const mine = msg.senderId === viewerId;
           const previous = messages[index - 1];
