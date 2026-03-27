@@ -4,10 +4,9 @@ import { NextResponse } from "next/server";
 
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getCommunityAccessControl } from "@/lib/communityPermissions";
 
 type Params = { params: Promise<{ id: string }> };
-
-type MembershipRow = RowDataPacket & { role: string | null };
 
 type CommunityRow = RowDataPacket & {
   id: number;
@@ -30,16 +29,8 @@ function normalizeOptionalUrl(value: unknown) {
 }
 
 async function ensureManagerAccess(communityId: number, userId: number) {
-  const [membership] = await db.query<MembershipRow[]>(
-    `SELECT role
-     FROM Community_Members
-     WHERE community_id = ? AND user_id = ?
-     LIMIT 1`,
-    [communityId, userId],
-  );
-
-  const role = membership[0]?.role?.toLowerCase();
-  return role === "owner" || role === "admin" || role === "moderator";
+  const access = await getCommunityAccessControl(communityId, userId);
+  return access.isMember && access.permissions.can_edit_community;
 }
 
 async function tryAddMediaColumn(column: "icon_url" | "banner_url") {

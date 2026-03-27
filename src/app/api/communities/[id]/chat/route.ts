@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 
 import { getSessionUser, requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getCommunityAccessControl } from "@/lib/communityPermissions";
 
 type Params = {
   params: Promise<{ id: string }>;
@@ -123,8 +124,16 @@ export async function POST(req: Request, { params }: Params) {
     return NextResponse.json({ error: "Comunidad no encontrada" }, { status: 404 });
   }
 
-  const canWrite = Boolean(access.isMember) || Boolean(me.is_admin);
+  const acl = await getCommunityAccessControl(communityId, me.id);
+  if (acl.isBanned) {
+    return NextResponse.json({ error: "No puedes participar: estás baneado de esta comunidad" }, { status: 403 });
+  }
+
+  const canWrite = (Boolean(access.isMember) && acl.permissions.can_chat && !acl.isMuted) || Boolean(me.is_admin);
   if (!canWrite) {
+    if (acl.isMuted) {
+      return NextResponse.json({ error: "No puedes escribir: estás silenciado en esta comunidad" }, { status: 403 });
+    }
     return NextResponse.json({ error: "Debes unirte a la comunidad para chatear" }, { status: 403 });
   }
 

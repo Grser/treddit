@@ -145,10 +145,6 @@ export default function CommunityManagerCard({ community }: { community: Communi
         </div>
       </div>
 
-      {settings.banner_url && (
-        <div className="mt-3 h-24 w-full rounded-xl border border-border bg-cover bg-center" style={{ backgroundImage: `url(${settings.banner_url})` }} />
-      )}
-
       {open && (
         <form
           className="mt-4 space-y-4 rounded-xl border border-border/60 bg-background/40 p-4"

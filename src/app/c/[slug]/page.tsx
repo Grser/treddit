@@ -9,6 +9,8 @@ import { getSessionUser } from "@/lib/auth";
 import { db, isDatabaseConfigured } from "@/lib/db";
 import { getRequestBaseUrl } from "@/lib/requestBaseUrl";
 import type { Post as PostCardType } from "@/components/PostCard";
+import CommunityRolesManager from "@/components/community/CommunityRolesManager";
+import { getCommunityAccessControl } from "@/lib/communityPermissions";
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +43,12 @@ type FeedResponse = { items: PostCardType[] };
 type CommunityViewModel = Community & {
   moderators: Moderator[];
   initialPosts: PostCardType[];
+  accessControl: {
+    canEditCommunity: boolean;
+    canManageRoles: boolean;
+    canChat: boolean;
+    isMuted: boolean;
+  } | null;
 };
 
 type CommunityRow = RowDataPacket & {
@@ -108,6 +116,9 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
   const canInteract = Boolean(me);
   const isAuthorized = community.visible || community.isMember || me?.is_admin;
   const isCommunityManager = Boolean(community.myRole) && community.myRole !== "member";
+  const canEditCommunity = Boolean(me?.is_admin || community.accessControl?.canEditCommunity || isCommunityManager);
+  const canManageRoles = Boolean(me?.is_admin || community.accessControl?.canManageRoles);
+  const canWriteInChat = Boolean(me?.is_admin || (community.accessControl?.canChat && !community.accessControl?.isMuted));
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
@@ -140,6 +151,14 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
                   initiallyMember={community.isMember}
                   canInteract={canInteract}
                 />
+                {canEditCommunity && (
+                  <a
+                    href="/crear"
+                    className="inline-flex h-9 items-center justify-center rounded-full border border-border px-4 text-sm hover:bg-muted/60"
+                  >
+                    Editar comunidad
+                  </a>
+                )}
                 {me?.is_admin && (
                   <PromoteSelfCommunityButton
                     communityId={community.id}
@@ -183,7 +202,7 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
               <CommunityChat
                 communityId={community.id}
                 canInteract={canInteract}
-                canWrite={community.isMember || Boolean(me?.is_admin)}
+                canWrite={Boolean(me?.is_admin || (community.isMember && canWriteInChat))}
               />
 
               <section className="rounded-2xl border border-border bg-surface p-5">
@@ -205,6 +224,10 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
                   <p className="mt-3 text-sm text-foreground/60">Nadie está moderando esta comunidad todavía.</p>
                 )}
               </section>
+
+              {canManageRoles && (
+                <CommunityRolesManager communityId={community.id} />
+              )}
             </aside>
           </section>
         )}
@@ -275,11 +298,22 @@ async function loadCommunity(slug: string, viewerId: number | null, baseUrl: str
   }));
 
   const feed = await getCommunityFeed(community.id, baseUrl);
+  const accessControl = viewerId
+    ? await getCommunityAccessControl(community.id, viewerId)
+    : null;
 
   return {
     ...community,
     moderators,
     initialPosts: feed.items,
+    accessControl: accessControl
+      ? {
+        canEditCommunity: accessControl.permissions.can_edit_community,
+        canManageRoles: accessControl.permissions.can_manage_roles,
+        canChat: accessControl.permissions.can_chat,
+        isMuted: accessControl.isMuted,
+      }
+      : null,
   };
 }
 
