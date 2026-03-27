@@ -28,6 +28,7 @@ type PostDetailsRow = RowDataPacket & {
   likedByMe: number;
   repostedByMe: number;
   is_sensitive: number | boolean | null;
+  reply_scope: number | null;
 };
 
 export const dynamic = "force-dynamic";
@@ -60,6 +61,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
         u.is_verified,
         p.description,
         p.created_at,
+        p.reply_scope,
         (SELECT route FROM Files f WHERE f.postid = p.id ORDER BY f.id DESC LIMIT 1) AS mediaUrl,
         (SELECT COUNT(*) FROM Like_Posts lp WHERE lp.post = p.id) AS likes,
         (SELECT COUNT(*) FROM Comments c WHERE c.post = p.id AND c.visible = 1) AS comments,
@@ -98,6 +100,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
         hasPoll: Number(row.hasPoll) > 0,
         likedByMe: Number(row.likedByMe) > 0,
         repostedByMe: Number(row.repostedByMe) > 0,
+        reply_scope: ([0, 1, 2].includes(Number(row.reply_scope ?? 0)) ? Number(row.reply_scope ?? 0) : 0) as 0 | 1 | 2,
         is_sensitive: isSensitive,
         can_view_sensitive: canViewSensitive,
       };
