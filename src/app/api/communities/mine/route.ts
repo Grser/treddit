@@ -12,9 +12,8 @@ export async function GET() {
      FROM Community_Members cm
      JOIN Communities c ON c.id = cm.community_id
      WHERE cm.user_id = ?
-       AND c.visible = 1
-       AND LOWER(cm.role) IN ('owner','admin','moderator')
-     ORDER BY FIELD(LOWER(cm.role), 'owner', 'admin', 'moderator'), c.name ASC`,
+       AND LOWER(COALESCE(cm.role, 'member')) IN ('owner','admin','moderator')
+     ORDER BY FIELD(LOWER(COALESCE(cm.role, 'member')), 'owner', 'admin', 'moderator'), c.name ASC`,
     [me.id],
   );
 

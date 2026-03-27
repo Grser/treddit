@@ -70,8 +70,17 @@ export default function Feed({
       if (!incoming.length) return prev;
       if (!prev.length) return incoming;
       const prevIds = new Set(prev.map((item) => item.id));
+      const latestKnownCreatedAt = prev.reduce((latest, item) => {
+        const createdAt = getPostTimeMs(item);
+        return createdAt && createdAt > latest ? createdAt : latest;
+      }, 0);
       const highestKnownId = Math.max(...prev.map((item) => item.id));
-      const freshFromRefresh = incoming.filter((item) => !prevIds.has(item.id) && item.id > highestKnownId);
+      const freshFromRefresh = incoming.filter((item) => {
+        if (prevIds.has(item.id)) return false;
+        const createdAt = getPostTimeMs(item);
+        if (createdAt) return createdAt > latestKnownCreatedAt;
+        return item.id > highestKnownId;
+      });
       if (!freshFromRefresh.length) return prev;
       return dedupePosts([...freshFromRefresh, ...prev]);
     });
@@ -150,7 +159,17 @@ export default function Feed({
         const incoming = Array.isArray(data.items) ? dedupePosts(data.items) : [];
         if (!incoming.length) return;
         const existingIds = new Set([...posts, ...pendingPosts].map((item) => item.id));
-        const fresh = incoming.filter((item) => !existingIds.has(item.id));
+        const latestKnownCreatedAt = [...posts, ...pendingPosts].reduce((latest, item) => {
+          const createdAt = getPostTimeMs(item);
+          return createdAt && createdAt > latest ? createdAt : latest;
+        }, 0);
+        const highestKnownId = [...posts, ...pendingPosts].reduce((max, item) => Math.max(max, item.id), 0);
+        const fresh = incoming.filter((item) => {
+          if (existingIds.has(item.id)) return false;
+          const createdAt = getPostTimeMs(item);
+          if (createdAt) return createdAt > latestKnownCreatedAt;
+          return item.id > highestKnownId;
+        });
         if (!fresh.length) return;
         setPendingPosts((prev) => dedupePosts([...fresh, ...prev]));
       } catch {
@@ -232,4 +251,11 @@ function dedupePosts(list: PostCardType[]) {
     seen.add(item.id);
     return true;
   });
+}
+
+function getPostTimeMs(post: PostCardType) {
+  const rawCreatedAt = post.created_at;
+  if (!rawCreatedAt) return null;
+  const createdAt = new Date(rawCreatedAt).getTime();
+  return Number.isFinite(createdAt) ? createdAt : null;
 }

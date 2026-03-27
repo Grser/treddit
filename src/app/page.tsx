@@ -147,7 +147,7 @@ export default async function Page() {
   });
   const communitiesPromise = getCommunities(base, cookieHeader, hasSessionCookie, {
     includeCookies: hasSessionCookie,
-    revalidateSeconds: hasSessionCookie ? 30 : 60,
+    revalidateSeconds: hasSessionCookie ? undefined : 60,
   });
 
   const [session, { items }, discovery, stories, initialCommunities] = await Promise.all([
