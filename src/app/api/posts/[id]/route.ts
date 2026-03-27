@@ -37,6 +37,7 @@ type PostPatchBody = {
   op?: unknown;
   value?: unknown;
   description?: unknown;
+  reply_scope?: unknown;
 };
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -180,6 +181,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     op: typeof rawBody?.op === "string" ? rawBody.op : undefined,
     value: rawBody?.value,
     description: typeof rawBody?.description === "string" ? rawBody.description : undefined,
+    reply_scope: typeof rawBody?.reply_scope === "number" ? rawBody.reply_scope : undefined,
   };
 
   const [postRows] = await db.query<PostOwnerRow[]>("SELECT user FROM Posts WHERE id=? LIMIT 1", [id]);
@@ -206,8 +208,20 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       break;
     default:
       // editar descripción
-      if (patchBody.description !== undefined) {
-        await db.execute("UPDATE Posts SET description=? WHERE id=?", [patchBody.description.slice(0, 2000), id]);
+      if (patchBody.description !== undefined || patchBody.reply_scope !== undefined) {
+        const description = patchBody.description !== undefined ? patchBody.description.slice(0, 2000) : null;
+        const hasReplyScope = patchBody.reply_scope !== undefined;
+        const replyScope = hasReplyScope
+          ? Math.min(2, Math.max(0, Math.trunc(Number(patchBody.reply_scope) || 0)))
+          : null;
+
+        if (description !== null && hasReplyScope) {
+          await db.execute("UPDATE Posts SET description=?, reply_scope=? WHERE id=?", [description, replyScope, id]);
+        } else if (description !== null) {
+          await db.execute("UPDATE Posts SET description=? WHERE id=?", [description, id]);
+        } else if (hasReplyScope) {
+          await db.execute("UPDATE Posts SET reply_scope=? WHERE id=?", [replyScope, id]);
+        }
       }
   }
 
