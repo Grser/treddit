@@ -90,22 +90,9 @@ export default function ProfileHeader({
 
   return (
     <section className="mt-0">
-      {/* Banner */}
-      <div className="relative h-36 w-full overflow-hidden bg-muted sm:h-48 md:h-56">
-        {user.banner_url ? (
-          <Image
-            src={user.banner_url}
-            className="object-contain"
-            alt=""
-            fill
-            sizes="100vw"
-            unoptimized
-          />
-        ) : (
-          <div className="absolute inset-0 bg-gradient-to-r from-brand/40 via-brand/20 to-transparent" aria-hidden="true" />
-        )}
-        <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-end gap-3 sm:bottom-5 sm:left-6 sm:translate-x-0">
-          <div className="relative size-20 overflow-hidden rounded-full border-4 border-surface bg-surface shadow-lg sm:size-24 md:size-28">
+      <div className="relative border-b border-border bg-surface/95 px-4 pb-4 pt-4 sm:px-6">
+        <div className="flex items-end gap-3">
+          <div className="relative size-20 overflow-hidden rounded-full bg-surface shadow-lg sm:size-24 md:size-28">
             <Image
               src={avatar}
               className="object-cover"
@@ -119,7 +106,7 @@ export default function ProfileHeader({
       </div>
 
       {/* Info */}
-      <div className="relative z-10 -mt-8 border-b border-border bg-surface/95 px-4 pb-4 pt-10 sm:-mt-12 sm:px-6 sm:pt-12 md:-mt-14 md:pt-14">
+      <div className="relative z-10 bg-surface/95 px-4 pb-4 pt-4 sm:px-6">
         <div className="flex justify-end gap-2">
           {!isOwner && (
             <>

@@ -163,7 +163,7 @@ export default function DirectConversation({
     if (!container) return;
     const handleScroll = () => {
       const distanceToBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
-      shouldAutoScrollRef.current = distanceToBottom < 140;
+      shouldAutoScrollRef.current = distanceToBottom < 260;
     };
     handleScroll();
     container.addEventListener("scroll", handleScroll, { passive: true });
@@ -519,7 +519,7 @@ export default function DirectConversation({
         {messages.length === 0 && (
           <p className="text-sm opacity-70">{strings.comments.none || "Aún no hay mensajes. Inicia la conversación."}</p>
         )}
-        <ul ref={scrollRef} className="hide-scrollbar mt-2 min-h-0 flex-1 space-y-1 overflow-x-hidden overflow-y-auto rounded-2xl bg-[radial-gradient(circle_at_top,rgba(38,56,74,0.26),rgba(13,20,29,0.28)_45%,rgba(11,18,26,0.6))] px-2 pr-0.5 pb-3 [overflow-anchor:none] sm:pr-1">
+        <ul ref={scrollRef} className="hide-scrollbar mt-2 min-h-0 flex-1 space-y-1 overflow-x-hidden overflow-y-auto rounded-2xl bg-[radial-gradient(circle_at_top,rgba(38,56,74,0.26),rgba(13,20,29,0.28)_45%,rgba(11,18,26,0.6))] px-2 pr-0.5 pb-6 [overflow-anchor:none] sm:pr-1 sm:pb-8">
           {messages.map((msg, index) => {
             const isMine = msg.senderId === viewerId;
             const previous = messages[index - 1];
@@ -753,7 +753,7 @@ export default function DirectConversation({
         </ul>
       </div>
 
-      <form onSubmit={sendMessage} className="sticky bottom-0 z-10 shrink-0 space-y-3 rounded-2xl border border-white/10 bg-[#101c28]/95 p-2.5 shadow-2xl shadow-black/25 backdrop-blur sm:p-3.5 md:rounded-3xl md:p-4">
+      <form onSubmit={sendMessage} className="z-10 shrink-0 space-y-3 rounded-2xl border border-white/10 bg-[#101c28]/95 p-2.5 shadow-2xl shadow-black/25 backdrop-blur sm:p-3.5 md:rounded-3xl md:p-4">
         <div className="flex flex-wrap items-center gap-2">
           {["📎 Archivo", "🎤 Nota de voz", "📍 Compartir"].map((action) => (
             <span key={action} className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-foreground/75">
