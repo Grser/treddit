@@ -21,6 +21,7 @@ export default function PostMenu({
   const t = strings.postMenu;
   const [open, setOpen] = useState(false);
   const [replyMenuOpen, setReplyMenuOpen] = useState(false);
+
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
@@ -46,6 +47,8 @@ export default function PostMenu({
     if (!res.ok) alert(t.failure);
     else location.reload();
   }
+
+  if (!isOwner) return null;
 
   return (
     <div className="ml-auto relative" ref={box}>
