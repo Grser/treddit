@@ -22,6 +22,7 @@ export default function AdminDashboard({ stats }: { stats: AdminStats }) {
     { href: "/admin/groups", title: t.links.groups.title, description: t.links.groups.description, emoji: "💬" },
     { href: "/admin/anuncios", title: t.links.ads.title, description: t.links.ads.description, emoji: "📣" },
     { href: "/admin/users#verification", title: t.links.verification.title, description: t.links.verification.description, emoji: "✅" },
+    { href: "/admin/users", title: "Reportes de cuentas", description: "Revisa cuentas reportadas por la comunidad.", emoji: "🚨" },
   ];
 
   return (

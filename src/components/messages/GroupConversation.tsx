@@ -2,12 +2,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { validateUploadSize } from "@/lib/upload";
 import { uploadFile } from "@/lib/clientUpload";
 
-import type { DirectMessageAttachment, GroupMessageEntry } from "@/lib/messages";
+import type { GroupMessageEntry } from "@/lib/messages";
 
 type GroupMember = {
   id: number;
@@ -91,26 +91,6 @@ function parseSticker(text: string | null | undefined) {
   return match[1];
 }
 
-async function getAudioDurationSeconds(file: File): Promise<number> {
-  const objectUrl = URL.createObjectURL(file);
-  try {
-    const audio = document.createElement("audio");
-    audio.preload = "metadata";
-    audio.src = objectUrl;
-    await new Promise<void>((resolve, reject) => {
-      audio.onloadedmetadata = () => resolve();
-      audio.onerror = () => reject(new Error("No se pudo leer la duración del audio"));
-    });
-    const duration = Number(audio.duration);
-    if (!Number.isFinite(duration) || duration <= 0) {
-      throw new Error("No se pudo leer la duración del audio");
-    }
-    return Math.round(duration);
-  } finally {
-    URL.revokeObjectURL(objectUrl);
-  }
-}
-
 export default function GroupConversation({
   groupId,
   viewerId,
@@ -156,10 +136,7 @@ export default function GroupConversation({
   const [showStickerTray, setShowStickerTray] = useState(false);
   const [replyingTo, setReplyingTo] = useState<GroupMessageEntry | null>(null);
   const [attachments, setAttachments] = useState<GroupMessageEntry["attachments"]>([]);
-  const [uploading, setUploading] = useState(false);
   const [oneTimeImageMode, setOneTimeImageMode] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const audioInputRef = useRef<HTMLInputElement | null>(null);
   const [manageView, setManageView] = useState<"general" | "members" | "roles">("general");
   const shouldAutoScrollRef = useRef(true);
   const initialScrollDoneRef = useRef(false);
@@ -253,47 +230,7 @@ export default function GroupConversation({
     };
   }, []);
 
-  const canSendMessage = Boolean(canSendMessages && !sendingRef.current && !uploading && (text.trim().length > 0 || (attachments?.length ?? 0) > 0));
-
-  async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const files = event.target.files ? Array.from(event.target.files) : [];
-    if (!files.length) return;
-    setSendError(null);
-    setUploading(true);
-    try {
-      const uploaded = await Promise.all(
-        files.map(async (file) => {
-          validateUploadSize(file);
-          const mime = file.type || "";
-          const isAudio = mime.startsWith("audio/");
-          const durationSeconds = isAudio ? await getAudioDurationSeconds(file) : null;
-          if (isAudio && durationSeconds && durationSeconds > 60) {
-            throw new Error("El audio no puede durar más de 1 minuto");
-          }
-          const payload = await uploadFile(file, { scope: "chat" });
-          if (typeof payload.url !== "string") {
-            throw new Error(typeof payload.error === "string" ? payload.error : "No se pudo subir el archivo");
-          }
-          const type: DirectMessageAttachment["type"] = mime.startsWith("image/")
-            ? "image"
-            : mime.startsWith("video/")
-              ? "video"
-              : mime.startsWith("audio/")
-                ? "audio"
-                : "file";
-          return { url: payload.url, type, name: file.name, durationSeconds, viewOnce: type === "image" ? oneTimeImageMode : false };
-        }),
-      );
-      setAttachments((prev) => [...(prev || []), ...uploaded].slice(0, 8));
-    } catch (error) {
-      setSendError(error instanceof Error ? error.message : "No se pudo subir el archivo");
-    } finally {
-      setUploading(false);
-      event.target.value = "";
-      if (audioInputRef.current) audioInputRef.current.value = "";
-    }
-  }
-
+  const canSendMessage = Boolean(canSendMessages && !sendingRef.current && (text.trim().length > 0 || (attachments?.length ?? 0) > 0));
 
   async function handleReaction(messageId: number, emoji: string) {
     try {
@@ -386,7 +323,7 @@ export default function GroupConversation({
   }, [messages, sharedPostPreviews]);
 
   return (
-    <div className="flex h-full flex-col gap-3">
+    <div className="flex h-full min-h-0 flex-col gap-3">
       <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background/40 px-3 py-2">
         <div className="flex min-w-0 items-center gap-3">
           <Image
@@ -1019,7 +956,7 @@ export default function GroupConversation({
         onSubmit={async (event) => {
           event.preventDefault();
           const trimmed = text.trim();
-          if ((!trimmed && (attachments?.length ?? 0) === 0) || sendingRef.current || uploading || !canSendMessages) return;
+          if ((!trimmed && (attachments?.length ?? 0) === 0) || sendingRef.current || !canSendMessages) return;
           sendingRef.current = true;
           setSendError(null);
           try {
@@ -1086,7 +1023,7 @@ export default function GroupConversation({
             type="button"
             onClick={() => setShowStickerTray((prev) => !prev)}
             className="inline-flex size-10 items-center justify-center rounded-full bg-background/70 text-lg"
-            disabled={!canSendMessages || sendingRef.current || uploading}
+            disabled={!canSendMessages || sendingRef.current}
             aria-label="Abrir stickers"
           >
             🙂
@@ -1095,19 +1032,21 @@ export default function GroupConversation({
           <textarea
             value={text}
             onChange={(event) => setText(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                event.currentTarget.form?.requestSubmit();
+              }
+            }}
             className="max-h-40 min-h-12 w-full resize-none bg-transparent text-sm outline-none"
             rows={2}
             placeholder={canSendMessages ? "Escribe un mensaje" : "Solo lectura"}
-            disabled={!canSendMessages || sendingRef.current || uploading}
+            disabled={!canSendMessages || sendingRef.current}
           />
           </div>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
-            <input ref={fileInputRef} type="file" hidden accept="image/*,video/*,audio/*,application/*" multiple onChange={handleFileChange} />
-            <input ref={audioInputRef} type="file" hidden accept="audio/*" onChange={handleFileChange} />
-            <button type="button" onClick={() => fileInputRef.current?.click()} disabled={!canSendMessages || sendingRef.current || uploading} className="rounded-full border border-border px-3 py-1.5 text-xs disabled:opacity-50">Adjuntar</button>
-            <button type="button" onClick={() => audioInputRef.current?.click()} disabled={!canSendMessages || sendingRef.current || uploading} className="rounded-full border border-border px-3 py-1.5 text-xs disabled:opacity-50">Audio</button>
             <button type="button" onClick={() => setOneTimeImageMode((prev) => !prev)} className={`rounded-full border px-3 py-1.5 text-xs ${oneTimeImageMode ? "border-amber-300 bg-amber-300/15 text-amber-200" : "border-border"}`}>
               {oneTimeImageMode ? "Foto 1 vez: ON" : "Foto 1 vez: OFF"}
             </button>
@@ -1120,7 +1059,7 @@ export default function GroupConversation({
             </div>
           </div>
           <button type="submit" disabled={!canSendMessage} className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
-            {uploading ? "Subiendo…" : "Enviar"}
+            Enviar
           </button>
         </div>
       </form>

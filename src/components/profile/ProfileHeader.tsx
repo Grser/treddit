@@ -167,6 +167,28 @@ export default function ProfileHeader({
               >
                 {isBlockLoading ? "..." : isBlocked ? "Desbloquear" : "Bloquear"}
               </button>
+              <button
+                type="button"
+                disabled={!viewerId}
+                onClick={async () => {
+                  if (!viewerId) return;
+                  const reason = window.prompt("Motivo del reporte (opcional, máx. 280 caracteres):") || "";
+                  const res = await fetch(`/api/users/${user.username}/report`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ reason }),
+                  });
+                  const payload = (await res.json().catch(() => ({}))) as { error?: string };
+                  if (!res.ok) {
+                    alert(payload.error || "No se pudo reportar la cuenta");
+                    return;
+                  }
+                  alert("Reporte enviado. Gracias por avisar.");
+                }}
+                className="inline-flex h-9 items-center justify-center rounded-full border border-border px-4 text-sm hover:bg-muted/60 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Reportar cuenta
+              </button>
             </>
           )}
           {isOwner && (

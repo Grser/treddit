@@ -289,15 +289,14 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
 
   return (
     <>
-      <div className="border-b border-white/10 bg-gradient-to-b from-[#213a52]/70 to-[#182430]/50 px-4 py-4 backdrop-blur">
+      <div className="border-b border-border/70 bg-gradient-to-b from-surface/90 to-background/80 px-4 py-4 backdrop-blur">
         <h1 className="text-3xl font-semibold text-foreground">Chats</h1>
-        <p className="mt-1 text-xs uppercase tracking-wider text-cyan-200/80">Telegram vibe · rápido y limpio</p>
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           type="search"
           placeholder="Buscar chat o iniciar uno nuevo"
-          className="mt-3 w-full rounded-full border border-white/15 bg-[#101a24] px-4 py-2.5 text-sm text-foreground outline-none transition focus:border-cyan-300"
+          className="mt-3 w-full rounded-full border border-border bg-input px-4 py-2.5 text-sm text-foreground outline-none transition focus:border-brand"
           aria-label="Buscar contactos"
         />
         <div className="mt-3 flex flex-wrap gap-2 text-sm">
@@ -316,7 +315,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
           <button
             type="button"
             onClick={() => setShowOnlyUnread((prev) => !prev)}
-            className={`rounded-full border px-3 py-1 text-xs transition ${showOnlyUnread ? "border-cyan-300 bg-cyan-400/20 text-cyan-100" : "border-white/15 bg-black/20 text-foreground/75 hover:bg-black/35"}`}
+            className={`rounded-full border px-3 py-1 text-xs transition ${showOnlyUnread ? "border-brand bg-brand/20 text-foreground" : "border-border bg-input/70 text-foreground/75 hover:bg-muted"}`}
           >
             {showOnlyUnread ? "Mostrando solo no leídos" : "Filtrar por no leídos"}
           </button>
@@ -333,7 +332,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
         </div>
 
         {tab === "groups" && (
-          <div className="mt-3 rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-3">
+          <div className="mt-3 rounded-2xl border border-brand/30 bg-brand/10 p-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-brand/90">Nuevo grupo</p>
             <p className="mt-1 text-xs opacity-70">Como WhatsApp/Instagram: elige personas desde un selector visual.</p>
             <button type="button" onClick={() => setShowCreateGroup(true)} className="mt-2 rounded-full bg-brand px-3 py-1.5 text-xs font-semibold text-white">

@@ -83,7 +83,7 @@ function ConversationLayout({
             <div className="border-b border-border/80 px-3 py-2 sm:px-4 lg:hidden">
               <Link href="/mensajes" className="text-sm font-medium text-brand hover:underline">← Volver a chats</Link>
             </div>
-            <header className="flex items-center gap-3 border-b border-white/10 bg-black/15 px-3 py-3 sm:px-4">
+            <header className="flex items-center gap-3 border-b border-border/80 bg-surface/70 px-3 py-3 sm:px-4">
               <Link href={`/u/${participant.username}`} className="inline-flex rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/70">
                 <Image
                   src={avatar}
@@ -94,12 +94,12 @@ function ConversationLayout({
                   unoptimized
                 />
               </Link>
-              <Link href={`/u/${participant.username}`} className="min-w-0 hover:opacity-90">
+              <Link href={`/u/${participant.username}`} className="min-w-0 flex-1 hover:opacity-90">
                 <p className="flex items-center gap-2 text-base font-semibold">
                   <span className="truncate">{displayName}</span>
                   <UserBadges size="sm" isAdmin={participant.is_admin} isVerified={participant.is_verified} />
                 </p>
-                <p className="text-sm opacity-70">@{participant.username}</p>
+                <p className="truncate text-sm opacity-70">@{participant.username}</p>
                 {helperText && <p className="text-xs text-cyan-200">{helperText}</p>}
               </Link>
             </header>
