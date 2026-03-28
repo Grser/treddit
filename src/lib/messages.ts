@@ -71,6 +71,13 @@ export type GroupMessageEntry = {
     userId: number;
     username: string;
   }>;
+  attachments?: DirectMessageAttachment[];
+  replyTo?: {
+    id: number;
+    text: string;
+    senderUsername: string;
+    senderNickname: string | null;
+  } | null;
 };
 
 export type GroupMemberRole = "owner" | "admin" | "member";
@@ -207,10 +214,14 @@ export async function ensureMessageTables() {
       group_id INT NOT NULL,
       sender_id INT UNSIGNED NOT NULL,
       message TEXT NOT NULL,
+      attachments_json JSON NULL,
+      reply_to_message_id INT NULL,
       created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       INDEX idx_dm_group_messages_group (group_id, created_at),
+      INDEX idx_dm_group_reply (reply_to_message_id),
       CONSTRAINT fk_dm_group_messages_group FOREIGN KEY (group_id) REFERENCES Direct_Message_Groups(id) ON DELETE CASCADE,
-      CONSTRAINT fk_dm_group_messages_sender FOREIGN KEY (sender_id) REFERENCES Users(id) ON DELETE CASCADE
+      CONSTRAINT fk_dm_group_messages_sender FOREIGN KEY (sender_id) REFERENCES Users(id) ON DELETE CASCADE,
+      CONSTRAINT fk_dm_group_reply FOREIGN KEY (reply_to_message_id) REFERENCES Direct_Message_Group_Messages(id) ON DELETE SET NULL
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `);
   await db.execute(`
@@ -247,6 +258,36 @@ export async function ensureMessageTables() {
   );
   if (!replyIndex.length) {
     await db.execute("ALTER TABLE Direct_Messages ADD INDEX idx_direct_reply (reply_to_message_id)");
+  }
+
+  const [groupAttachmentsColumn] = await db.query<RowDataPacket[]>(
+    "SHOW COLUMNS FROM Direct_Message_Group_Messages LIKE 'attachments_json'",
+  );
+  if (!groupAttachmentsColumn.length) {
+    await db.execute("ALTER TABLE Direct_Message_Group_Messages ADD COLUMN attachments_json JSON NULL");
+  }
+
+  const [groupReplyColumn] = await db.query<RowDataPacket[]>(
+    "SHOW COLUMNS FROM Direct_Message_Group_Messages LIKE 'reply_to_message_id'",
+  );
+  if (!groupReplyColumn.length) {
+    await db.execute("ALTER TABLE Direct_Message_Group_Messages ADD COLUMN reply_to_message_id INT NULL");
+  }
+
+  const [groupReplyIndex] = await db.query<RowDataPacket[]>(
+    "SHOW INDEX FROM Direct_Message_Group_Messages WHERE Key_name='idx_dm_group_reply'",
+  );
+  if (!groupReplyIndex.length) {
+    await db.execute("ALTER TABLE Direct_Message_Group_Messages ADD INDEX idx_dm_group_reply (reply_to_message_id)");
+  }
+
+  const [groupReplyFk] = await db.query<RowDataPacket[]>(
+    "SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Direct_Message_Group_Messages' AND COLUMN_NAME = 'reply_to_message_id' AND REFERENCED_TABLE_NAME = 'Direct_Message_Group_Messages' LIMIT 1",
+  );
+  if (!groupReplyFk.length) {
+    await db.execute(
+      "ALTER TABLE Direct_Message_Group_Messages ADD CONSTRAINT fk_dm_group_reply FOREIGN KEY (reply_to_message_id) REFERENCES Direct_Message_Group_Messages(id) ON DELETE SET NULL",
+    );
   }
 
   const [memberRoleColumn] = await db.query<RowDataPacket[]>(
@@ -1147,8 +1188,12 @@ export async function fetchGroupMessages(userId: number, groupId: number, afterI
   if (!membership[0]?.group_id) return [];
 
   const [rows] = await db.query<RowDataPacket[]>(
-    `SELECT msg.id, msg.group_id, msg.sender_id, msg.message, msg.created_at,
+    `SELECT msg.id, msg.group_id, msg.sender_id, msg.message, msg.attachments_json, msg.reply_to_message_id, msg.created_at,
             u.id AS user_id, u.username, u.nickname, u.avatar_url,
+            parent.id AS reply_id,
+            parent.message AS reply_message,
+            parent_sender.username AS reply_sender_username,
+            parent_sender.nickname AS reply_sender_nickname,
             (
               SELECT JSON_ARRAYAGG(
                 JSON_OBJECT('emoji', reactions.emoji, 'userId', reactions.user_id, 'username', reaction_user.username)
@@ -1159,6 +1204,8 @@ export async function fetchGroupMessages(userId: number, groupId: number, afterI
             ) AS reactions_json
      FROM Direct_Message_Group_Messages msg
      JOIN Users u ON u.id = msg.sender_id
+     LEFT JOIN Direct_Message_Group_Messages parent ON parent.id = msg.reply_to_message_id
+     LEFT JOIN Users parent_sender ON parent_sender.id = parent.sender_id
      WHERE msg.group_id=? AND msg.id > ?
      ORDER BY msg.created_at ASC
      LIMIT 100`,
@@ -1178,6 +1225,15 @@ export async function fetchGroupMessages(userId: number, groupId: number, afterI
       avatar_url: row.avatar_url ? String(row.avatar_url) : null,
     },
     reactions: parseReactions(typeof row.reactions_json === "string" ? row.reactions_json : null),
+    attachments: parseAttachments(typeof row.attachments_json === "string" ? row.attachments_json : null),
+    replyTo: row.reply_id
+      ? {
+          id: Number(row.reply_id),
+          text: String(row.reply_message ?? ""),
+          senderUsername: String(row.reply_sender_username ?? ""),
+          senderNickname: row.reply_sender_nickname ? String(row.reply_sender_nickname) : null,
+        }
+      : null,
   }));
 }
 
@@ -1207,11 +1263,17 @@ export async function deleteGroupMessage(userId: number, groupId: number, messag
   return result.affectedRows > 0;
 }
 
-export async function sendGroupMessage(userId: number, groupId: number, text: string): Promise<GroupMessageEntry> {
+export async function sendGroupMessage(
+  userId: number,
+  groupId: number,
+  text: string,
+  attachments: DirectMessageAttachment[] = [],
+  replyToMessageId?: number | null,
+): Promise<GroupMessageEntry> {
   if (!isDatabaseConfigured()) throw new Error("DB_REQUIRED");
   await ensureMessageTables();
   const normalized = text.trim().slice(0, 1000);
-  if (!normalized) throw new Error("EMPTY_MESSAGE");
+  if (!normalized && attachments.length === 0) throw new Error("EMPTY_MESSAGE");
   const [membership] = await db.query<RowDataPacket[]>(
     "SELECT group_id, can_send_messages FROM Direct_Message_Group_Members WHERE group_id=? AND user_id=? LIMIT 1",
     [groupId, userId],
@@ -1221,15 +1283,44 @@ export async function sendGroupMessage(userId: number, groupId: number, text: st
     throw new Error("CANNOT_SEND_MESSAGES");
   }
 
+  const normalizedAttachments = attachments
+    .filter((item) => item && typeof item.url === "string" && item.url.trim().length > 0)
+    .slice(0, 8)
+    .map((item) => ({
+      url: item.url.trim(),
+      type: item.type,
+      name: item.name ?? null,
+      durationSeconds: typeof item.durationSeconds === "number" ? item.durationSeconds : null,
+      viewOnce: Boolean(item.viewOnce),
+      viewedByRecipientAt: item.viewedByRecipientAt ?? null,
+    })) satisfies DirectMessageAttachment[];
+
+  let normalizedReplyToId: number | null = null;
+  if (Number.isFinite(replyToMessageId) && Number(replyToMessageId) > 0) {
+    const [replyRows] = await db.query<RowDataPacket[]>(
+      "SELECT id FROM Direct_Message_Group_Messages WHERE id = ? AND group_id = ? LIMIT 1",
+      [Number(replyToMessageId), groupId],
+    );
+    if (replyRows[0]?.id) {
+      normalizedReplyToId = Number(replyRows[0].id);
+    }
+  }
+
   const [result] = await db.execute<ResultSetHeader>(
-    "INSERT INTO Direct_Message_Group_Messages (group_id, sender_id, message, created_at) VALUES (?, ?, ?, NOW())",
-    [groupId, userId, normalized],
+    "INSERT INTO Direct_Message_Group_Messages (group_id, sender_id, message, attachments_json, reply_to_message_id, created_at) VALUES (?, ?, ?, ?, ?, NOW())",
+    [groupId, userId, normalized, normalizedAttachments.length ? JSON.stringify(normalizedAttachments) : null, normalizedReplyToId],
   );
   const [rows] = await db.query<RowDataPacket[]>(
-    `SELECT msg.id, msg.group_id, msg.sender_id, msg.message, msg.created_at,
-            u.id AS user_id, u.username, u.nickname, u.avatar_url
+    `SELECT msg.id, msg.group_id, msg.sender_id, msg.message, msg.attachments_json, msg.created_at,
+            u.id AS user_id, u.username, u.nickname, u.avatar_url,
+            parent.id AS reply_id,
+            parent.message AS reply_message,
+            parent_sender.username AS reply_sender_username,
+            parent_sender.nickname AS reply_sender_nickname
      FROM Direct_Message_Group_Messages msg
      JOIN Users u ON u.id = msg.sender_id
+     LEFT JOIN Direct_Message_Group_Messages parent ON parent.id = msg.reply_to_message_id
+     LEFT JOIN Users parent_sender ON parent_sender.id = parent.sender_id
      WHERE msg.id=? LIMIT 1`,
     [result.insertId],
   );
@@ -1245,6 +1336,15 @@ export async function sendGroupMessage(userId: number, groupId: number, text: st
       nickname: rows[0].nickname ? String(rows[0].nickname) : null,
       avatar_url: rows[0].avatar_url ? String(rows[0].avatar_url) : null,
     },
+    attachments: parseAttachments(typeof rows[0].attachments_json === "string" ? rows[0].attachments_json : null),
+    replyTo: rows[0].reply_id
+      ? {
+          id: Number(rows[0].reply_id),
+          text: String(rows[0].reply_message ?? ""),
+          senderUsername: String(rows[0].reply_sender_username ?? ""),
+          senderNickname: rows[0].reply_sender_nickname ? String(rows[0].reply_sender_nickname) : null,
+        }
+      : null,
   };
 }
 
