@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 
 export function middleware(request: Request) {
   const nonce = crypto.randomUUID().replace(/-/g, "");
+  const allowUnsafeEval = process.env.NODE_ENV !== "production";
+  const scriptSrc = `script-src 'self' 'nonce-${nonce}' 'unsafe-inline'${allowUnsafeEval ? " 'unsafe-eval'" : ""};`;
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
   const res = NextResponse.next({
@@ -14,7 +16,7 @@ export function middleware(request: Request) {
   res.headers.set("X-Content-Type-Options", "nosniff");
   res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   res.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
-  res.headers.set("Content-Security-Policy", `default-src 'self'; img-src 'self' data: https: http:; style-src 'self' 'unsafe-inline'; script-src 'self' 'nonce-${nonce}' 'unsafe-inline'; connect-src 'self' https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`);
+  res.headers.set("Content-Security-Policy", `default-src 'self'; img-src 'self' data: https: http:; style-src 'self' 'unsafe-inline'; ${scriptSrc} connect-src 'self' https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`);
   res.headers.set("x-nonce", nonce);
 
   return res;
