@@ -118,6 +118,8 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
         can_view_sensitive: canViewSensitive,
         isFollowedAuthor: Boolean(row.isFollowedAuthor),
         isCloseFriendAuthor: Boolean(row.isCloseFriendAuthor),
+        isOwner: Boolean(viewerOwnsPost),
+        isAdminViewer: Boolean(session?.is_admin),
       };
     }
   }

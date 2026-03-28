@@ -120,6 +120,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       reply_scope: ([0, 1, 2].includes(Number(row.reply_scope ?? 0)) ? Number(row.reply_scope ?? 0) : 0) as 0 | 1 | 2,
       is_sensitive: isSensitive,
       can_view_sensitive: canViewSensitive,
+      isOwner: me?.id ? Number(row.user) === me.id : false,
+      isAdminViewer: Boolean(me?.is_admin),
     },
   });
 }

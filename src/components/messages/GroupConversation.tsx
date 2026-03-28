@@ -253,8 +253,6 @@ export default function GroupConversation({
     };
   }, []);
 
-  const messageCharCount = text.length;
-  const maxMessageLength = 1000;
   const canSendMessage = Boolean(canSendMessages && !sendingRef.current && !uploading && (text.trim().length > 0 || (attachments?.length ?? 0) > 0));
 
   async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
@@ -1096,17 +1094,12 @@ export default function GroupConversation({
           <div className="flex-1 rounded-3xl border border-border/70 bg-background/70 px-3 py-2">
           <textarea
             value={text}
-            onChange={(event) => setText(event.target.value.slice(0, maxMessageLength))}
+            onChange={(event) => setText(event.target.value)}
             className="max-h-40 min-h-12 w-full resize-none bg-transparent text-sm outline-none"
             rows={2}
-            maxLength={maxMessageLength}
             placeholder={canSendMessages ? "Escribe un mensaje" : "Solo lectura"}
             disabled={!canSendMessages || sendingRef.current || uploading}
           />
-          <div className="mt-1 flex items-center justify-between text-[11px] opacity-70">
-            <span>Máximo {maxMessageLength} letras</span>
-            <span>{messageCharCount}/{maxMessageLength}</span>
-          </div>
           </div>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1120,7 +1113,7 @@ export default function GroupConversation({
             </button>
             <div className="flex flex-wrap gap-1">
               {QUICK_EMOJIS.map((emoji) => (
-                <button key={emoji} type="button" className="rounded-full border border-border/70 px-2 py-1 text-sm" onClick={() => setText((prev) => `${prev}${emoji}`.slice(0, maxMessageLength))}>
+                <button key={emoji} type="button" className="rounded-full border border-border/70 px-2 py-1 text-sm" onClick={() => setText((prev) => `${prev}${emoji}`)}>
                   {emoji}
                 </button>
               ))}
