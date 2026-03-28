@@ -7,7 +7,7 @@ import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { validateUploadSize } from "@/lib/upload";
 import { uploadFile } from "@/lib/clientUpload";
 
-import type { GroupMessageEntry } from "@/lib/messages";
+import type { DirectMessageAttachment, GroupMessageEntry } from "@/lib/messages";
 
 type GroupMember = {
   id: number;
@@ -276,7 +276,7 @@ export default function GroupConversation({
           if (typeof payload.url !== "string") {
             throw new Error(typeof payload.error === "string" ? payload.error : "No se pudo subir el archivo");
           }
-          const type = mime.startsWith("image/")
+          const type: DirectMessageAttachment["type"] = mime.startsWith("image/")
             ? "image"
             : mime.startsWith("video/")
               ? "video"
