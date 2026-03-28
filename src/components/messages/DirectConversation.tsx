@@ -449,8 +449,8 @@ export default function DirectConversation({
             const showAvatar = !isMine && !prevSameSender;
             const showHeader = !isMine && !prevSameSender;
             const bubbleClasses = isMine
-              ? "border border-cyan-300/25 bg-[#2a5277] text-white"
-              : "border border-white/10 bg-[#1c2d3d] text-foreground";
+              ? "border border-brand/40 bg-brand/20 text-foreground"
+              : "border border-border bg-background/75 text-foreground";
             const timeLabel = new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
             const avatar = !isMine ? msg.sender.avatar_url?.trim() || "/demo-reddit.png" : null;
             return (
@@ -722,7 +722,7 @@ export default function DirectConversation({
           </div>
         )}
         {isTrayOpen && (
-          <div className="space-y-2 rounded-2xl border border-white/10 bg-[#0e1720]/90 p-2">
+          <div className="space-y-2 rounded-2xl border border-border bg-background/90 p-2">
             <div className="flex flex-wrap items-center gap-2">
               {QUICK_EMOJIS.map((emoji) => (
                 <button
