@@ -435,11 +435,11 @@ export default function DirectConversation({
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 md:gap-3">
-      <div className="flex min-h-0 flex-1 flex-col rounded-3xl border border-white/10 bg-[linear-gradient(180deg,rgba(23,36,49,0.95)_0%,rgba(15,26,36,0.92)_100%)] p-3 shadow-2xl shadow-black/30 md:p-4">
+      <div className="flex min-h-0 flex-1 flex-col rounded-3xl border border-border/80 bg-surface/90 p-3 shadow-2xl shadow-black/15 md:p-4">
         {messages.length === 0 && (
           <p className="text-sm opacity-70">{strings.comments.none || "Aún no hay mensajes. Inicia la conversación."}</p>
         )}
-        <ul ref={scrollRef} className="hide-scrollbar mt-2 min-h-0 flex-1 space-y-1 overflow-x-hidden overflow-y-auto rounded-2xl bg-[radial-gradient(circle_at_top,rgba(38,56,74,0.26),rgba(13,20,29,0.28)_45%,rgba(11,18,26,0.6))] px-2 pr-0.5 pb-6 [overflow-anchor:none] sm:pr-1 sm:pb-8">
+        <ul ref={scrollRef} className="hide-scrollbar mt-2 min-h-0 flex-1 space-y-1 overflow-x-hidden overflow-y-auto rounded-2xl bg-background/50 px-2 pr-0.5 pb-6 [overflow-anchor:none] sm:pr-1 sm:pb-8">
           {messages.map((msg, index) => {
             const isMine = msg.senderId === viewerId;
             const previous = messages[index - 1];
@@ -449,7 +449,7 @@ export default function DirectConversation({
             const showAvatar = !isMine && !prevSameSender;
             const showHeader = !isMine && !prevSameSender;
             const bubbleClasses = isMine
-              ? "border border-brand/40 bg-brand/20 text-foreground"
+              ? "border border-brand/45 bg-brand/15 text-foreground"
               : "border border-border bg-background/75 text-foreground";
             const timeLabel = new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
             const avatar = !isMine ? msg.sender.avatar_url?.trim() || "/demo-reddit.png" : null;
@@ -474,7 +474,7 @@ export default function DirectConversation({
                     <button
                       type="button"
                       onClick={() => setMessageMenuId((prev) => (prev === msg.id ? null : msg.id))}
-                      className={`absolute right-1.5 top-1.5 inline-flex size-6 items-center justify-center rounded-full text-xs transition sm:right-2 sm:top-2 ${isMine ? "bg-white/10 text-white/90 hover:bg-white/20" : "bg-background/80 text-foreground/80 hover:bg-muted"}`}
+                      className={`absolute right-1.5 top-1.5 inline-flex size-6 items-center justify-center rounded-full text-xs transition sm:right-2 sm:top-2 ${isMine ? "bg-brand/20 text-foreground/90 hover:bg-brand/30" : "bg-background/80 text-foreground/80 hover:bg-muted"}`}
                       aria-label="Abrir menú"
                     >
                       ▾
@@ -486,7 +486,7 @@ export default function DirectConversation({
                       </p>
                     )}
                     {msg.replyTo && (
-                      <div className={`mb-2 rounded-xl border px-3 py-2 text-xs ${isMine ? "border-white/30 bg-white/10" : "border-border bg-background/40"}`}>
+                      <div className={`mb-2 rounded-xl border px-3 py-2 text-xs ${isMine ? "border-brand/40 bg-brand/10" : "border-border bg-background/40"}`}>
                         <p className="font-semibold opacity-90">{msg.replyTo.senderNickname || msg.replyTo.senderUsername}</p>
                         <p className="line-clamp-2 opacity-80">{msg.replyTo.text || "Mensaje"}</p>
                       </div>
@@ -508,9 +508,9 @@ export default function DirectConversation({
                           {sharedPost.intro ? <p className="text-xs opacity-85">{sharedPost.intro}</p> : null}
                           <Link
                             href={`/p/${sharedPost.postId}`}
-                            className={`block overflow-hidden rounded-2xl border shadow-sm transition hover:scale-[1.01] ${isMine ? "border-white/25 bg-white/10" : "border-border bg-background/80"}`}
+                            className={`block overflow-hidden rounded-2xl border shadow-sm transition hover:scale-[1.01] ${isMine ? "border-brand/35 bg-brand/10" : "border-border bg-background/80"}`}
                           >
-                            <div className={`px-3 py-2 text-[11px] font-medium uppercase tracking-wide ${isMine ? "bg-black/20 text-white/85" : "bg-muted/70 text-foreground/75"}`}>
+                            <div className={`px-3 py-2 text-[11px] font-medium uppercase tracking-wide ${isMine ? "bg-brand/20 text-foreground/85" : "bg-muted/70 text-foreground/75"}`}>
                               Publicación compartida
                             </div>
                             {shouldShowMedia ? (
@@ -523,7 +523,7 @@ export default function DirectConversation({
                                 unoptimized
                               />
                             ) : (
-                              <div className={`flex h-[90px] w-full items-center justify-center px-3 text-center text-xs ${isMine ? "bg-white/10 text-white/85" : "bg-muted/50 text-foreground/75"}`}>
+                              <div className={`flex h-[90px] w-full items-center justify-center px-3 text-center text-xs ${isMine ? "bg-brand/10 text-foreground/85" : "bg-muted/50 text-foreground/75"}`}>
                                 {isSensitiveBlocked
                                   ? "Contenido sensible bloqueado. Debes verificar tu edad para verlo."
                                   : canRevealSensitive
@@ -535,8 +535,8 @@ export default function DirectConversation({
                             )}
                             <div className="space-y-1 px-3 py-2.5">
                               <p className="text-xs font-semibold">{preview?.nickname || "Publicación no disponible"}</p>
-                              {preview?.username ? <p className={`text-xs ${isMine ? "text-white/80" : "text-foreground/75"}`}>@{preview.username}</p> : null}
-                              <p className={`line-clamp-2 text-xs ${isMine ? "text-white/85" : "text-foreground/85"}`}>
+                              {preview?.username ? <p className={`text-xs ${isMine ? "text-foreground/80" : "text-foreground/75"}`}>@{preview.username}</p> : null}
+                              <p className={`line-clamp-2 text-xs ${isMine ? "text-foreground/85" : "text-foreground/85"}`}>
                                 {isSensitiveBlocked
                                   ? "Contenido sensible bloqueado. Debes verificar tu edad para verlo."
                                   : isPostUnavailable
@@ -554,7 +554,7 @@ export default function DirectConversation({
                                         [sharedPost.postId]: !isSensitiveRevealed,
                                       }));
                                     }}
-                                    className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wide transition ${isMine ? "border-white/35 bg-white/15 text-white hover:bg-white/25" : "border-border bg-background/80 text-foreground hover:bg-muted"}`}
+                                    className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wide transition ${isMine ? "border-brand/45 bg-brand/20 text-foreground hover:bg-brand/30" : "border-border bg-background/80 text-foreground hover:bg-muted"}`}
                                   >
                                     {isSensitiveRevealed ? "Ocultar imagen" : "Ver contenido"}
                                   </button>
@@ -568,7 +568,7 @@ export default function DirectConversation({
                     {msg.attachments?.length ? (
                       <ul className="mt-3 space-y-2">
                         {msg.attachments.map((file) => (
-                          <li key={`${msg.id}-${file.url}`} className="overflow-hidden rounded-2xl border border-white/10 bg-black/10">
+                          <li key={`${msg.id}-${file.url}`} className="overflow-hidden rounded-2xl border border-border/70 bg-background/50">
                             {file.type === "image" ? (
                               <>
                                 {Boolean(file.viewOnce && !isMine && file.viewedByRecipientAt) ? (
@@ -596,9 +596,9 @@ export default function DirectConversation({
                                     </span>
                                   </button>
                                 )}
-                                <div className="flex justify-end bg-black/10 px-2 py-1">
+                                <div className="flex justify-end bg-background/40 px-2 py-1">
                                   {Boolean(file.viewOnce && isMine && file.viewedByRecipientAt) ? (
-                                    <span className="mr-auto text-[11px] text-white/80">Visto por la otra persona</span>
+                                    <span className="mr-auto text-[11px] text-foreground/80">Visto por la otra persona</span>
                                   ) : null}
                                   <button
                                     type="button"
@@ -633,18 +633,18 @@ export default function DirectConversation({
                           acc[reaction.emoji] = (acc[reaction.emoji] || 0) + 1;
                           return acc;
                         }, {})).map(([emoji, total]) => (
-                          <span key={`${msg.id}-${emoji}`} className={`w-fit rounded-full border px-2 py-0.5 text-sm shadow transition ${isMine ? "border-white/20 bg-white/10 text-white" : "border-border bg-background/80 text-foreground"}`}>
+                          <span key={`${msg.id}-${emoji}`} className={`w-fit rounded-full border px-2 py-0.5 text-sm shadow transition ${isMine ? "border-brand/35 bg-brand/15 text-foreground" : "border-border bg-background/80 text-foreground"}`}>
                             {emoji} {total}
                           </span>
                         ))}
                       </div>
                     )}
                     <div className={`relative mt-1 flex flex-wrap items-center gap-2 pr-7 sm:pr-8 transition-opacity ${isMine ? "justify-end" : "justify-start"} ${messageMenuId === msg.id ? "opacity-100" : "opacity-0 group-hover/message:opacity-100"}`}>
-                      <p className={`text-[11px] ${isMine ? "text-white/70" : "opacity-70"}`}>{timeLabel}</p>
+                      <p className={`text-[11px] ${isMine ? "text-foreground/70" : "opacity-70"}`}>{timeLabel}</p>
                       {!nextSameSender && (
                         <button
                           type="button"
-                          className={`rounded-full px-2 py-0.5 text-xs transition ${isMine ? "text-white/85 hover:bg-white/10 hover:text-white" : "opacity-80 hover:bg-muted hover:opacity-100"}`}
+                          className={`rounded-full px-2 py-0.5 text-xs transition ${isMine ? "text-foreground/85 hover:bg-brand/15 hover:text-foreground" : "opacity-80 hover:bg-muted hover:opacity-100"}`}
                           onClick={() => selectLatestMessageFromSender(msg)}
                         >
                           Responder
