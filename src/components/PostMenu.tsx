@@ -20,10 +20,14 @@ export default function PostMenu({
   const { strings } = useLocale();
   const t = strings.postMenu;
   const [open, setOpen] = useState(false);
+  const [replyMenuOpen, setReplyMenuOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
-      if (!box.current?.contains(e.target as Node)) setOpen(false);
+      if (!box.current?.contains(e.target as Node)) {
+        setOpen(false);
+        setReplyMenuOpen(false);
+      }
     };
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
@@ -84,12 +88,30 @@ export default function PostMenu({
           )}
 
           <MenuItem
-            onClick={() =>
-              action(`/api/posts/${postId}`, "PATCH", { op: "who_can_reply", value: ((replyScope ?? 0) + 1) % 3 })
-            }
+            onClick={() => setReplyMenuOpen((v) => !v)}
           >
             {t.changeReplies}
           </MenuItem>
+          {replyMenuOpen && (
+            <div className="mx-2 mb-1 rounded-md border border-border bg-background/60 p-1">
+              {[
+                { value: 1, label: "Solo seguidores" },
+                { value: 0, label: "Todo el mundo" },
+                { value: 2, label: "Mejores amigos" },
+              ].map((item) => (
+                <button
+                  key={item.value}
+                  type="button"
+                  className={`w-full rounded px-2 py-1.5 text-left text-sm transition hover:bg-muted ${
+                    (replyScope ?? 0) === item.value ? "bg-muted font-semibold" : ""
+                  }`}
+                  onClick={() => action(`/api/posts/${postId}`, "PATCH", { op: "who_can_reply", value: item.value })}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          )}
           <MenuItem onClick={() => location.assign(`/embed/p/${postId}`)}>{t.embed}</MenuItem>
           <MenuItem onClick={() => location.assign(`/p/${postId}/stats`)}>{t.stats}</MenuItem>
         </div>

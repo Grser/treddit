@@ -5,6 +5,7 @@ import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import { NextResponse } from "next/server";
 import { db, isDatabaseConnectionLimitError } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
+import { ensureCloseFriendsTable, isCloseFriend } from "@/lib/closeFriends";
 
 type CommentRow = RowDataPacket & {
   id: number;
@@ -42,6 +43,7 @@ type CommentRequestBody = {
 };
 
 type ParentRow = RowDataPacket & { post: number };
+type PostReplyScopeRow = RowDataPacket & { user: number; reply_scope: number | null };
 
 /**
  * GET /api/comments?postId=123
@@ -132,6 +134,35 @@ export async function POST(req: Request) {
 
     if (!postId || !text.trim()) {
       return NextResponse.json({ error: "Datos inválidos" }, { status: 400 });
+    }
+
+    const [postRows] = await db.query<PostReplyScopeRow[]>(
+      "SELECT user, reply_scope FROM Posts WHERE id=? AND visible=1 LIMIT 1",
+      [postId],
+    );
+    const post = postRows[0];
+    if (!post) {
+      return NextResponse.json({ error: "Post no encontrado" }, { status: 404 });
+    }
+    const postOwnerId = Number(post.user);
+    const replyScope = Math.min(2, Math.max(0, Math.trunc(Number(post.reply_scope) || 0)));
+
+    if (me.id !== postOwnerId) {
+      if (replyScope === 1) {
+        const [rows] = await db.query<RowDataPacket[]>(
+          "SELECT 1 FROM Follows WHERE follower=? AND followed=? LIMIT 1",
+          [me.id, postOwnerId],
+        );
+        if (!rows[0]) {
+          return NextResponse.json({ error: "Solo seguidores pueden responder este post" }, { status: 403 });
+        }
+      } else if (replyScope === 2) {
+        await ensureCloseFriendsTable();
+        const canReply = await isCloseFriend(postOwnerId, me.id);
+        if (!canReply) {
+          return NextResponse.json({ error: "Solo mejores amigos pueden responder este post" }, { status: 403 });
+        }
+      }
     }
 
     // Verifica que el parent pertenezca al mismo post (si viene)
