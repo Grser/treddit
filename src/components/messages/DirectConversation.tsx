@@ -515,11 +515,11 @@ export default function DirectConversation({
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 md:gap-3">
-      <div className="flex min-h-0 flex-1 flex-col rounded-3xl border border-border/80 bg-gradient-to-b from-surface/95 to-background/70 p-3 shadow-sm md:p-4">
+      <div className="flex min-h-0 flex-1 flex-col rounded-3xl border border-white/10 bg-[linear-gradient(180deg,rgba(23,36,49,0.95)_0%,rgba(15,26,36,0.92)_100%)] p-3 shadow-2xl shadow-black/30 md:p-4">
         {messages.length === 0 && (
           <p className="text-sm opacity-70">{strings.comments.none || "Aún no hay mensajes. Inicia la conversación."}</p>
         )}
-        <ul ref={scrollRef} className="hide-scrollbar mt-2 min-h-0 flex-1 space-y-1 overflow-x-hidden overflow-y-auto pr-0.5 pb-3 [overflow-anchor:none] sm:pr-1">
+        <ul ref={scrollRef} className="hide-scrollbar mt-2 min-h-0 flex-1 space-y-1 overflow-x-hidden overflow-y-auto rounded-2xl bg-[radial-gradient(circle_at_top,rgba(38,56,74,0.26),rgba(13,20,29,0.28)_45%,rgba(11,18,26,0.6))] px-2 pr-0.5 pb-3 [overflow-anchor:none] sm:pr-1">
           {messages.map((msg, index) => {
             const isMine = msg.senderId === viewerId;
             const previous = messages[index - 1];
@@ -529,8 +529,8 @@ export default function DirectConversation({
             const showAvatar = !isMine && !prevSameSender;
             const showHeader = !isMine && !prevSameSender;
             const bubbleClasses = isMine
-              ? "bg-brand text-white"
-              : "bg-input text-foreground";
+              ? "border border-cyan-300/25 bg-[#2a5277] text-white"
+              : "border border-white/10 bg-[#1c2d3d] text-foreground";
             const timeLabel = new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
             const avatar = !isMine ? msg.sender.avatar_url?.trim() || "/demo-reddit.png" : null;
             return (
@@ -550,7 +550,7 @@ export default function DirectConversation({
                       </UserHoverPreview>
                     ) : <div className="size-8" />
                   )}
-                  <div className={`relative min-w-0 rounded-2xl px-3 py-2 text-sm shadow-sm sm:px-4 ${bubbleClasses}`}>
+                  <div className={`relative min-w-0 rounded-2xl px-3 py-2 text-sm shadow-lg shadow-black/20 sm:px-4 ${bubbleClasses}`}>
                     <button
                       type="button"
                       onClick={() => setMessageMenuId((prev) => (prev === msg.id ? null : msg.id))}
@@ -753,7 +753,14 @@ export default function DirectConversation({
         </ul>
       </div>
 
-      <form onSubmit={sendMessage} className="sticky bottom-0 z-10 shrink-0 space-y-3 rounded-2xl border border-border/90 bg-surface/95 p-2.5 shadow-lg backdrop-blur sm:p-3.5 md:rounded-3xl md:p-4">
+      <form onSubmit={sendMessage} className="sticky bottom-0 z-10 shrink-0 space-y-3 rounded-2xl border border-white/10 bg-[#101c28]/95 p-2.5 shadow-2xl shadow-black/25 backdrop-blur sm:p-3.5 md:rounded-3xl md:p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          {["📎 Archivo", "🎤 Nota de voz", "📍 Compartir"].map((action) => (
+            <span key={action} className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-foreground/75">
+              {action}
+            </span>
+          ))}
+        </div>
         {replyingTo && (
           <div className="flex items-start justify-between rounded-xl border border-border bg-muted/40 px-3 py-2 text-xs">
             <div>
@@ -802,7 +809,7 @@ export default function DirectConversation({
           </div>
         )}
         {isTrayOpen && (
-          <div className="space-y-2 rounded-2xl border border-border bg-background/70 p-2">
+          <div className="space-y-2 rounded-2xl border border-white/10 bg-[#0e1720]/90 p-2">
             <div className="flex flex-wrap items-center gap-2">
               {QUICK_EMOJIS.map((emoji) => (
                 <button
@@ -880,7 +887,7 @@ export default function DirectConversation({
               {uploading ? "…" : "+"}
             </button>
           </div>
-          <div className="flex min-w-0 flex-1 items-end gap-1.5 rounded-[24px] bg-input px-2 py-2 ring-1 ring-border focus-within:ring-2 focus-within:ring-white/20 sm:gap-2 sm:rounded-[26px] sm:px-3 sm:py-2.5">
+          <div className="flex min-w-0 flex-1 items-end gap-1.5 rounded-[24px] bg-[#0b141c] px-2 py-2 ring-1 ring-white/10 focus-within:ring-2 focus-within:ring-cyan-200/30 sm:gap-2 sm:rounded-[26px] sm:px-3 sm:py-2.5">
             <textarea
               ref={textareaRef}
               id="dm-textarea"
@@ -899,7 +906,7 @@ export default function DirectConversation({
                 }
               }}
               rows={1}
-              className="max-h-28 min-h-6 flex-1 resize-none bg-transparent px-1 py-1 text-sm outline-none"
+              className="max-h-28 min-h-6 flex-1 resize-none bg-transparent px-1 py-1 text-sm outline-none placeholder:text-foreground/45"
               placeholder={strings.comments.replyPlaceholder || "Escribe tu mensaje"}
               disabled={sending || uploading}
             />
@@ -915,7 +922,7 @@ export default function DirectConversation({
           {canSend ? (
             <button
               type="submit"
-              className="inline-flex size-10 items-center justify-center rounded-full bg-foreground text-base font-medium text-background shadow-sm transition hover:opacity-90 sm:size-11"
+              className="inline-flex size-10 items-center justify-center rounded-full bg-cyan-300 text-base font-medium text-slate-950 shadow-sm transition hover:opacity-90 sm:size-11"
               aria-label={strings.comments.send}
             >
               ➤
@@ -925,7 +932,7 @@ export default function DirectConversation({
               type="button"
               onClick={() => audioInputRef.current?.click()}
               disabled={sending || uploading}
-              className="inline-flex size-10 items-center justify-center rounded-full bg-foreground text-base font-medium text-background shadow-sm transition hover:opacity-90 disabled:opacity-60 sm:size-11"
+              className="inline-flex size-10 items-center justify-center rounded-full bg-cyan-300 text-base font-medium text-slate-950 shadow-sm transition hover:opacity-90 disabled:opacity-60 sm:size-11"
               aria-label="Enviar audio"
             >
               🎤
