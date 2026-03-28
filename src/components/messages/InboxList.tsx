@@ -47,6 +47,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
   const [openMenuUsername, setOpenMenuUsername] = useState<string | null>(null);
   const [menuActionLoading, setMenuActionLoading] = useState<string | null>(null);
   const [searchStarters, setSearchStarters] = useState<InboxEntry[]>([]);
+  const [showOnlyUnread, setShowOnlyUnread] = useState(false);
 
   useEffect(() => {
     setLocalEntries(entries.map(normalizeStarterEntry));
@@ -163,17 +164,17 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
   );
 
   const visibleEntries = useMemo(() => {
-    if (tab === "groups") {
-      return combinedEntries.filter((entry) => entry.type === "group");
-    }
-    if (tab === "archived") {
-      return combinedEntries.filter((entry) => entry.type !== "group" && !entry.isStarter && entry.isArchived);
-    }
-    if (tab === "requests") {
-      return combinedEntries.filter((entry) => entry.type !== "group" && !entry.isStarter && entry.isRequest);
-    }
-    return combinedEntries.filter((entry) => entry.type === "group" || entry.isStarter || (!entry.isArchived && !entry.isRequest));
-  }, [combinedEntries, tab]);
+    const base = tab === "groups"
+      ? combinedEntries.filter((entry) => entry.type === "group")
+      : tab === "archived"
+        ? combinedEntries.filter((entry) => entry.type !== "group" && !entry.isStarter && entry.isArchived)
+        : tab === "requests"
+          ? combinedEntries.filter((entry) => entry.type !== "group" && !entry.isStarter && entry.isRequest)
+          : combinedEntries.filter((entry) => entry.type === "group" || entry.isStarter || (!entry.isArchived && !entry.isRequest));
+
+    if (!showOnlyUnread) return base;
+    return base.filter((entry) => entry.unreadCount > 0 || entry.isRequest);
+  }, [combinedEntries, showOnlyUnread, tab]);
 
   async function applyConversationAction(username: string, action: string, enabled = true) {
     setMenuActionLoading(`${username}:${action}`);
@@ -288,14 +289,15 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
 
   return (
     <>
-      <div className="border-b border-border/80 bg-surface px-4 py-4">
+      <div className="border-b border-white/10 bg-gradient-to-b from-[#213a52]/70 to-[#182430]/50 px-4 py-4 backdrop-blur">
         <h1 className="text-3xl font-semibold text-foreground">Chats</h1>
+        <p className="mt-1 text-xs uppercase tracking-wider text-cyan-200/80">Telegram vibe · rápido y limpio</p>
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           type="search"
           placeholder="Buscar chat o iniciar uno nuevo"
-          className="mt-3 w-full rounded-full border border-border bg-input px-4 py-2.5 text-sm text-foreground outline-none transition focus:border-brand"
+          className="mt-3 w-full rounded-full border border-white/15 bg-[#101a24] px-4 py-2.5 text-sm text-foreground outline-none transition focus:border-cyan-300"
           aria-label="Buscar contactos"
         />
         <div className="mt-3 flex flex-wrap gap-2 text-sm">
@@ -310,6 +312,15 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
             {pendingRequestsCount > 0 && <span className="ml-1 rounded-full bg-brand px-1.5 py-0.5 text-[10px] font-semibold text-white">{pendingRequestsCount}</span>}
           </button>
         </div>
+        <div className="mt-2">
+          <button
+            type="button"
+            onClick={() => setShowOnlyUnread((prev) => !prev)}
+            className={`rounded-full border px-3 py-1 text-xs transition ${showOnlyUnread ? "border-cyan-300 bg-cyan-400/20 text-cyan-100" : "border-white/15 bg-black/20 text-foreground/75 hover:bg-black/35"}`}
+          >
+            {showOnlyUnread ? "Mostrando solo no leídos" : "Filtrar por no leídos"}
+          </button>
+        </div>
 
         <div className="mt-3">
           <button
@@ -322,7 +333,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
         </div>
 
         {tab === "groups" && (
-          <div className="mt-3 rounded-2xl border border-border/80 bg-background/70 p-3">
+          <div className="mt-3 rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-brand/90">Nuevo grupo</p>
             <p className="mt-1 text-xs opacity-70">Como WhatsApp/Instagram: elige personas desde un selector visual.</p>
             <button type="button" onClick={() => setShowCreateGroup(true)} className="mt-2 rounded-full bg-brand px-3 py-1.5 text-xs font-semibold text-white">
@@ -334,7 +345,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
 
       {showCreateGroup && (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-3xl border border-border bg-surface p-4">
+          <div className="w-full max-w-md rounded-3xl border border-white/15 bg-[#0e1720] p-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Crear grupo</h2>
               <button onClick={() => setShowCreateGroup(false)} className="text-sm opacity-70">Cerrar</button>
@@ -409,7 +420,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
             : "No encontramos contactos con ese término."}
         </div>
       ) : (
-        <ul className={className || "hide-scrollbar h-[calc(100dvh-18rem)] min-h-[360px] overflow-y-auto"}>
+        <ul className={className || "hide-scrollbar h-[calc(100dvh-18rem)] min-h-[360px] overflow-y-auto bg-[#0f1822]/40"}>
           {visibleEntries.map((item) => {
             const isStarter = Boolean(item.isStarter);
             const avatar = item.avatar_url?.trim() || "/demo-reddit.png";
@@ -429,7 +440,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
               <li key={item.userId} className="group relative">
                 <Link
                   href={href}
-                  className={`flex items-center gap-3 border-b border-border/80 px-4 py-3 pr-14 transition ${isActive ? "bg-brand/10" : "hover:bg-background/70"}`}
+                  className={`flex items-center gap-3 border-b border-white/10 px-4 py-3 pr-14 transition ${isActive ? "bg-cyan-400/18" : "hover:bg-white/5"}`}
                 >
                   {isGroup ? (
                     item.avatar_url ? (
@@ -455,7 +466,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
                       {item.isFavorite && <span className="text-amber-300">★</span>}
                       {item.isMuted && <span className="opacity-70">🔕</span>}
                       {item.isBlocked && <span className="opacity-70">🚫</span>}
-                      <span className="ml-auto text-xs opacity-60">{isStarter ? "Nuevo" : getCompactTime(item.createdAt)}</span>
+                      <span className="ml-auto rounded-full bg-black/25 px-2 py-0.5 text-xs opacity-70">{isStarter ? "Nuevo" : getCompactTime(item.createdAt)}</span>
                     </div>
                     <p className={`line-clamp-1 text-sm ${unread ? "font-semibold" : "opacity-70"}`}>
                       {isGroup ? "Grupo · " : isStarter ? "" : isMine ? "Tú: " : ""}

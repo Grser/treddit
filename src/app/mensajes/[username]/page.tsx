@@ -63,14 +63,14 @@ function ConversationLayout({
   const displayName = participant.nickname || participant.username;
 
   return (
-    <div className="min-h-dvh bg-background text-foreground">
+    <div className="min-h-dvh bg-[radial-gradient(circle_at_top,#1c3247_0%,#121c27_45%,#0b1219_100%)] text-foreground">
       <Navbar session={me} />
       <main className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-6xl flex-col gap-3 px-2 py-4 sm:gap-4 sm:px-4 sm:py-6">
         <NotesBar notes={notes} me={me} />
         <MessagesRealtimeSync />
 
-        <div className="grid min-h-0 flex-1 overflow-hidden rounded-3xl border border-border/80 bg-surface shadow-xl lg:grid-cols-[360px_minmax(0,1fr)]">
-          <aside className="hidden border-r border-border/80 lg:block">
+        <div className="grid min-h-0 flex-1 overflow-hidden rounded-3xl border border-white/10 bg-[#122130]/90 shadow-2xl shadow-black/35 lg:grid-cols-[360px_minmax(0,1fr)]">
+          <aside className="hidden border-r border-white/10 lg:block">
             <InboxList
               entries={inbox}
               currentUserId={viewerId}
@@ -83,7 +83,7 @@ function ConversationLayout({
             <div className="border-b border-border/80 px-3 py-2 sm:px-4 lg:hidden">
               <Link href="/mensajes" className="text-sm font-medium text-brand hover:underline">← Volver a chats</Link>
             </div>
-            <header className="flex items-center gap-3 border-b border-border/80 px-3 py-3 sm:px-4">
+            <header className="flex items-center gap-3 border-b border-white/10 bg-black/15 px-3 py-3 sm:px-4">
               <Link href={`/u/${participant.username}`} className="inline-flex rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/70">
                 <Image
                   src={avatar}
@@ -100,7 +100,7 @@ function ConversationLayout({
                   <UserBadges size="sm" isAdmin={participant.is_admin} isVerified={participant.is_verified} />
                 </p>
                 <p className="text-sm opacity-70">@{participant.username}</p>
-                {helperText && <p className="text-xs text-emerald-500">{helperText}</p>}
+                {helperText && <p className="text-xs text-cyan-200">{helperText}</p>}
               </Link>
             </header>
 

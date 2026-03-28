@@ -84,19 +84,36 @@ export default async function NotificationsPage() {
       ])
     : [[], [], [], [], []];
 
+  const totalEvents = follows.length + posts.length + reposts.length + likes.length + followRequests.length;
+
   return (
-    <div className="min-h-dvh bg-background text-foreground">
+    <div className="min-h-dvh bg-[radial-gradient(circle_at_top,#27153f_0%,#130b22_34%,#0b0a12_100%)] text-foreground">
       <Navbar />
       <main className="mx-auto w-full max-w-4xl space-y-6 px-4 py-8">
-        <header className="space-y-2">
-          <h1 className="text-2xl font-semibold">Notificaciones</h1>
-          <p className="text-sm opacity-70">
-            Aquí verás nuevos seguidores y publicaciones recientes de tus comunidades.
+        <header className="overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-fuchsia-500/25 via-purple-500/20 to-blue-500/20 p-5 shadow-2xl shadow-black/25">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-fuchsia-200/90">Activity Center</p>
+          <h1 className="mt-1 text-3xl font-bold">Notificaciones</h1>
+          <p className="mt-2 text-sm text-foreground/75">
+            Nuevo diseño estilo Instagram: más visual, más claro y con prioridad a lo que sí importa.
           </p>
+          <div className="mt-4 grid gap-2 text-sm sm:grid-cols-3">
+            <div className="rounded-2xl border border-white/10 bg-black/25 px-3 py-2">
+              <p className="text-xs uppercase tracking-wide text-foreground/60">Eventos</p>
+              <p className="text-lg font-semibold">{totalEvents}</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/25 px-3 py-2">
+              <p className="text-xs uppercase tracking-wide text-foreground/60">Solicitudes</p>
+              <p className="text-lg font-semibold">{followRequests.length}</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/25 px-3 py-2">
+              <p className="text-xs uppercase tracking-wide text-foreground/60">Me gusta</p>
+              <p className="text-lg font-semibold">{likes.length}</p>
+            </div>
+          </div>
         </header>
 
         {!me && (
-          <div className="rounded-xl border border-border bg-surface p-6 text-sm">
+          <div className="rounded-2xl border border-white/10 bg-black/30 p-6 text-sm backdrop-blur">
             <p>
               Inicia sesión para recibir notificaciones personalizadas.{" "}
               <Link href="/auth/login" className="text-blue-400 hover:underline">
@@ -113,7 +130,7 @@ export default async function NotificationsPage() {
 
 
         {me && !databaseReady && (
-          <div className="rounded-xl border border-border bg-surface p-6 text-sm opacity-70">
+          <div className="rounded-2xl border border-white/10 bg-black/30 p-6 text-sm opacity-80 backdrop-blur">
             Configura la base de datos para habilitar notificaciones en tiempo real de seguidores, anuncios y actividad de tus publicaciones.
           </div>
         )}
@@ -132,7 +149,7 @@ export default async function NotificationsPage() {
         )}
 
         {me && databaseReady && follows.length === 0 && posts.length === 0 && reposts.length === 0 && likes.length === 0 && followRequests.length === 0 && (
-          <div className="rounded-xl border border-border bg-surface p-6 text-sm opacity-70">
+          <div className="rounded-2xl border border-white/10 bg-black/30 p-6 text-sm opacity-80 backdrop-blur">
             No hay novedades por ahora. Sigue a más personas para mantenerte al día.
           </div>
         )}
@@ -146,7 +163,7 @@ export default async function NotificationsPage() {
               {follows.map((item) => {
                 const avatar = item.avatar_url?.trim() || "/demo-reddit.png";
                 return (
-                  <li key={item.id} className="flex items-center gap-3 rounded-xl border border-border bg-surface p-3">
+                  <li key={item.id} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/30 p-3 shadow-lg shadow-black/20 backdrop-blur">
                     <Image
                       src={avatar}
                       alt={item.nickname || item.username}
@@ -166,8 +183,8 @@ export default async function NotificationsPage() {
                       </p>
                       <p className="text-xs opacity-70">@{item.username}</p>
                     </div>
-                    <span className="text-xs opacity-60">
-                      {new Date(item.created_at).toLocaleString()}
+                    <span className="text-xs text-foreground/60">
+                      {formatRelativeTime(item.created_at)}
                     </span>
                   </li>
                 );
@@ -181,7 +198,7 @@ export default async function NotificationsPage() {
             <h2 className="text-xl font-semibold">Publicaciones de tu red</h2>
             <ul className="space-y-3">
               {posts.map((item) => (
-                <li key={item.id} className="rounded-xl border border-border bg-surface p-4">
+                <li key={item.id} className="rounded-2xl border border-white/10 bg-black/30 p-4 shadow-lg shadow-black/20 backdrop-blur">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold">
@@ -194,8 +211,8 @@ export default async function NotificationsPage() {
                       </p>
                       <p className="text-xs opacity-70">@{item.username}</p>
                     </div>
-                    <span className="text-xs opacity-60">
-                      {new Date(item.created_at).toLocaleString()}
+                    <span className="text-xs text-foreground/60">
+                      {formatRelativeTime(item.created_at)}
                     </span>
                   </div>
                   {item.description && (
@@ -218,7 +235,7 @@ export default async function NotificationsPage() {
             <h2 className="text-xl font-semibold">Reposts de tus publicaciones</h2>
             <ul className="space-y-3">
               {reposts.map((item) => (
-                <li key={item.id} className="rounded-xl border border-border bg-surface p-4">
+                <li key={item.id} className="rounded-2xl border border-white/10 bg-black/30 p-4 shadow-lg shadow-black/20 backdrop-blur">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold">
@@ -232,8 +249,8 @@ export default async function NotificationsPage() {
                       </p>
                       <p className="text-xs opacity-70">@{item.username}</p>
                     </div>
-                    <span className="text-xs opacity-60">
-                      {new Date(item.created_at).toLocaleString()}
+                    <span className="text-xs text-foreground/60">
+                      {formatRelativeTime(item.created_at)}
                     </span>
                   </div>
                   {item.description && (
@@ -264,7 +281,7 @@ export default async function NotificationsPage() {
                       : firstNames.join(" y ");
 
                 return (
-                  <li key={item.postId} className="rounded-xl border border-border bg-surface p-4">
+                  <li key={item.postId} className="rounded-2xl border border-white/10 bg-black/30 p-4 shadow-lg shadow-black/20 backdrop-blur">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="text-sm">
@@ -273,7 +290,7 @@ export default async function NotificationsPage() {
                         </p>
                         <p className="mt-1 text-xs opacity-70">{item.total} Me gusta en total</p>
                       </div>
-                      <span className="text-xs opacity-60">{new Date(item.createdAt).toLocaleString()}</span>
+                      <span className="text-xs text-foreground/60">{formatRelativeTime(item.createdAt)}</span>
                     </div>
                     {item.postDescription && (
                       <p className="mt-2 text-sm whitespace-pre-wrap break-words">{item.postDescription}</p>
@@ -435,4 +452,20 @@ async function loadPendingFollowRequests(userId: number): Promise<FollowRequestE
   );
 
   return rows as FollowRequestEvent[];
+}
+
+function formatRelativeTime(dateInput: string) {
+  const date = new Date(dateInput);
+  const diffMs = date.getTime() - Date.now();
+  const formatter = new Intl.RelativeTimeFormat("es", { numeric: "auto" });
+  const minute = 60 * 1000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+  if (Math.abs(diffMs) < hour) {
+    return formatter.format(Math.round(diffMs / minute), "minute");
+  }
+  if (Math.abs(diffMs) < day) {
+    return formatter.format(Math.round(diffMs / hour), "hour");
+  }
+  return formatter.format(Math.round(diffMs / day), "day");
 }

@@ -44,11 +44,11 @@ export default async function GroupConversationPage({ params }: { params: Promis
   }
 
   return (
-    <div className="min-h-dvh bg-background text-foreground">
+    <div className="min-h-dvh bg-[radial-gradient(circle_at_top,#1c3247_0%,#121c27_45%,#0b1219_100%)] text-foreground">
       <Navbar session={me} />
       <main className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-6xl flex-col px-4 py-6">
-        <div className="grid min-h-0 flex-1 overflow-hidden rounded-3xl border border-border/80 bg-surface shadow-xl lg:grid-cols-[360px_minmax(0,1fr)]">
-          <aside className="hidden border-r border-border/80 lg:block">
+        <div className="grid min-h-0 flex-1 overflow-hidden rounded-3xl border border-white/10 bg-[#122130]/90 shadow-2xl shadow-black/35 lg:grid-cols-[360px_minmax(0,1fr)]">
+          <aside className="hidden border-r border-white/10 lg:block">
             <InboxList entries={inbox} currentUserId={me.id} activeUsername={`grupo-${group.id}`} className="hide-scrollbar h-[calc(100dvh-18rem)] min-h-[360px] overflow-y-auto" />
           </aside>
           <section className="flex h-full min-h-0 flex-col">
