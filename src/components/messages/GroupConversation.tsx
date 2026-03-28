@@ -185,7 +185,7 @@ export default function GroupConversation({
     if (!container) return;
     const handleScroll = () => {
       const distanceToBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
-      shouldAutoScrollRef.current = distanceToBottom < 140;
+      shouldAutoScrollRef.current = distanceToBottom < 260;
     };
     handleScroll();
     container.addEventListener("scroll", handleScroll, { passive: true });
@@ -802,7 +802,7 @@ export default function GroupConversation({
           </div>
         </div>
       )}
-      <ul ref={messagesListRef} className="hide-scrollbar min-h-0 flex-1 space-y-2 overflow-y-auto rounded-3xl border border-border/80 bg-gradient-to-b from-surface/95 to-background/70 p-3.5 pb-3 [overflow-anchor:none]">
+      <ul ref={messagesListRef} className="hide-scrollbar min-h-0 flex-1 space-y-2 overflow-y-auto rounded-3xl border border-border/80 bg-gradient-to-b from-surface/95 to-background/70 p-3.5 pb-6 [overflow-anchor:none] sm:pb-8">
         {messages.map((msg, index) => {
           const mine = msg.senderId === viewerId;
           const previous = messages[index - 1];
@@ -1015,7 +1015,7 @@ export default function GroupConversation({
         </div>
       )}
       <form
-        className="sticky bottom-0 z-10 shrink-0 space-y-3 rounded-3xl border border-border/90 bg-surface/95 p-3.5 shadow-lg backdrop-blur"
+        className="z-10 shrink-0 space-y-3 rounded-3xl border border-border/90 bg-surface/95 p-3.5 shadow-lg backdrop-blur"
         onSubmit={async (event) => {
           event.preventDefault();
           const trimmed = text.trim();
