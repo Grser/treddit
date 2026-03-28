@@ -12,6 +12,7 @@ import { isUserAgeVerified } from "@/lib/ageVerification";
 import { estimatePostViews } from "@/lib/postStats";
 import { isImageMediaUrl } from "@/lib/sensitiveMedia";
 import { ensureBlockTables } from "@/lib/blocks";
+import { ensureProfilePrivacySchema } from "@/lib/profilePrivacy";
 
 type PostRow = {
   id: number;
@@ -36,6 +37,7 @@ type PostRow = {
   community_name: string | null;
   is_sensitive: number | boolean | null;
   isFollowedAuthor: number;
+  isCloseFriendAuthor: number;
 };
 
 type CommunityMembershipRow = RowDataPacket & {
@@ -166,6 +168,11 @@ export async function GET(req: Request) {
     whereParams.push(meId, meId);
   }
 
+  whereParts.push(`(COALESCE((SELECT ux.is_private FROM Users ux WHERE ux.id = p.user LIMIT 1), 0) = 0${meId ? " OR p.user = ? OR EXISTS (SELECT 1 FROM Follows pf WHERE pf.follower = ? AND pf.followed = p.user)" : ""})`);
+  if (meId) {
+    whereParams.push(meId, meId);
+  }
+
   const canUseAnonCache = shouldUseAnonFeedCache(url, meId);
   const canUseAuthCache = shouldUseAuthFeedCache(url, meId);
   const anonCacheKey = canUseAnonCache ? createAnonFeedCacheKey(url) : null;
@@ -224,6 +231,7 @@ export async function GET(req: Request) {
     getPostsCommunityColumn(),
     getPostsSensitiveColumn(),
     ensureBlockTables(),
+    ensureProfilePrivacySchema(),
   ]);
   const hasCommunityColumn = Boolean(communityColumn);
   const hasSensitiveColumn = Boolean(sensitiveColumn);
@@ -314,7 +322,16 @@ export async function GET(req: Request) {
             WHERE f.follower = ? AND f.followed = p.user
           ) THEN 1
           ELSE 0
-        END AS isFollowedAuthor
+        END AS isFollowedAuthor,
+        CASE
+          WHEN ? IS NULL THEN 0
+          WHEN EXISTS (
+            SELECT 1
+            FROM Close_Friends cf
+            WHERE cf.user_id = p.user AND cf.friend_id = ?
+          ) THEN 1
+          ELSE 0
+        END AS isCloseFriendAuthor
       FROM Posts p
       JOIN Users u ON u.id = p.user
       ${communityJoin}
@@ -358,6 +375,8 @@ export async function GET(req: Request) {
         meId,
         meId,
         meId,
+        meId,
+        meId,
         ...orderedIds,
         ...orderedIds,
         ...orderedIds,
@@ -385,6 +404,7 @@ export async function GET(req: Request) {
       reply_scope: Number(row.reply_scope ?? 0),
       is_sensitive: Boolean(row.is_sensitive),
       isFollowedAuthor: Boolean(row.isFollowedAuthor),
+      isCloseFriendAuthor: Boolean(row.isCloseFriendAuthor),
       can_view_sensitive: viewerAgeVerified,
       isOwner: meId ? Number(row.user) === meId : false,
       isAdminViewer: Boolean(me?.is_admin),

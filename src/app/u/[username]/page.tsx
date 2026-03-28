@@ -12,6 +12,7 @@ import { getPostsCommunityColumn } from "@/lib/communityColumns";
 import { getPostsSensitiveColumn } from "@/lib/postSensitivity";
 import { isUserAgeVerified } from "@/lib/ageVerification";
 import { getBlockRelation } from "@/lib/blocks";
+import { ensureProfilePrivacySchema } from "@/lib/profilePrivacy";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,7 @@ type UserRow = RowDataPacket & {
   pinned_post_id: number | null;
   country_of_origin: string | null;
   is_age_verified: number;
+  is_private: number;
 };
 
 type CountRow = RowDataPacket & { posts?: number; followers?: number; following?: number };
@@ -59,6 +61,8 @@ type PinnedPostRow = RowDataPacket & {
   community_id: number | null;
   community_slug: string | null;
   community_name: string | null;
+  isFollowedAuthor: number;
+  isCloseFriendAuthor: number;
 };
 
 export default async function UserPage({
@@ -115,9 +119,12 @@ export default async function UserPage({
     );
   }
 
+  await ensureProfilePrivacySchema();
+
   const [rows] = await db.query<UserRow[]>(
     `SELECT id, username, nickname, avatar_url, banner_url, description, location, website,
-            show_likes, show_bookmarks, created_at, is_admin, is_verified, pinned_post_id, country_of_origin, is_age_verified
+            show_likes, show_bookmarks, created_at, is_admin, is_verified, pinned_post_id, country_of_origin, is_age_verified,
+            COALESCE(is_private, 0) AS is_private
      FROM Users WHERE username=? AND visible=1 LIMIT 1`,
     [username]
   );
@@ -141,6 +148,7 @@ export default async function UserPage({
     pinned_post_id: userRow.pinned_post_id ? Number(userRow.pinned_post_id) : null,
     country_of_origin: userRow.country_of_origin ? String(userRow.country_of_origin) : null,
     is_age_verified: Boolean(userRow.is_age_verified),
+    is_private: Boolean(userRow.is_private),
   };
 
   const [postCountResult, followingResult, followerResult, followStatusResult, canMessageResult, blockRelation] = await Promise.all([
@@ -176,11 +184,12 @@ export default async function UserPage({
   const isFollowing = Boolean(followStatusResult[0][0]?.isFollowing);
   const canMessage = Boolean(canMessageResult);
   const messageHref = canMessage ? `/mensajes/${user.username}` : null;
+  const canViewPrivateContent = !user.is_private || (me?.id ? me.id === user.id || isFollowing : false);
 
   const viewerAgeVerifiedPromise = me?.id ? isUserAgeVerified(me.id) : Promise.resolve(false);
 
   let pinnedPost: PostCardType | null = null;
-  if (user.pinned_post_id) {
+  if (canViewPrivateContent && user.pinned_post_id) {
     const [communityColumn, sensitiveColumn, viewerAgeVerified] = await Promise.all([
       getPostsCommunityColumn(),
       getPostsSensitiveColumn(),
@@ -219,14 +228,16 @@ export default async function UserPage({
         ${communityIdSelect} AS community_id,
         ${communitySlugSelect} AS community_slug,
         ${communityNameSelect} AS community_name,
-        ${sensitiveSelect} AS is_sensitive
+        ${sensitiveSelect} AS is_sensitive,
+        CASE WHEN ? IS NULL THEN 0 ELSE EXISTS(SELECT 1 FROM Follows f WHERE f.follower = ? AND f.followed = p.user) END AS isFollowedAuthor,
+        CASE WHEN ? IS NULL THEN 0 ELSE EXISTS(SELECT 1 FROM Close_Friends cf WHERE cf.user_id = p.user AND cf.friend_id = ?) END AS isCloseFriendAuthor
       FROM Posts p
       JOIN Users u ON u.id = p.user
       ${communityJoin}
       WHERE p.id = ?
       LIMIT 1
       `,
-      [me?.id ?? null, me?.id ?? null, me?.id ?? null, me?.id ?? null, user.pinned_post_id]
+      [me?.id ?? null, me?.id ?? null, me?.id ?? null, me?.id ?? null, me?.id ?? null, me?.id ?? null, me?.id ?? null, me?.id ?? null, user.pinned_post_id]
     );
 
     const row = pinnedRows[0];
@@ -253,6 +264,8 @@ export default async function UserPage({
         hasPoll: Boolean(row.hasPoll),
         isOwner: me?.id ? Number(row.user) === me.id : false,
         isAdminViewer: Boolean(me?.is_admin),
+        isFollowedAuthor: Boolean(row.isFollowedAuthor),
+        isCloseFriendAuthor: Boolean(row.isCloseFriendAuthor),
         community:
           row.community_id && row.community_slug
             ? {
@@ -294,8 +307,8 @@ export default async function UserPage({
       <ProfileTabs
         profileId={user.id}
         viewerId={me?.id}
-        showLikes={Boolean(user.show_likes)}
-        showBookmarks={Boolean(user.show_bookmarks)}
+        showLikes={canViewPrivateContent && Boolean(user.show_likes)}
+        showBookmarks={canViewPrivateContent && Boolean(user.show_bookmarks)}
         pinnedPost={pinnedPost}
       />
     </div>

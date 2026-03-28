@@ -6,6 +6,7 @@ import { requireUser, signSession } from "@/lib/auth";
 import { setAllowMessagesFromAnyone } from "@/lib/messages";
 import { ensureAgeVerificationRequestsTable, ensureUsersAgeColumns } from "@/lib/ageVerification";
 import { getRequestBaseUrl } from "@/lib/requestBaseUrl";
+import { ensureProfilePrivacySchema } from "@/lib/profilePrivacy";
 
 type ProfileStatusRow = RowDataPacket & {
   is_age_verified: number;
@@ -36,16 +37,17 @@ export async function POST(req: Request) {
   const show_bookmarks = form.get("show_bookmarks") ? 1 : 0;
   const allowMessagesFromAnyone = Boolean(form.get("allow_messages_anyone"));
   const wantsAgeVerification = Boolean(form.get("request_age_verification"));
+  const isPrivate = form.get("is_private") ? 1 : 0;
 
-  await Promise.all([ensureUsersAgeColumns(), ensureAgeVerificationRequestsTable()]);
+  await Promise.all([ensureUsersAgeColumns(), ensureAgeVerificationRequestsTable(), ensureProfilePrivacySchema()]);
 
   const birthDate = normalizeBirthDate(birthDateRaw);
   const countryOfOrigin = countryOfOriginRaw.slice(0, 120) || null;
   const idDocumentUrl = idDocumentUrlRaw || null;
 
   await db.execute(
-    "UPDATE Users SET nickname=?, description=?, avatar_url=?, banner_url=?, location=?, website=?, show_likes=?, show_bookmarks=?, birth_date=?, country_of_origin=? WHERE id=?",
-    [nickname, description, avatar_url || null, banner_url || null, location || null, website || null, show_likes, show_bookmarks, birthDate, countryOfOrigin, me.id]
+    "UPDATE Users SET nickname=?, description=?, avatar_url=?, banner_url=?, location=?, website=?, show_likes=?, show_bookmarks=?, birth_date=?, country_of_origin=?, is_private=? WHERE id=?",
+    [nickname, description, avatar_url || null, banner_url || null, location || null, website || null, show_likes, show_bookmarks, birthDate, countryOfOrigin, isPrivate, me.id]
   );
 
   const [statusRows] = await db.query<ProfileStatusRow[]>("SELECT is_age_verified FROM Users WHERE id=? LIMIT 1", [me.id]);

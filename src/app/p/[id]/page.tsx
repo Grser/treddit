@@ -9,6 +9,7 @@ import { db, isDatabaseConfigured } from "@/lib/db";
 import { getDemoFeed } from "@/lib/demoStore";
 import { estimatePostViews } from "@/lib/postStats";
 import { getPostsSensitiveColumn } from "@/lib/postSensitivity";
+import { ensureProfilePrivacySchema } from "@/lib/profilePrivacy";
 
 type PostDetailsRow = RowDataPacket & {
   id: number;
@@ -29,6 +30,9 @@ type PostDetailsRow = RowDataPacket & {
   repostedByMe: number;
   is_sensitive: number | boolean | null;
   reply_scope: number | null;
+  isFollowedAuthor: number;
+  isCloseFriendAuthor: number;
+  is_private: number;
 };
 
 export const dynamic = "force-dynamic";
@@ -47,6 +51,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
     const { items } = getDemoFeed({ limit: 200 });
     post = items.find((item) => Number(item.id) === postId) ?? null;
   } else {
+    await ensureProfilePrivacySchema();
     const sensitiveColumn = await getPostsSensitiveColumn();
     const sensitiveSelect = sensitiveColumn ? `p.${sensitiveColumn}` : "0";
     const [rows] = await db.query<PostDetailsRow[]>(
@@ -69,17 +74,25 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
         (SELECT COUNT(*) FROM Polls po WHERE po.post_id = p.id) AS hasPoll,
         (SELECT COUNT(*) FROM Like_Posts lp2 WHERE lp2.post = p.id AND lp2.user = ?) AS likedByMe,
         (SELECT COUNT(*) FROM Reposts rp2 WHERE rp2.post_id = p.id AND rp2.user_id = ?) AS repostedByMe,
-        ${sensitiveSelect} AS is_sensitive
+        ${sensitiveSelect} AS is_sensitive,
+        COALESCE(u.is_private, 0) AS is_private,
+        CASE WHEN ? IS NULL THEN 0 ELSE EXISTS(SELECT 1 FROM Follows f WHERE f.follower = ? AND f.followed = p.user) END AS isFollowedAuthor,
+        CASE WHEN ? IS NULL THEN 0 ELSE EXISTS(SELECT 1 FROM Close_Friends cf WHERE cf.user_id = p.user AND cf.friend_id = ?) END AS isCloseFriendAuthor
       FROM Posts p
       JOIN Users u ON u.id = p.user
       WHERE p.id = ?
       LIMIT 1
       `,
-      [session?.id ?? 0, session?.id ?? 0, postId],
+      [session?.id ?? 0, session?.id ?? 0, session?.id ?? null, session?.id ?? null, session?.id ?? null, session?.id ?? null, postId],
     );
 
     const row = rows[0];
     if (row) {
+      const viewerOwnsPost = session?.id && Number(row.user) === session.id;
+      const canViewPrivate = !Boolean(row.is_private) || viewerOwnsPost || Boolean(row.isFollowedAuthor);
+      if (!canViewPrivate) {
+        notFound();
+      }
       const isSensitive = Boolean(row.is_sensitive);
       const canViewSensitive = session?.id && isSensitive ? await isUserAgeVerified(session.id) : false;
       post = {
@@ -103,6 +116,8 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
         reply_scope: ([0, 1, 2].includes(Number(row.reply_scope ?? 0)) ? Number(row.reply_scope ?? 0) : 0) as 0 | 1 | 2,
         is_sensitive: isSensitive,
         can_view_sensitive: canViewSensitive,
+        isFollowedAuthor: Boolean(row.isFollowedAuthor),
+        isCloseFriendAuthor: Boolean(row.isCloseFriendAuthor),
       };
     }
   }

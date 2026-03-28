@@ -24,6 +24,7 @@ export default function FollowButton({
   const { strings } = useLocale();
   const t = strings.sidebarRight;
   const [following, setFollowing] = useState(initiallyFollowing);
+  const [pending, setPending] = useState(false);
   const [hover, setHover] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -42,8 +43,9 @@ export default function FollowButton({
     }
     setLoading(true);
     try {
+      const method = following || pending ? "DELETE" : "POST";
       const res = await fetch("/api/follows", {
-        method: following ? "DELETE" : "POST",
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId }),
       });
@@ -61,8 +63,25 @@ export default function FollowButton({
             : t.followError;
         throw new Error(message);
       }
-      const next = !following;
+      const payload = (await res.json().catch(() => ({}))) as { pending?: boolean; following?: boolean };
+
+      if (method === "DELETE") {
+        setFollowing(false);
+        setPending(false);
+        onFollowChange?.(false);
+        return;
+      }
+
+      if (payload.pending) {
+        setFollowing(false);
+        setPending(true);
+        alert("Solicitud de seguimiento enviada.");
+        return;
+      }
+
+      const next = Boolean(payload.following ?? true);
       setFollowing(next);
+      setPending(false);
       onFollowChange?.(next);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -72,11 +91,7 @@ export default function FollowButton({
     }
   }
 
-  const label = following
-    ? hover
-      ? t.unfollow
-      : t.following
-    : t.follow;
+  const label = pending ? "Solicitado" : following ? (hover ? t.unfollow : t.following) : t.follow;
 
   return (
     <button
@@ -86,7 +101,7 @@ export default function FollowButton({
       onMouseLeave={() => setHover(false)}
       disabled={loading}
       className={`inline-flex items-center justify-center rounded-full transition focus:outline-none focus:ring-2 disabled:opacity-60 ${baseClasses} ${sizeClasses} ${focusRing}`}
-      title={following ? t.unfollowTitle : t.followTitle}
+      title={pending ? "Solicitud enviada" : following ? t.unfollowTitle : t.followTitle}
     >
       {label}
     </button>

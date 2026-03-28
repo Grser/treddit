@@ -38,6 +38,7 @@ export type Post = {
   is_sensitive?: boolean;
   can_view_sensitive?: boolean;
   isFollowedAuthor?: boolean;
+  isCloseFriendAuthor?: boolean;
 };
 
 export default function PostCard({
@@ -68,6 +69,14 @@ export default function PostCard({
     timeZone: "UTC",
   }).format(new Date(post.created_at));
   const previewUrl = post.description ? extractFirstUrl(post.description) : null;
+  const canReplyToPost =
+    canInteract &&
+    (post.reply_scope === 2
+      ? Boolean(post.isOwner || post.isCloseFriendAuthor)
+      : post.reply_scope === 1
+        ? Boolean(post.isOwner || post.isFollowedAuthor)
+        : true);
+
 
   useEffect(() => () => {
     if (previewTimerRef.current) window.clearTimeout(previewTimerRef.current);
@@ -329,7 +338,7 @@ export default function PostCard({
       />
 
       <div id={`comments-${post.id}`} className="mt-2">
-        <CommentsThread postId={post.id} canInteract={canInteract} />
+        <CommentsThread postId={post.id} canInteract={canInteract} canReply={canReplyToPost} />
       </div>
     </article>
   );
