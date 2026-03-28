@@ -419,7 +419,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
             : "No encontramos contactos con ese término."}
         </div>
       ) : (
-        <ul className={className || "hide-scrollbar h-[calc(100dvh-18rem)] min-h-[360px] overflow-y-auto bg-[#0f1822]/40"}>
+        <ul className={className || "hide-scrollbar h-[calc(100dvh-18rem)] min-h-[360px] overflow-y-auto bg-background/40"}>
           {visibleEntries.map((item) => {
             const isStarter = Boolean(item.isStarter);
             const avatar = item.avatar_url?.trim() || "/demo-reddit.png";
@@ -439,7 +439,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
               <li key={item.userId} className="group relative">
                 <Link
                   href={href}
-                  className={`flex items-center gap-3 border-b border-white/10 px-4 py-3 pr-14 transition ${isActive ? "bg-cyan-400/18" : "hover:bg-white/5"}`}
+                  className={`flex items-center gap-3 border-b border-white/10 px-4 py-3 pr-14 transition ${isActive ? "bg-brand/15" : "hover:bg-muted/60"}`}
                 >
                   {isGroup ? (
                     item.avatar_url ? (
@@ -512,7 +512,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
                     </button>
 
                     {openMenuUsername === item.username && (
-                      <div className="absolute right-0 top-9 w-56 overflow-hidden rounded-2xl border border-white/10 bg-[#1f2a2f]/95 p-1 shadow-2xl backdrop-blur">
+                      <div className="absolute right-0 top-9 w-56 overflow-hidden rounded-2xl border border-border bg-background/95 p-1 shadow-2xl backdrop-blur">
                         {[
                           { key: "archive", label: item.isArchived ? "Desarchivar chat" : "Archivar chat", enabled: !item.isArchived },
                           { key: "mute", label: item.isMuted ? "Activar notificaciones" : "Silenciar notificaciones", enabled: !item.isMuted },
