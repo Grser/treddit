@@ -90,24 +90,28 @@ export default async function NotificationsPage() {
     <div className="min-h-dvh bg-[radial-gradient(circle_at_top,#27153f_0%,#130b22_34%,#0b0a12_100%)] text-foreground">
       <Navbar />
       <main className="mx-auto w-full max-w-4xl space-y-6 px-4 py-8">
-        <header className="overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-fuchsia-500/25 via-purple-500/20 to-blue-500/20 p-5 shadow-2xl shadow-black/25">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-fuchsia-200/90">Activity Center</p>
-          <h1 className="mt-1 text-3xl font-bold">Notificaciones</h1>
-          <p className="mt-2 text-sm text-foreground/75">
-            Nuevo diseño estilo Instagram: más visual, más claro y con prioridad a lo que sí importa.
-          </p>
-          <div className="mt-4 grid gap-2 text-sm sm:grid-cols-3">
-            <div className="rounded-2xl border border-white/10 bg-black/25 px-3 py-2">
+        <header className="overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-fuchsia-500/25 via-purple-500/20 to-blue-500/20 p-5 shadow-2xl shadow-black/25 sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-fuchsia-200/90">Activity Center</p>
+              <h1 className="mt-1 text-3xl font-bold sm:text-4xl">Notificaciones</h1>
+            </div>
+            <span className="inline-flex items-center rounded-full border border-white/15 bg-black/25 px-3 py-1 text-xs font-medium text-foreground/80">
+              Última actividad en tiempo real
+            </span>
+          </div>
+          <div className="mt-5 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+            <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 backdrop-blur">
               <p className="text-xs uppercase tracking-wide text-foreground/60">Eventos</p>
-              <p className="text-lg font-semibold">{totalEvents}</p>
+              <p className="mt-1 text-2xl font-semibold leading-none">{totalEvents}</p>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-black/25 px-3 py-2">
+            <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 backdrop-blur">
               <p className="text-xs uppercase tracking-wide text-foreground/60">Solicitudes</p>
-              <p className="text-lg font-semibold">{followRequests.length}</p>
+              <p className="mt-1 text-2xl font-semibold leading-none">{followRequests.length}</p>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-black/25 px-3 py-2">
+            <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 backdrop-blur sm:col-span-2 lg:col-span-1">
               <p className="text-xs uppercase tracking-wide text-foreground/60">Me gusta</p>
-              <p className="text-lg font-semibold">{likes.length}</p>
+              <p className="mt-1 text-2xl font-semibold leading-none">{likes.length}</p>
             </div>
           </div>
         </header>
