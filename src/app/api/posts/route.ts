@@ -12,6 +12,7 @@ import { isUserAgeVerified } from "@/lib/ageVerification";
 import { estimatePostViews } from "@/lib/postStats";
 import { isImageMediaUrl } from "@/lib/sensitiveMedia";
 import { ensureBlockTables } from "@/lib/blocks";
+import { ensureCloseFriendsTable } from "@/lib/closeFriends";
 import { ensureProfilePrivacySchema } from "@/lib/profilePrivacy";
 
 type PostRow = {
@@ -247,6 +248,13 @@ export async function GET(req: Request) {
   ]);
   const hasCommunityColumn = Boolean(communityColumn);
   const hasSensitiveColumn = Boolean(sensitiveColumn);
+  let closeFriendsReady = false;
+  try {
+    await ensureCloseFriendsTable();
+    closeFriendsReady = true;
+  } catch (error) {
+    console.warn("Close friends table unavailable, skipping close-friend relationship in feed", error);
+  }
 
   if (privacyFilterEnabled) {
     whereParts.push(`(COALESCE((SELECT ux.is_private FROM Users ux WHERE ux.id = p.user LIMIT 1), 0) = 0${meId ? " OR p.user = ? OR EXISTS (SELECT 1 FROM Follows pf WHERE pf.follower = ? AND pf.followed = p.user)" : ""})`);
@@ -290,6 +298,19 @@ export async function GET(req: Request) {
   const communitySlugSelect = hasCommunityColumn ? "c.slug" : "NULL";
   const communityNameSelect = hasCommunityColumn ? "c.name" : "NULL";
   const sensitiveSelect = hasSensitiveColumn ? "p.is_sensitive" : "0";
+  const closeFriendAuthorSelect = closeFriendsReady
+    ? `
+        CASE
+          WHEN ? IS NULL THEN 0
+          WHEN EXISTS (
+            SELECT 1
+            FROM CloseFriends cf
+            WHERE cf.user_id = p.user AND cf.friend_user_id = ?
+          ) THEN 1
+          ELSE 0
+        END AS isCloseFriendAuthor
+      `
+    : "0 AS isCloseFriendAuthor";
 
   try {
     const [idRows] = await db.query<Array<RowDataPacket & { id: number }>>(
@@ -349,15 +370,7 @@ export async function GET(req: Request) {
           ) THEN 1
           ELSE 0
         END AS isFollowedAuthor,
-        CASE
-          WHEN ? IS NULL THEN 0
-          WHEN EXISTS (
-            SELECT 1
-            FROM CloseFriends cf
-            WHERE cf.user_id = p.user AND cf.friend_user_id = ?
-          ) THEN 1
-          ELSE 0
-        END AS isCloseFriendAuthor
+        ${closeFriendAuthorSelect}
       FROM Posts p
       JOIN Users u ON u.id = p.user
       ${communityJoin}
@@ -401,8 +414,7 @@ export async function GET(req: Request) {
         meId,
         meId,
         meId,
-        meId,
-        meId,
+        ...(closeFriendsReady ? [meId, meId] : []),
         ...orderedIds,
         ...orderedIds,
         ...orderedIds,
