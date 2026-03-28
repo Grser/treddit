@@ -775,14 +775,14 @@ export default function GroupConversation({
                 )}
                 <div
                   className={`relative max-w-[92%] rounded-2xl px-4 py-2 text-sm shadow-sm ${
-                    mine ? "bg-brand text-white" : "bg-input text-foreground"
+                    mine ? "border border-brand/45 bg-brand/15 text-foreground" : "bg-input text-foreground"
                   }`}
                 >
                   <div data-message-menu-root="true">
                     <button
                       type="button"
                       onClick={() => setMessageMenuId((prev) => (prev === msg.id ? null : msg.id))}
-                      className={`absolute right-2 top-2 inline-flex size-6 items-center justify-center rounded-full text-xs transition ${mine ? "bg-white/10 text-white/90 hover:bg-white/20" : "bg-background/80 text-foreground/80 hover:bg-muted"}`}
+                      className={`absolute right-2 top-2 inline-flex size-6 items-center justify-center rounded-full text-xs transition ${mine ? "bg-brand/20 text-foreground/90 hover:bg-brand/30" : "bg-background/80 text-foreground/80 hover:bg-muted"}`}
                       aria-label="Abrir menú"
                     >
                       ▾
@@ -798,7 +798,7 @@ export default function GroupConversation({
                       type="button"
                       onClick={() => setReplyingTo(msg)}
                       className={`mb-2 block w-full rounded-xl border px-2 py-1 text-left text-xs ${
-                        mine ? "border-white/25 bg-white/10 text-white/85" : "border-border/80 bg-background/70 text-foreground/80"
+                        mine ? "border-brand/40 bg-brand/10 text-foreground/85" : "border-border/80 bg-background/70 text-foreground/80"
                       }`}
                     >
                       <p className="font-semibold opacity-90">{msg.replyTo.senderNickname || msg.replyTo.senderUsername}</p>
@@ -821,7 +821,7 @@ export default function GroupConversation({
                       {sharedPost.intro ? <p className="text-xs opacity-85">{sharedPost.intro}</p> : null}
                       <Link
                         href={`/p/${sharedPost.postId}`}
-                        className="block rounded-2xl border border-white/20 bg-black/10 p-2 hover:bg-black/20"
+                        className="block rounded-2xl border border-border/80 bg-background/60 p-2 hover:bg-background/80"
                       >
                         <p className="text-[11px] uppercase tracking-wide opacity-70">Publicación compartida</p>
                         {shouldShowMedia ? (
@@ -834,7 +834,7 @@ export default function GroupConversation({
                             unoptimized
                           />
                         ) : (
-                          <div className="mt-2 flex h-24 w-full items-center justify-center rounded-xl bg-black/10 px-3 text-center text-xs">
+                          <div className="mt-2 flex h-24 w-full items-center justify-center rounded-xl bg-background/60 px-3 text-center text-xs">
                             {isSensitiveBlocked
                               ? "Contenido sensible bloqueado. Debes verificar tu edad para verlo."
                               : canRevealSensitive
@@ -863,7 +863,7 @@ export default function GroupConversation({
                                   [sharedPost.postId]: !isSensitiveRevealed,
                                 }));
                               }}
-                              className="rounded-full border border-white/30 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide hover:bg-white/20"
+                              className="rounded-full border border-brand/40 bg-brand/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide hover:bg-brand/25"
                             >
                               {isSensitiveRevealed ? "Ocultar imagen" : "Ver contenido"}
                             </button>
@@ -875,7 +875,7 @@ export default function GroupConversation({
                   {msg.attachments?.length ? (
                     <div className="mt-2 space-y-2">
                       {msg.attachments.map((file) => (
-                        <div key={`${msg.id}-${file.url}`} className="overflow-hidden rounded-xl border border-white/15 bg-black/15 p-2">
+                        <div key={`${msg.id}-${file.url}`} className="overflow-hidden rounded-xl border border-border/70 bg-background/60 p-2">
                           {file.type === "image" ? (
                             <Image src={file.url} alt={file.name || "Imagen adjunta"} width={420} height={300} className="max-h-60 w-full rounded-lg object-cover" unoptimized />
                           ) : file.type === "video" ? (
@@ -890,14 +890,14 @@ export default function GroupConversation({
                     </div>
                   ) : null}
                   {!mine && !nextSameSender ? <p className="mt-1 text-[10px] opacity-65">{formatMessageTime(msg.createdAt)}</p> : null}
-                  {mine ? <p className="mt-1 text-[10px] text-white/70">{formatMessageTime(msg.createdAt)}</p> : null}
+                  {mine ? <p className="mt-1 text-[10px] text-foreground/70">{formatMessageTime(msg.createdAt)}</p> : null}
                   {(msg.reactions?.length ?? 0) > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
                       {Object.entries((msg.reactions || []).reduce<Record<string, number>>((acc, reaction) => {
                         acc[reaction.emoji] = (acc[reaction.emoji] || 0) + 1;
                         return acc;
                       }, {})).map(([emoji, total]) => (
-                        <span key={`${msg.id}-${emoji}`} className={`w-fit rounded-full border px-2 py-0.5 text-sm shadow transition ${mine ? "border-white/20 bg-white/10 text-white" : "border-border bg-background/80 text-foreground"}`}>
+                        <span key={`${msg.id}-${emoji}`} className={`w-fit rounded-full border px-2 py-0.5 text-sm shadow transition ${mine ? "border-brand/35 bg-brand/15 text-foreground" : "border-border bg-background/80 text-foreground"}`}>
                           {emoji} {total}
                         </span>
                       ))}
