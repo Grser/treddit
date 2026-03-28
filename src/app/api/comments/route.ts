@@ -136,10 +136,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Datos inválidos" }, { status: 400 });
     }
 
-    const [postRows] = await db.query<PostReplyScopeRow[]>(
-      "SELECT user, reply_scope FROM Posts WHERE id=? AND visible=1 LIMIT 1",
-      [postId],
-    );
+    const [postRows] = await db.query<PostReplyScopeRow[]>("SELECT user, reply_scope FROM Posts WHERE id=? LIMIT 1", [
+      postId,
+    ]);
     const post = postRows[0];
     if (!post) {
       return NextResponse.json({ error: "Post no encontrado" }, { status: 404 });
