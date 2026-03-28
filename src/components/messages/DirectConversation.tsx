@@ -7,8 +7,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import UserBadges from "@/components/UserBadges";
 import UserHoverPreview from "@/components/UserHoverPreview";
 import { useLocale } from "@/contexts/LocaleContext";
-import { validateUploadSize } from "@/lib/upload";
-import { uploadFile } from "@/lib/clientUpload";
 
 import type { DirectMessageAttachment, DirectMessageEntry } from "@/lib/messages";
 
@@ -49,26 +47,6 @@ const STICKER_PACK = [
   "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExZG0yNnN1cWQ5OHQyc3F3NGJ5Y2FmMm5mb2w2bDU2cWhhY2tiNGo0aCZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/Yl5aO3gdVfsQ0/giphy.gif",
 ] as const;
 
-
-async function getAudioDurationSeconds(file: File): Promise<number> {
-  const objectUrl = URL.createObjectURL(file);
-  try {
-    const audio = document.createElement("audio");
-    audio.preload = "metadata";
-    audio.src = objectUrl;
-    await new Promise<void>((resolve, reject) => {
-      audio.onloadedmetadata = () => resolve();
-      audio.onerror = () => reject(new Error("No se pudo leer la duración del audio"));
-    });
-    const duration = Number(audio.duration);
-    if (!Number.isFinite(duration) || duration <= 0) {
-      throw new Error("No se pudo leer la duración del audio");
-    }
-    return Math.round(duration);
-  } finally {
-    URL.revokeObjectURL(objectUrl);
-  }
-}
 
 function mergeById(current: DirectMessageEntry[], incoming: DirectMessageEntry[]) {
   const map = new Map<number, DirectMessageEntry>();
@@ -113,9 +91,6 @@ export default function DirectConversation({
   const scrollRef = useRef<HTMLUListElement | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<DirectMessageAttachment[]>([]);
-  const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const audioInputRef = useRef<HTMLInputElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [replyingTo, setReplyingTo] = useState<DirectMessageEntry | null>(null);
   const latestIdRef = useRef(initialMessages[initialMessages.length - 1]?.id ?? 0);
@@ -302,8 +277,8 @@ export default function DirectConversation({
   }
 
   const canSend = useMemo(
-    () => !sending && !uploading && (text.trim().length > 0 || attachments.length > 0),
-    [sending, uploading, text, attachments.length],
+    () => !sending && (text.trim().length > 0 || attachments.length > 0),
+    [sending, text, attachments.length],
   );
 
   function selectLatestMessageFromSender(message: DirectMessageEntry) {
@@ -413,65 +388,10 @@ export default function DirectConversation({
     setMessageMenuId(null);
   }
 
-  async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    setError(null);
-    setUploading(true);
-    try {
-      const mime = file.type || "";
-      const isAudio = mime.startsWith("audio/");
-      const durationSeconds = isAudio ? await getAudioDurationSeconds(file) : null;
-
-      if (isAudio && durationSeconds && durationSeconds > 60) {
-        throw new Error("El audio no puede durar más de 1 minuto");
-      }
-
-      validateUploadSize(file);
-
-      const payload = await uploadFile(file, { scope: "chat" });
-      if (!payload.url) {
-        throw new Error(
-          typeof payload.error === "string" && payload.error.trim()
-            ? payload.error
-            : strings.composer.errors.uploadFailed || "No se pudo adjuntar el archivo",
-        );
-      }
-      const type: DirectMessageAttachment["type"] = mime.startsWith("image/")
-        ? "image"
-        : mime.startsWith("video/")
-          ? "video"
-          : isAudio
-            ? "audio"
-            : "file";
-      setAttachments((prev) => [
-        ...prev,
-        {
-          url: payload.url as string,
-          type,
-          name: file.name,
-          durationSeconds,
-          viewOnce: type === "image" ? oneTimeImageMode : false,
-        },
-      ]);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : strings.composer.errors.uploadFailed;
-      setError(message);
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-      if (audioInputRef.current) {
-        audioInputRef.current.value = "";
-      }
-    }
-  }
-
   async function sendMessage(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const trimmed = text.trim();
-    if ((trimmed.length === 0 && attachments.length === 0) || sending || uploading) return;
+    if ((trimmed.length === 0 && attachments.length === 0) || sending) return;
     setSending(true);
     setError(null);
     try {
@@ -753,14 +673,7 @@ export default function DirectConversation({
         </ul>
       </div>
 
-      <form onSubmit={sendMessage} className="z-10 shrink-0 space-y-3 rounded-2xl border border-white/10 bg-[#101c28]/95 p-2.5 shadow-2xl shadow-black/25 backdrop-blur sm:p-3.5 md:rounded-3xl md:p-4">
-        <div className="flex flex-wrap items-center gap-2">
-          {["📎 Archivo", "🎤 Nota de voz", "📍 Compartir"].map((action) => (
-            <span key={action} className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-foreground/75">
-              {action}
-            </span>
-          ))}
-        </div>
+      <form onSubmit={sendMessage} className="z-10 shrink-0 space-y-3 rounded-2xl border border-border/80 bg-surface/95 p-2.5 shadow-2xl shadow-black/25 backdrop-blur sm:p-3.5 md:rounded-3xl md:p-4">
         {replyingTo && (
           <div className="flex items-start justify-between rounded-xl border border-border bg-muted/40 px-3 py-2 text-xs">
             <div>
@@ -817,7 +730,7 @@ export default function DirectConversation({
                   type="button"
                   onClick={() => addEmoji(emoji)}
                   className="rounded-full border border-border px-2 py-1 text-sm hover:bg-muted"
-                  disabled={sending || uploading}
+                  disabled={sending}
                 >
                   {emoji}
                 </button>
@@ -830,7 +743,7 @@ export default function DirectConversation({
                   type="button"
                   onClick={() => addQuickMedia(item)}
                   className="rounded-full border border-border px-3 py-1 text-xs hover:bg-muted"
-                  disabled={sending || uploading}
+                  disabled={sending}
                 >
                   + {item.type}
                 </button>
@@ -855,7 +768,7 @@ export default function DirectConversation({
                     type="button"
                     onClick={() => addSticker(url, `Sticker ${index + 1}`)}
                     className="overflow-hidden rounded-2xl border border-border bg-background/70 p-1 transition hover:scale-[1.03] hover:bg-muted"
-                    disabled={sending || uploading}
+                    disabled={sending}
                     title={`Sticker ${index + 1}`}
                   >
                     <Image src={url} alt={`Sticker ${index + 1}`} width={64} height={64} className="size-14 object-contain" unoptimized />
@@ -867,27 +780,16 @@ export default function DirectConversation({
         )}
         <div className="flex min-w-0 items-end gap-1.5 pr-0.5 sm:gap-2 sm:pr-1">
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-            <input ref={fileInputRef} type="file" hidden accept="image/*,video/*,audio/*" onChange={handleFileChange} />
-            <input ref={audioInputRef} type="file" hidden accept="audio/*" onChange={handleFileChange} />
             <button
               type="button"
               className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide transition sm:px-3 ${oneTimeImageMode ? "border-amber-300 bg-amber-300/15 text-amber-200" : "border-border bg-input text-foreground hover:bg-muted"}`}
               onClick={() => setOneTimeImageMode((prev) => !prev)}
-              disabled={sending || uploading}
+              disabled={sending}
             >
               1 vez
             </button>
-            <button
-              type="button"
-              className="inline-flex size-9 items-center justify-center rounded-full bg-input text-lg transition hover:bg-muted sm:size-10"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={sending || uploading}
-              aria-label="Adjuntar"
-            >
-              {uploading ? "…" : "+"}
-            </button>
           </div>
-          <div className="flex min-w-0 flex-1 items-end gap-1.5 rounded-[24px] bg-[#0b141c] px-2 py-2 ring-1 ring-white/10 focus-within:ring-2 focus-within:ring-cyan-200/30 sm:gap-2 sm:rounded-[26px] sm:px-3 sm:py-2.5">
+          <div className="flex min-w-0 flex-1 items-end gap-1.5 rounded-[24px] bg-background/70 px-2 py-2 ring-1 ring-border/80 focus-within:ring-2 focus-within:ring-brand/45 sm:gap-2 sm:rounded-[26px] sm:px-3 sm:py-2.5">
             <textarea
               ref={textareaRef}
               id="dm-textarea"
@@ -908,7 +810,7 @@ export default function DirectConversation({
               rows={1}
               className="max-h-28 min-h-6 flex-1 resize-none bg-transparent px-1 py-1 text-sm outline-none placeholder:text-foreground/45"
               placeholder={strings.comments.replyPlaceholder || "Escribe tu mensaje"}
-              disabled={sending || uploading}
+              disabled={sending}
             />
             <button
               type="button"
@@ -922,7 +824,7 @@ export default function DirectConversation({
           {canSend ? (
             <button
               type="submit"
-              className="inline-flex size-10 items-center justify-center rounded-full bg-cyan-300 text-base font-medium text-slate-950 shadow-sm transition hover:opacity-90 sm:size-11"
+              className="inline-flex size-10 items-center justify-center rounded-full bg-brand text-base font-medium text-white shadow-sm transition hover:opacity-90 sm:size-11"
               aria-label={strings.comments.send}
             >
               ➤
@@ -930,12 +832,11 @@ export default function DirectConversation({
           ) : (
             <button
               type="button"
-              onClick={() => audioInputRef.current?.click()}
-              disabled={sending || uploading}
-              className="inline-flex size-10 items-center justify-center rounded-full bg-cyan-300 text-base font-medium text-slate-950 shadow-sm transition hover:opacity-90 disabled:opacity-60 sm:size-11"
-              aria-label="Enviar audio"
+              disabled
+              className="inline-flex size-10 items-center justify-center rounded-full bg-brand/70 text-base font-medium text-white shadow-sm transition disabled:opacity-60 sm:size-11"
+              aria-label="Enviar"
             >
-              🎤
+              ➤
             </button>
           )}
         </div>

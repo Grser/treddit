@@ -9,6 +9,7 @@ import { AdminSection, AdminShell } from "@/components/admin/AdminShell";
 import { requireAdmin } from "@/lib/auth";
 import { ensureAgeVerificationRequestsTable, ensureUsersAgeColumns } from "@/lib/ageVerification";
 import { db } from "@/lib/db";
+import { ensureUserReportsSchema } from "@/lib/userReports";
 
 type AdminUserRow = RowDataPacket & {
   id: number;
@@ -47,9 +48,35 @@ type AdminUser = {
   countryOfOrigin: string | null;
 };
 
+type UserReportRow = RowDataPacket & {
+  id: number;
+  reported_user_id: number;
+  reporter_id: number;
+  reason: string | null;
+  status: "pending" | "reviewed";
+  created_at: string;
+  reported_username: string;
+  reported_nickname: string | null;
+  reporter_username: string;
+  reporter_nickname: string | null;
+};
+
+type UserReport = {
+  id: number;
+  reportedUserId: number;
+  reporterId: number;
+  reason: string | null;
+  status: "pending" | "reviewed";
+  createdAt: string;
+  reportedUsername: string;
+  reportedNickname: string | null;
+  reporterUsername: string;
+  reporterNickname: string | null;
+};
+
 export default async function AdminUsers({ searchParams }: PageProps) {
   await requireAdmin();
-  await Promise.all([ensureUsersAgeColumns(), ensureAgeVerificationRequestsTable()]);
+  await Promise.all([ensureUsersAgeColumns(), ensureAgeVerificationRequestsTable(), ensureUserReportsSchema()]);
   const params = searchParams ? await searchParams : {};
   const passwordUpdated = params.password === "updated";
   const passwordError = params.password === "error";
@@ -64,6 +91,24 @@ export default async function AdminUsers({ searchParams }: PageProps) {
     ORDER BY avr.created_at DESC
     LIMIT 200
   `);
+  const [reportRows] = await db.query<UserReportRow[]>(`
+    SELECT
+      ur.id,
+      ur.reported_user_id,
+      ur.reporter_id,
+      ur.reason,
+      ur.status,
+      ur.created_at,
+      reported.username AS reported_username,
+      reported.nickname AS reported_nickname,
+      reporter.username AS reporter_username,
+      reporter.nickname AS reporter_nickname
+    FROM User_Reports ur
+    JOIN Users reported ON reported.id = ur.reported_user_id
+    JOIN Users reporter ON reporter.id = ur.reporter_id
+    ORDER BY ur.created_at DESC
+    LIMIT 200
+  `);
 
   const users: AdminUser[] = rows.map((row) => ({
     id: Number(row.id),
@@ -76,6 +121,18 @@ export default async function AdminUsers({ searchParams }: PageProps) {
     visible: Boolean(row.visible),
     birthDate: row.birth_date ? String(row.birth_date).slice(0, 10) : null,
     countryOfOrigin: row.country_of_origin ? String(row.country_of_origin) : null,
+  }));
+  const reports: UserReport[] = reportRows.map((row) => ({
+    id: Number(row.id),
+    reportedUserId: Number(row.reported_user_id),
+    reporterId: Number(row.reporter_id),
+    reason: row.reason ? String(row.reason) : null,
+    status: row.status === "reviewed" ? "reviewed" : "pending",
+    createdAt: String(row.created_at),
+    reportedUsername: String(row.reported_username),
+    reportedNickname: row.reported_nickname ? String(row.reported_nickname) : null,
+    reporterUsername: String(row.reporter_username),
+    reporterNickname: row.reporter_nickname ? String(row.reporter_nickname) : null,
   }));
 
   return (
@@ -163,6 +220,37 @@ export default async function AdminUsers({ searchParams }: PageProps) {
               </article>
             ))}
           </div>
+        </AdminSection>
+
+        <AdminSection title="Reportes de cuentas" description={`Mostrando ${reports.length} reportes recientes enviados por la comunidad.`}>
+          {reports.length === 0 ? (
+            <p className="rounded-xl border border-border bg-surface p-4 text-sm opacity-70">Aún no hay reportes de cuentas.</p>
+          ) : (
+            <ul className="space-y-3">
+              {reports.map((report) => (
+                <li key={report.id} className="rounded-xl border border-border/70 bg-surface p-4">
+                  <p className="text-sm">
+                    <span className="font-semibold">{report.reporterNickname || report.reporterUsername}</span>{" "}
+                    <span className="opacity-70">(@{report.reporterUsername})</span>{" "}
+                    reportó a{" "}
+                    <span className="font-semibold">{report.reportedNickname || report.reportedUsername}</span>{" "}
+                    <span className="opacity-70">(@{report.reportedUsername})</span>.
+                  </p>
+                  <p className="mt-1 text-xs opacity-65">{new Date(report.createdAt).toLocaleString()}</p>
+                  <p className="mt-1 text-xs opacity-65">Estado: {report.status === "reviewed" ? "Revisado" : "Pendiente"}</p>
+                  {report.reason && <p className="mt-2 text-sm">Motivo: {report.reason}</p>}
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <a href={`/u/${report.reportedUsername}`} className="rounded-full border border-border px-3 py-1 text-xs">
+                      Ver perfil reportado
+                    </a>
+                    <a href={`/u/${report.reporterUsername}`} className="rounded-full border border-border px-3 py-1 text-xs">
+                      Ver perfil reportante
+                    </a>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </AdminSection>
       </AdminShell>
     </div>

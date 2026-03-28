@@ -195,7 +195,6 @@ export default function PostCard({
             <PostMenu
               postId={post.id}
               isOwner={!!post.isOwner}
-              pinned={pinned}
               replyScope={post.reply_scope}
             />
           </div>

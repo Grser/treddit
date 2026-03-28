@@ -7,12 +7,10 @@ import { useLocale } from "@/contexts/LocaleContext";
 export default function PostMenu({
   postId,
   isOwner,
-  pinned,
   replyScope,
 }: {
   postId: number;
   isOwner: boolean;
-  pinned?: boolean;
   replyScope?: 0 | 1 | 2;
 }) {
   const { strings } = useLocale();
@@ -68,21 +66,6 @@ export default function PostMenu({
               <MenuItem onClick={() => location.assign(`/p/${postId}/edit`)}>
                 {t.edit}
               </MenuItem>
-              <MenuItem danger onClick={() => action(`/api/posts/${postId}`, "DELETE")}>
-                {t.remove}
-              </MenuItem>
-              <Separator />
-              <MenuItem
-                onClick={() =>
-                  action(`/api/posts/${postId}`, "PATCH", { op: pinned ? "unpin" : "pin" })
-                }
-              >
-                {pinned ? t.unpin : t.pin}
-              </MenuItem>
-              <MenuItem onClick={() => action(`/api/posts/${postId}`, "PATCH", { op: "feature" })}>
-                {t.feature}
-              </MenuItem>
-              <Separator />
               <MenuItem onClick={() => setReplyMenuOpen((v) => !v)}>
                 Elegir quién puede ver el post
               </MenuItem>
@@ -106,7 +89,6 @@ export default function PostMenu({
                   ))}
                 </div>
               )}
-              <MenuItem onClick={() => location.assign(`/embed/p/${postId}`)}>{t.embed}</MenuItem>
               <MenuItem onClick={() => location.assign(`/p/${postId}/stats`)}>{t.stats}</MenuItem>
             </>
           ) : (
@@ -149,8 +131,4 @@ function MenuItem({
       {children}
     </button>
   );
-}
-
-function Separator() {
-  return <div className="my-1 h-px bg-border" />;
 }
