@@ -54,6 +54,7 @@ export default function ProfileHeader({
   const { strings } = useLocale();
   const isOwner = viewerId === user.id;
   const avatar = user?.avatar_url?.trim() || "/demo-reddit.png";
+  const banner = user?.banner_url?.trim() || null;
   const displayName = user?.nickname?.trim() || user.username;
   const [followers, setFollowers] = useState(stats.followers);
   const [isBlocked, setIsBlocked] = useState(initiallyBlocked);
@@ -90,9 +91,17 @@ export default function ProfileHeader({
 
   return (
     <section className="mt-0">
-      <div className="relative border-b border-border bg-surface/95 px-4 pb-4 pt-4 sm:px-6">
+      <div className="relative overflow-hidden border-b border-border bg-surface/95 px-4 pb-4 pt-4 sm:px-6">
+        <div className="absolute inset-0">
+          {banner ? (
+            <Image src={banner} alt={`Banner de ${displayName}`} fill className="object-cover" sizes="100vw" unoptimized />
+          ) : (
+            <div className="h-full w-full bg-gradient-to-r from-sky-900/30 via-violet-900/20 to-fuchsia-900/30" />
+          )}
+          <div className="absolute inset-0 bg-black/20" />
+        </div>
         <div className="flex items-end gap-3">
-          <div className="relative size-20 overflow-hidden rounded-full bg-surface shadow-lg sm:size-24 md:size-28">
+          <div className="relative z-10 size-20 overflow-hidden rounded-full bg-surface shadow-lg sm:size-24 md:size-28">
             <Image
               src={avatar}
               className="object-cover"
