@@ -11,7 +11,7 @@ import Feed from "@/components/Feed";
 import StoriesNotesBar from "@/components/StoriesNotesBar";
 import type { Post as PostCardType } from "@/components/PostCard";
 
-type FeedResponse = { items: PostCardType[] };
+type FeedResponse = { items: PostCardType[]; nextCursor: string | null };
 
 type DiscoveryResponse = {
   recommendedUsers: {
@@ -76,7 +76,7 @@ async function getFeed(
     ...(revalidateSeconds ? { next: { revalidate: revalidateSeconds } } : {}),
     headers: includeCookies ? withCookieHeader(cookieHeader) : undefined,
   });
-  if (!res.ok) return { items: [] };
+  if (!res.ok) return { items: [], nextCursor: null };
   return (await res.json()) as FeedResponse;
 }
 async function getDiscovery(
@@ -154,7 +154,7 @@ export default async function Page() {
     revalidateSeconds: 60,
   });
 
-  const [session, { items }, discovery, stories, initialCommunities, popularCommunities] = await Promise.all([
+  const [session, feed, discovery, stories, initialCommunities, popularCommunities] = await Promise.all([
     sessionPromise,
     feedPromise,
     discoveryPromise,
@@ -194,7 +194,7 @@ export default async function Page() {
           />
           <Composer enabled={canInteract} />
 
-          <Feed canInteract={!!canInteract} initialItems={items} />
+          <Feed canInteract={!!canInteract} initialItems={feed.items} initialCursor={feed.nextCursor} />
         </main>
 
         <SidebarRight

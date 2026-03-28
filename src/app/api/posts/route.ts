@@ -46,6 +46,12 @@ type CommunityMembershipRow = RowDataPacket & {
   isMember: number;
 };
 
+type ParsedCursor = {
+  legacyId: number | null;
+  groupedRank: 0 | 1 | null;
+  groupedId: number | null;
+};
+
 const ANON_FEED_CACHE_TTL_MS = 15_000;
 const AUTH_FEED_CACHE_TTL_MS = 8_000;
 const globalForPostsCache = globalThis as unknown as {
@@ -124,17 +130,13 @@ export async function GET(req: Request) {
   const joins: string[] = [];
   const whereParts: string[] = [];
   const meId = me?.id ?? null;
+  const parsedCursor = parseFeedCursor(cursor);
 
   if (likesOf > 0) {
     joins.push("JOIN Like_Posts lpFilter ON lpFilter.post = p.id AND lpFilter.user = ?");
     joinParams.push(likesOf);
   }
 
-  const cursorValue = Number(cursor);
-  if (cursor && !Number.isNaN(cursorValue)) {
-    whereParts.push("p.id < ?");
-    whereParams.push(cursorValue);
-  }
 
   if (userId > 0) {
     whereParts.push("p.user = ?");
@@ -210,12 +212,22 @@ export async function GET(req: Request) {
   if (shouldPrioritizeFollowed) {
     joins.push("LEFT JOIN Follows ff ON ff.followed = p.user AND ff.follower = ?");
     joinParams.push(Number(meId));
+    if (parsedCursor.groupedRank !== null && parsedCursor.groupedId !== null) {
+      whereParts.push("(CASE WHEN ff.follower IS NULL THEN 1 ELSE 0 END > ? OR (CASE WHEN ff.follower IS NULL THEN 1 ELSE 0 END = ? AND p.id < ?))");
+      whereParams.push(parsedCursor.groupedRank, parsedCursor.groupedRank, parsedCursor.groupedId);
+    } else if (parsedCursor.legacyId !== null) {
+      whereParts.push("p.id < ?");
+      whereParams.push(parsedCursor.legacyId);
+    }
+  } else if (parsedCursor.legacyId !== null) {
+    whereParts.push("p.id < ?");
+    whereParams.push(parsedCursor.legacyId);
   }
 
   if (!isDatabaseConfigured()) {
     const { items, nextCursor } = getDemoFeed({
       limit,
-      cursor: cursorValue || null,
+      cursor: parsedCursor.legacyId,
       userId: userId || undefined,
       username: usernameFilter || undefined,
       tag: normalizedTag || undefined,
@@ -417,7 +429,11 @@ export async function GET(req: Request) {
             }
           : null,
     }));
-    const nextCursor = list.length > limit ? String(items[items.length - 1].id) : null;
+    const nextCursor = list.length > limit
+      ? shouldPrioritizeFollowed
+        ? `${items[items.length - 1].isFollowedAuthor ? 0 : 1}:${items[items.length - 1].id}`
+        : String(items[items.length - 1].id)
+      : null;
 
     const payload = { items, nextCursor };
     if (anonCacheStore && anonCacheKey) {
@@ -455,6 +471,28 @@ export async function GET(req: Request) {
 
 function escapeLike(value: string) {
   return value.replace(/[\\%_]/g, (char) => `\\${char}`);
+}
+
+function parseFeedCursor(cursor: string | null): ParsedCursor {
+  if (!cursor) {
+    return { legacyId: null, groupedRank: null, groupedId: null };
+  }
+
+  const [rankPart, idPart] = cursor.split(":");
+  if (idPart !== undefined) {
+    const parsedRank = Number(rankPart);
+    const parsedId = Number(idPart);
+    if ((parsedRank === 0 || parsedRank === 1) && Number.isFinite(parsedId) && parsedId > 0) {
+      return { legacyId: parsedId, groupedRank: parsedRank, groupedId: parsedId };
+    }
+  }
+
+  const parsedLegacyId = Number(cursor);
+  if (Number.isFinite(parsedLegacyId) && parsedLegacyId > 0) {
+    return { legacyId: parsedLegacyId, groupedRank: null, groupedId: null };
+  }
+
+  return { legacyId: null, groupedRank: null, groupedId: null };
 }
 
 export async function POST(req: Request) {

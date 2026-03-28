@@ -18,6 +18,8 @@ type FeedProps = {
   username?: string;
   /** Elementos precargados desde el servidor (SSR) */
   initialItems?: PostCardType[];
+  /** Cursor inicial para continuar el scroll infinito desde SSR */
+  initialCursor?: string | null;
 };
 
 type ApiResponse = { items: PostCardType[]; nextCursor: string | null };
@@ -33,14 +35,19 @@ export default function Feed({
   tag,
   username,
   initialItems,
+  initialCursor = null,
 }: FeedProps) {
   const { strings } = useLocale();
   const [posts, setPosts] = useState<PostCardType[]>(dedupePosts(initialItems || []));
   const [loading, setLoading] = useState(initialItems?.length ? false : true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [errMsg, setErrMsg] = useState<string | null>(null);
   const [pendingPosts, setPendingPosts] = useState<PostCardType[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(initialCursor);
   const skipFirstLoad = useRef(Boolean(initialItems?.length));
+  const loadingMoreRef = useRef(false);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
   const shouldShowExploringBoundary = !filter && !userId && !likesOf && !communityId && !tag && !username;
 
   const query = useMemo(() => {
@@ -90,7 +97,8 @@ export default function Feed({
       return prev.filter((item) => !incomingIds.has(item.id));
     });
     setLoading(false);
-  }, [initialItems]);
+    setNextCursor(initialCursor ?? null);
+  }, [initialItems, initialCursor]);
 
   useEffect(() => {
     if (skipFirstLoad.current) {
@@ -116,6 +124,7 @@ export default function Feed({
         if (!alive) return;
         const normalized = Array.isArray(data.items) ? data.items : [];
         setPosts(dedupePosts(normalized));
+        setNextCursor(data.nextCursor ?? null);
       } catch (error: unknown) {
         if (!alive || (error instanceof DOMException && error.name === "AbortError")) return;
         console.error("Feed load error:", error);
@@ -132,6 +141,61 @@ export default function Feed({
       controller.abort();
     };
   }, [query]);
+
+  useEffect(() => {
+    loadingMoreRef.current = loadingMore;
+  }, [loadingMore]);
+
+  useEffect(() => {
+    const node = sentinelRef.current;
+    if (!node) return;
+    let cancelled = false;
+
+    const loadMore = async () => {
+      if (!nextCursor || loadingMoreRef.current) return;
+      loadingMoreRef.current = true;
+      setLoadingMore(true);
+      try {
+        const params = new URLSearchParams(query);
+        params.set("cursor", nextCursor);
+        const res = await fetch(`/api/posts?${params.toString()}`, { cache: "no-store" });
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        const data = (await res.json()) as ApiResponse;
+        if (cancelled) return;
+        const normalized = Array.isArray(data.items) ? data.items : [];
+        setPosts((prev) => dedupePosts([...prev, ...normalized]));
+        setNextCursor(data.nextCursor ?? null);
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Feed load-more error:", error);
+        }
+      } finally {
+        if (!cancelled) {
+          loadingMoreRef.current = false;
+          setLoadingMore(false);
+        }
+      }
+    };
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          void loadMore();
+        }
+      },
+      { rootMargin: "600px 0px" },
+    );
+
+    observer.observe(node);
+
+    return () => {
+      cancelled = true;
+      observer.disconnect();
+      loadingMoreRef.current = false;
+    };
+  }, [query, nextCursor]);
 
   useEffect(() => {
     window.dispatchEvent(
@@ -240,6 +304,10 @@ export default function Feed({
           </div>
         );
       })}
+      <div ref={sentinelRef} className="h-1" aria-hidden />
+      {loadingMore && (
+        <p className="px-4 py-2 text-center text-sm opacity-70">{strings.feed.loading}</p>
+      )}
     </div>
   );
 }
