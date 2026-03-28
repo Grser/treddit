@@ -48,8 +48,6 @@ export default function PostMenu({
     else location.reload();
   }
 
-  if (!isOwner) return null;
-
   return (
     <div className="ml-auto relative" ref={box}>
       <button
@@ -67,7 +65,7 @@ export default function PostMenu({
 
       {open && (
         <div className="absolute right-0 mt-2 w-64 rounded-lg border border-border bg-surface shadow-lg p-1 z-50">
-          {(isOwner || isAdmin) && (
+          {(isOwner || isAdmin) ? (
             <>
               <MenuItem onClick={() => location.assign(`/p/${postId}/edit`)}>
                 {t.edit}
@@ -87,36 +85,51 @@ export default function PostMenu({
                 {t.feature}
               </MenuItem>
               <Separator />
+              <MenuItem
+                onClick={() => setReplyMenuOpen((v) => !v)}
+              >
+                {t.changeReplies}
+              </MenuItem>
+              {replyMenuOpen && (
+                <div className="mx-2 mb-1 rounded-md border border-border bg-background/60 p-1">
+                  {[
+                    { value: 1, label: "Solo seguidores" },
+                    { value: 0, label: "Todo el mundo" },
+                    { value: 2, label: "Mejores amigos" },
+                  ].map((item) => (
+                    <button
+                      key={item.value}
+                      type="button"
+                      className={`w-full rounded px-2 py-1.5 text-left text-sm transition hover:bg-muted ${
+                        (replyScope ?? 0) === item.value ? "bg-muted font-semibold" : ""
+                      }`}
+                      onClick={() => action(`/api/posts/${postId}`, "PATCH", { op: "who_can_reply", value: item.value })}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <MenuItem onClick={() => location.assign(`/embed/p/${postId}`)}>{t.embed}</MenuItem>
+              <MenuItem onClick={() => location.assign(`/p/${postId}/stats`)}>{t.stats}</MenuItem>
             </>
+          ) : (
+            <MenuItem
+              danger
+              onClick={async () => {
+                const res = await fetch(`/api/posts/${postId}/report`, { method: "POST" });
+                if (!res.ok) {
+                  const payload = (await res.json().catch(() => ({}))) as { error?: string };
+                  alert(payload.error || "No se pudo reportar el post");
+                  return;
+                }
+                setOpen(false);
+                alert("Reporte enviado. Gracias por avisar.");
+              }}
+            >
+              Reportar post
+            </MenuItem>
           )}
-
-          <MenuItem
-            onClick={() => setReplyMenuOpen((v) => !v)}
-          >
-            {t.changeReplies}
-          </MenuItem>
-          {replyMenuOpen && (
-            <div className="mx-2 mb-1 rounded-md border border-border bg-background/60 p-1">
-              {[
-                { value: 1, label: "Solo seguidores" },
-                { value: 0, label: "Todo el mundo" },
-                { value: 2, label: "Mejores amigos" },
-              ].map((item) => (
-                <button
-                  key={item.value}
-                  type="button"
-                  className={`w-full rounded px-2 py-1.5 text-left text-sm transition hover:bg-muted ${
-                    (replyScope ?? 0) === item.value ? "bg-muted font-semibold" : ""
-                  }`}
-                  onClick={() => action(`/api/posts/${postId}`, "PATCH", { op: "who_can_reply", value: item.value })}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-          )}
-          <MenuItem onClick={() => location.assign(`/embed/p/${postId}`)}>{t.embed}</MenuItem>
-          <MenuItem onClick={() => location.assign(`/p/${postId}/stats`)}>{t.stats}</MenuItem>
         </div>
       )}
     </div>

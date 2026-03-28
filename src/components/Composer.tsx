@@ -14,6 +14,7 @@ type ComposerErrorKey = "needContent" | "uploadFailed" | "createFailed" | "pollI
 
 type CommunityOption = { id: number; name: string; slug: string };
 type MentionUser = { id: number; username: string; nickname: string | null };
+const POST_TEXT_LIMIT = 2000;
 
 export default function Composer({ enabled }: { enabled: boolean }) {
   const router = useRouter();
@@ -301,11 +302,15 @@ export default function Composer({ enabled }: { enabled: boolean }) {
             disabled={!enabled}
             rows={3}
             value={text}
+            maxLength={POST_TEXT_LIMIT}
             onChange={(e) => {
               clearError();
               setText(e.target.value);
             }}
           />
+          <p className="mt-1 text-right text-xs opacity-65">
+            {text.length}/{POST_TEXT_LIMIT}
+          </p>
           {(mentionsLoading || mentionResults.length > 0) && (
             <div className="mt-2 flex flex-wrap gap-2">
               {mentionsLoading && <span className="text-xs opacity-60">Buscando personas…</span>}

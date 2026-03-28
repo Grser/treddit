@@ -77,7 +77,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
         ${sensitiveSelect} AS is_sensitive,
         COALESCE(u.is_private, 0) AS is_private,
         CASE WHEN ? IS NULL THEN 0 ELSE EXISTS(SELECT 1 FROM Follows f WHERE f.follower = ? AND f.followed = p.user) END AS isFollowedAuthor,
-        CASE WHEN ? IS NULL THEN 0 ELSE EXISTS(SELECT 1 FROM Close_Friends cf WHERE cf.user_id = p.user AND cf.friend_id = ?) END AS isCloseFriendAuthor
+        CASE WHEN ? IS NULL THEN 0 ELSE EXISTS(SELECT 1 FROM CloseFriends cf WHERE cf.user_id = p.user AND cf.friend_user_id = ?) END AS isCloseFriendAuthor
       FROM Posts p
       JOIN Users u ON u.id = p.user
       WHERE p.id = ?

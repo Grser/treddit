@@ -230,7 +230,7 @@ export default async function UserPage({
         ${communityNameSelect} AS community_name,
         ${sensitiveSelect} AS is_sensitive,
         CASE WHEN ? IS NULL THEN 0 ELSE EXISTS(SELECT 1 FROM Follows f WHERE f.follower = ? AND f.followed = p.user) END AS isFollowedAuthor,
-        CASE WHEN ? IS NULL THEN 0 ELSE EXISTS(SELECT 1 FROM Close_Friends cf WHERE cf.user_id = p.user AND cf.friend_id = ?) END AS isCloseFriendAuthor
+        CASE WHEN ? IS NULL THEN 0 ELSE EXISTS(SELECT 1 FROM CloseFriends cf WHERE cf.user_id = p.user AND cf.friend_user_id = ?) END AS isCloseFriendAuthor
       FROM Posts p
       JOIN Users u ON u.id = p.user
       ${communityJoin}
