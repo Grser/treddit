@@ -7,13 +7,11 @@ import { useLocale } from "@/contexts/LocaleContext";
 export default function PostMenu({
   postId,
   isOwner,
-  isAdmin,
   pinned,
   replyScope,
 }: {
   postId: number;
   isOwner: boolean;
-  isAdmin: boolean;
   pinned?: boolean;
   replyScope?: 0 | 1 | 2;
 }) {
@@ -65,7 +63,7 @@ export default function PostMenu({
 
       {open && (
         <div className="absolute right-0 mt-2 w-64 rounded-lg border border-border bg-surface shadow-lg p-1 z-50">
-          {(isOwner || isAdmin) ? (
+          {isOwner ? (
             <>
               <MenuItem onClick={() => location.assign(`/p/${postId}/edit`)}>
                 {t.edit}
@@ -85,16 +83,14 @@ export default function PostMenu({
                 {t.feature}
               </MenuItem>
               <Separator />
-              <MenuItem
-                onClick={() => setReplyMenuOpen((v) => !v)}
-              >
-                {t.changeReplies}
+              <MenuItem onClick={() => setReplyMenuOpen((v) => !v)}>
+                Elegir quién puede ver el post
               </MenuItem>
               {replyMenuOpen && (
                 <div className="mx-2 mb-1 rounded-md border border-border bg-background/60 p-1">
                   {[
-                    { value: 1, label: "Solo seguidores" },
                     { value: 0, label: "Todo el mundo" },
+                    { value: 1, label: "Solo seguidores" },
                     { value: 2, label: "Mejores amigos" },
                   ].map((item) => (
                     <button
