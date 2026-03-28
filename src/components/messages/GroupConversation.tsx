@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 
 import { validateUploadSize } from "@/lib/upload";
 import { uploadFile } from "@/lib/clientUpload";
@@ -25,6 +25,7 @@ type SearchUser = {
 };
 
 const MESSAGE_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"] as const;
+const QUICK_EMOJIS = ["😀", "😂", "🔥", "❤️", "👏", "😮", "🙏", "🎉"] as const;
 const GROUP_STICKERS = [
   "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbThwajQ0YXFreXQyb3h2b2N0NWFjYnR5ZzIybDh6OHN5b2N2YWw1NCZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/3oriO0OEd9QIDdllqo/giphy.gif",
   "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMm1ydGVvM2hyZ3l4YWZsM2lmbnBqeHlkam95cnRwNTNqem9iaHV4dCZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/Cmr1OMJ2FN0B2/giphy.gif",
@@ -90,6 +91,26 @@ function parseSticker(text: string | null | undefined) {
   return match[1];
 }
 
+async function getAudioDurationSeconds(file: File): Promise<number> {
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const audio = document.createElement("audio");
+    audio.preload = "metadata";
+    audio.src = objectUrl;
+    await new Promise<void>((resolve, reject) => {
+      audio.onloadedmetadata = () => resolve();
+      audio.onerror = () => reject(new Error("No se pudo leer la duración del audio"));
+    });
+    const duration = Number(audio.duration);
+    if (!Number.isFinite(duration) || duration <= 0) {
+      throw new Error("No se pudo leer la duración del audio");
+    }
+    return Math.round(duration);
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
 export default function GroupConversation({
   groupId,
   viewerId,
@@ -133,6 +154,12 @@ export default function GroupConversation({
   const [revealedSensitivePosts, setRevealedSensitivePosts] = useState<Record<number, boolean>>({});
   const [messageMenuId, setMessageMenuId] = useState<number | null>(null);
   const [showStickerTray, setShowStickerTray] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<GroupMessageEntry | null>(null);
+  const [attachments, setAttachments] = useState<GroupMessageEntry["attachments"]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [oneTimeImageMode, setOneTimeImageMode] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const audioInputRef = useRef<HTMLInputElement | null>(null);
   const [manageView, setManageView] = useState<"general" | "members" | "roles">("general");
   const shouldAutoScrollRef = useRef(true);
   const initialScrollDoneRef = useRef(false);
@@ -225,6 +252,49 @@ export default function GroupConversation({
       window.removeEventListener("keydown", handleEscape);
     };
   }, []);
+
+  const messageCharCount = text.length;
+  const maxMessageLength = 1000;
+  const canSendMessage = Boolean(canSendMessages && !sendingRef.current && !uploading && (text.trim().length > 0 || (attachments?.length ?? 0) > 0));
+
+  async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const files = event.target.files ? Array.from(event.target.files) : [];
+    if (!files.length) return;
+    setSendError(null);
+    setUploading(true);
+    try {
+      const uploaded = await Promise.all(
+        files.map(async (file) => {
+          validateUploadSize(file);
+          const mime = file.type || "";
+          const isAudio = mime.startsWith("audio/");
+          const durationSeconds = isAudio ? await getAudioDurationSeconds(file) : null;
+          if (isAudio && durationSeconds && durationSeconds > 60) {
+            throw new Error("El audio no puede durar más de 1 minuto");
+          }
+          const payload = await uploadFile(file, { scope: "chat" });
+          if (typeof payload.url !== "string") {
+            throw new Error(typeof payload.error === "string" ? payload.error : "No se pudo subir el archivo");
+          }
+          const type = mime.startsWith("image/")
+            ? "image"
+            : mime.startsWith("video/")
+              ? "video"
+              : mime.startsWith("audio/")
+                ? "audio"
+                : "file";
+          return { url: payload.url, type, name: file.name, durationSeconds, viewOnce: type === "image" ? oneTimeImageMode : false };
+        }),
+      );
+      setAttachments((prev) => [...(prev || []), ...uploaded].slice(0, 8));
+    } catch (error) {
+      setSendError(error instanceof Error ? error.message : "No se pudo subir el archivo");
+    } finally {
+      setUploading(false);
+      event.target.value = "";
+      if (audioInputRef.current) audioInputRef.current.value = "";
+    }
+  }
 
 
   async function handleReaction(messageId: number, emoji: string) {
@@ -734,7 +804,7 @@ export default function GroupConversation({
           </div>
         </div>
       )}
-      <ul ref={messagesListRef} className="hide-scrollbar min-h-0 flex-1 space-y-2 overflow-y-auto rounded-2xl border border-border/80 bg-gradient-to-b from-surface/95 to-background/70 p-3 pb-3 [overflow-anchor:none]">
+      <ul ref={messagesListRef} className="hide-scrollbar min-h-0 flex-1 space-y-2 overflow-y-auto rounded-3xl border border-border/80 bg-gradient-to-b from-surface/95 to-background/70 p-3.5 pb-3 [overflow-anchor:none]">
         {messages.map((msg, index) => {
           const mine = msg.senderId === viewerId;
           const previous = messages[index - 1];
@@ -787,6 +857,18 @@ export default function GroupConversation({
                     <p className="mb-1 text-[11px] font-semibold text-brand/90">
                       <Link href={`/u/${msg.sender.username}`} className="hover:underline">{msg.sender.nickname || msg.sender.username}</Link>
                     </p>
+                  )}
+                  {msg.replyTo && (
+                    <button
+                      type="button"
+                      onClick={() => setReplyingTo(msg)}
+                      className={`mb-2 block w-full rounded-xl border px-2 py-1 text-left text-xs ${
+                        mine ? "border-white/25 bg-white/10 text-white/85" : "border-border/80 bg-background/70 text-foreground/80"
+                      }`}
+                    >
+                      <p className="font-semibold opacity-90">{msg.replyTo.senderNickname || msg.replyTo.senderUsername}</p>
+                      <p className="line-clamp-2 opacity-80">{msg.replyTo.text || "Mensaje"}</p>
+                    </button>
                   )}
                   {!sharedPost && !stickerUrl ? (
                     <p className="whitespace-pre-wrap">{msg.text}</p>
@@ -855,6 +937,23 @@ export default function GroupConversation({
                       </Link>
                     </div>
                   ) : null}
+                  {msg.attachments?.length ? (
+                    <div className="mt-2 space-y-2">
+                      {msg.attachments.map((file) => (
+                        <div key={`${msg.id}-${file.url}`} className="overflow-hidden rounded-xl border border-white/15 bg-black/15 p-2">
+                          {file.type === "image" ? (
+                            <Image src={file.url} alt={file.name || "Imagen adjunta"} width={420} height={300} className="max-h-60 w-full rounded-lg object-cover" unoptimized />
+                          ) : file.type === "video" ? (
+                            <video src={file.url} controls className="max-h-60 w-full rounded-lg" />
+                          ) : file.type === "audio" ? (
+                            <audio src={file.url} controls className="w-full" />
+                          ) : (
+                            <a href={file.url} target="_blank" rel="noreferrer" className="text-xs underline">Descargar {file.name || "archivo"}</a>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                   {!mine && !nextSameSender ? <p className="mt-1 text-[10px] opacity-65">{formatMessageTime(msg.createdAt)}</p> : null}
                   {mine ? <p className="mt-1 text-[10px] text-white/70">{formatMessageTime(msg.createdAt)}</p> : null}
                   {(msg.reactions?.length ?? 0) > 0 && (
@@ -877,6 +976,16 @@ export default function GroupConversation({
                             <button key={`${msg.id}-${emoji}`} type="button" className="rounded-full border border-transparent px-2 py-1 text-base transition hover:border-border hover:bg-muted" onClick={() => handleReaction(msg.id, emoji)}>{emoji}</button>
                           ))}
                         </div>
+                        <button
+                          type="button"
+                          className="mb-1 block w-full rounded px-2 py-1 text-left text-xs hover:bg-muted"
+                          onClick={() => {
+                            setReplyingTo(msg);
+                            setMessageMenuId(null);
+                          }}
+                        >
+                          Responder
+                        </button>
                         <button type="button" className="block w-full rounded px-2 py-1 text-left text-xs hover:bg-muted" onClick={() => setMessageMenuId(null)}>Cerrar</button>
                         {mine ? <button type="button" className="block w-full rounded px-2 py-1 text-left text-xs text-rose-300 hover:bg-rose-500/10" onClick={() => handleDeleteMessage(msg.id)}>Eliminar mensaje</button> : null}
                       </div>
@@ -908,24 +1017,31 @@ export default function GroupConversation({
         </div>
       )}
       <form
-        className="sticky bottom-0 z-10 flex gap-2 rounded-2xl border border-border/90 bg-surface/95 p-2.5 shadow-lg backdrop-blur"
+        className="sticky bottom-0 z-10 shrink-0 space-y-3 rounded-3xl border border-border/90 bg-surface/95 p-3.5 shadow-lg backdrop-blur"
         onSubmit={async (event) => {
           event.preventDefault();
           const trimmed = text.trim();
-          if (!trimmed || sendingRef.current || !canSendMessages) return;
+          if ((!trimmed && (attachments?.length ?? 0) === 0) || sendingRef.current || uploading || !canSendMessages) return;
           sendingRef.current = true;
           setSendError(null);
           try {
             const res = await fetch(`/api/messages/groups/${groupId}/messages`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ text: trimmed }),
+              body: JSON.stringify({
+                text: trimmed,
+                attachments,
+                replyToMessageId: replyingTo?.id ?? null,
+              }),
             });
             const payload = await res.json().catch(() => ({}));
             if (res.ok && payload.message) {
               shouldAutoScrollRef.current = true;
               setMessages((prev) => mergeMessagesById(prev, [payload.message as GroupMessageEntry]));
               setText("");
+              setAttachments([]);
+              setReplyingTo(null);
+              setShowStickerTray(false);
             } else {
               setSendError(typeof payload.error === "string" ? payload.error : "No se pudo enviar el mensaje");
             }
@@ -934,27 +1050,86 @@ export default function GroupConversation({
           }
         }}
       >
-        <div className="flex flex-1 items-center gap-2">
+        {replyingTo && (
+          <div className="flex items-start justify-between gap-3 rounded-2xl border border-border/70 bg-input/70 px-3 py-2 text-xs">
+            <div className="min-w-0">
+              <p className="font-semibold">Respondiendo a {replyingTo.sender.nickname || replyingTo.sender.username}</p>
+              <p className="line-clamp-2 opacity-80">{replyingTo.text || "Mensaje con adjunto"}</p>
+            </div>
+            <button type="button" onClick={() => setReplyingTo(null)} className="rounded-full border border-border px-2 py-0.5 text-[11px]">Quitar</button>
+          </div>
+        )}
+        {attachments && attachments.length > 0 && (
+          <div className="flex flex-wrap gap-2 rounded-2xl border border-border/70 bg-input/50 p-2">
+            {attachments.map((file, index) => (
+              <div key={`${file.url}-${index}`} className="relative overflow-hidden rounded-xl border border-border/70 bg-background/50 p-1.5">
+                <button
+                  type="button"
+                  onClick={() => setAttachments((prev) => (prev || []).filter((_, fileIndex) => fileIndex !== index))}
+                  className="absolute right-1 top-1 rounded-full bg-black/60 px-1.5 text-[10px] text-white"
+                >
+                  ✕
+                </button>
+                {file.type === "image" ? (
+                  <Image src={file.url} alt={file.name || "Adjunto"} width={96} height={96} className="size-24 rounded-lg object-cover" unoptimized />
+                ) : file.type === "video" ? (
+                  <video src={file.url} controls className="h-24 w-28 rounded-lg" />
+                ) : file.type === "audio" ? (
+                  <audio src={file.url} controls className="w-48" />
+                ) : (
+                  <a href={file.url} target="_blank" rel="noreferrer" className="block max-w-36 truncate px-2 py-2 text-xs underline">{file.name || "Archivo"}</a>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="flex flex-1 items-end gap-2">
           <button
             type="button"
             onClick={() => setShowStickerTray((prev) => !prev)}
             className="inline-flex size-10 items-center justify-center rounded-full bg-background/70 text-lg"
-            disabled={!canSendMessages || sendingRef.current}
+            disabled={!canSendMessages || sendingRef.current || uploading}
             aria-label="Abrir stickers"
           >
             🙂
           </button>
-          <input
+          <div className="flex-1 rounded-3xl border border-border/70 bg-background/70 px-3 py-2">
+          <textarea
             value={text}
-            onChange={(event) => setText(event.target.value)}
-            className="flex-1 rounded-full bg-background/70 px-4 py-2.5 text-sm outline-none"
+            onChange={(event) => setText(event.target.value.slice(0, maxMessageLength))}
+            className="max-h-40 min-h-12 w-full resize-none bg-transparent text-sm outline-none"
+            rows={2}
+            maxLength={maxMessageLength}
             placeholder={canSendMessages ? "Escribe un mensaje" : "Solo lectura"}
-            disabled={!canSendMessages || sendingRef.current}
+            disabled={!canSendMessages || sendingRef.current || uploading}
           />
+          <div className="mt-1 flex items-center justify-between text-[11px] opacity-70">
+            <span>Máximo {maxMessageLength} letras</span>
+            <span>{messageCharCount}/{maxMessageLength}</span>
+          </div>
+          </div>
         </div>
-        <button type="submit" disabled={!canSendMessages || sendingRef.current || !text.trim()} className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
-          Enviar
-        </button>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <input ref={fileInputRef} type="file" hidden accept="image/*,video/*,audio/*,application/*" multiple onChange={handleFileChange} />
+            <input ref={audioInputRef} type="file" hidden accept="audio/*" onChange={handleFileChange} />
+            <button type="button" onClick={() => fileInputRef.current?.click()} disabled={!canSendMessages || sendingRef.current || uploading} className="rounded-full border border-border px-3 py-1.5 text-xs disabled:opacity-50">Adjuntar</button>
+            <button type="button" onClick={() => audioInputRef.current?.click()} disabled={!canSendMessages || sendingRef.current || uploading} className="rounded-full border border-border px-3 py-1.5 text-xs disabled:opacity-50">Audio</button>
+            <button type="button" onClick={() => setOneTimeImageMode((prev) => !prev)} className={`rounded-full border px-3 py-1.5 text-xs ${oneTimeImageMode ? "border-amber-300 bg-amber-300/15 text-amber-200" : "border-border"}`}>
+              {oneTimeImageMode ? "Foto 1 vez: ON" : "Foto 1 vez: OFF"}
+            </button>
+            <div className="flex flex-wrap gap-1">
+              {QUICK_EMOJIS.map((emoji) => (
+                <button key={emoji} type="button" className="rounded-full border border-border/70 px-2 py-1 text-sm" onClick={() => setText((prev) => `${prev}${emoji}`.slice(0, maxMessageLength))}>
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          </div>
+          <button type="submit" disabled={!canSendMessage} className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+            {uploading ? "Subiendo…" : "Enviar"}
+          </button>
+        </div>
       </form>
       {showStickerTray && canSendMessages && (
         <div className="rounded-2xl border border-border bg-surface p-3">

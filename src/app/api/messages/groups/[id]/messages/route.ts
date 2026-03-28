@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireUser } from "@/lib/auth";
 import { deleteGroupMessage, fetchGroupMessages, requestSpeakInGroup, sendGroupMessage } from "@/lib/messages";
+import type { DirectMessageAttachment } from "@/lib/messages";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -24,11 +25,19 @@ export async function POST(req: Request, { params }: Params) {
   const me = await requireUser();
   const { id } = await params;
   const groupId = Number(id);
-  const payload = await req.json().catch(() => null) as { text?: unknown; requestSpeak?: unknown } | null;
+  const payload = await req.json().catch(() => null) as {
+    text?: unknown;
+    requestSpeak?: unknown;
+    attachments?: unknown;
+    replyToMessageId?: unknown;
+  } | null;
   const requestSpeak = Boolean(payload?.requestSpeak);
   const text = typeof payload?.text === "string" ? payload.text : "";
+  const attachments = Array.isArray(payload?.attachments) ? payload.attachments : [];
+  const replyToMessageId = Number(payload?.replyToMessageId);
+  const normalizedReplyToMessageId = Number.isFinite(replyToMessageId) && replyToMessageId > 0 ? replyToMessageId : null;
 
-  if (!Number.isFinite(groupId) || groupId <= 0 || (!requestSpeak && !text.trim())) {
+  if (!Number.isFinite(groupId) || groupId <= 0 || (!requestSpeak && !text.trim() && attachments.length === 0)) {
     return NextResponse.json({ error: "Datos inválidos" }, { status: 400 });
   }
 
@@ -37,7 +46,7 @@ export async function POST(req: Request, { params }: Params) {
       await requestSpeakInGroup(me.id, groupId);
       return NextResponse.json({ ok: true });
     }
-    const message = await sendGroupMessage(me.id, groupId, text);
+    const message = await sendGroupMessage(me.id, groupId, text, attachments as DirectMessageAttachment[], normalizedReplyToMessageId);
     return NextResponse.json({ message }, { status: 201 });
   } catch (error) {
     if (error instanceof Error && error.message === "NOT_IN_GROUP") {
