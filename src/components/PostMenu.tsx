@@ -7,42 +7,24 @@ import { useLocale } from "@/contexts/LocaleContext";
 export default function PostMenu({
   postId,
   isOwner,
-  replyScope,
 }: {
   postId: number;
   isOwner: boolean;
-  replyScope?: 0 | 1 | 2;
 }) {
   const { strings } = useLocale();
   const t = strings.postMenu;
   const [open, setOpen] = useState(false);
-  const [replyMenuOpen, setReplyMenuOpen] = useState(false);
 
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
       if (!box.current?.contains(e.target as Node)) {
         setOpen(false);
-        setReplyMenuOpen(false);
       }
     };
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
-
-  async function action(
-    path: string,
-    method: string = "POST",
-    body?: Record<string, unknown>
-  ) {
-    const res = await fetch(path, {
-      method,
-      headers: body ? { "Content-Type": "application/json" } : undefined,
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    if (!res.ok) alert(t.failure);
-    else location.reload();
-  }
 
   return (
     <div className="ml-auto relative" ref={box}>
@@ -66,29 +48,6 @@ export default function PostMenu({
               <MenuItem onClick={() => location.assign(`/p/${postId}/edit`)}>
                 {t.edit}
               </MenuItem>
-              <MenuItem onClick={() => setReplyMenuOpen((v) => !v)}>
-                Elegir quién puede ver el post
-              </MenuItem>
-              {replyMenuOpen && (
-                <div className="mx-2 mb-1 rounded-md border border-border bg-background/60 p-1">
-                  {[
-                    { value: 0, label: "Todo el mundo" },
-                    { value: 1, label: "Solo seguidores" },
-                    { value: 2, label: "Mejores amigos" },
-                  ].map((item) => (
-                    <button
-                      key={item.value}
-                      type="button"
-                      className={`w-full rounded px-2 py-1.5 text-left text-sm transition hover:bg-muted ${
-                        (replyScope ?? 0) === item.value ? "bg-muted font-semibold" : ""
-                      }`}
-                      onClick={() => action(`/api/posts/${postId}`, "PATCH", { op: "who_can_reply", value: item.value })}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-              )}
               <MenuItem onClick={() => location.assign(`/p/${postId}/stats`)}>{t.stats}</MenuItem>
             </>
           ) : (
