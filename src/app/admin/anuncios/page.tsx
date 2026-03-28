@@ -1,5 +1,6 @@
 import Navbar from "@/components/Navbar";
 import { AdminSection, AdminShell } from "@/components/admin/AdminShell";
+import SingleSubmitForm from "@/components/SingleSubmitForm";
 import { requireAdmin } from "@/lib/auth";
 import { db, isDatabaseConfigured } from "@/lib/db";
 
@@ -34,7 +35,7 @@ export default async function AdminAdsPage({ searchParams }: AdminAdsProps) {
               Configura la base de datos para crear y administrar campañas promocionadas.
             </p>
           )}
-          <form method="post" action="/api/admin/announcements" className="space-y-4">
+          <SingleSubmitForm method="post" action="/api/admin/announcements" className="space-y-4">
             <label className="block text-sm">
               <span className="font-medium">Mensaje principal</span>
               <textarea name="description" required maxLength={500} rows={4} className="mt-1 w-full rounded-lg border border-border bg-input px-3 py-2 text-sm" placeholder="Describe la campaña y agrega los detalles importantes." disabled={!databaseReady} />
@@ -44,8 +45,9 @@ export default async function AdminAdsPage({ searchParams }: AdminAdsProps) {
               <input type="text" name="hashtags" className="mt-1 w-full rounded-lg border border-border bg-input px-3 py-2 text-sm" placeholder="#ad #promocionado" disabled={!databaseReady} />
             </label>
             <button type="submit" className="inline-flex items-center rounded-full bg-brand px-5 py-2 text-sm font-medium text-white hover:bg-brand/90 disabled:opacity-60" disabled={!databaseReady}>Publicar anuncio</button>
+            <p className="text-xs opacity-70">Al enviar, el botón se bloquea para evitar publicaciones duplicadas.</p>
             {justCreated && <p className="text-sm text-emerald-500">La campaña se creó correctamente.</p>}
-          </form>
+          </SingleSubmitForm>
         </AdminSection>
 
         <AdminSection title="Campañas recientes" description="Últimas publicaciones detectadas con hashtags publicitarios.">

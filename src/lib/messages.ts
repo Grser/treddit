@@ -1272,7 +1272,7 @@ export async function sendGroupMessage(
 ): Promise<GroupMessageEntry> {
   if (!isDatabaseConfigured()) throw new Error("DB_REQUIRED");
   await ensureMessageTables();
-  const normalized = text.trim().slice(0, 1000);
+  const normalized = text.trim();
   if (!normalized && attachments.length === 0) throw new Error("EMPTY_MESSAGE");
   const [membership] = await db.query<RowDataPacket[]>(
     "SELECT group_id, can_send_messages FROM Direct_Message_Group_Members WHERE group_id=? AND user_id=? LIMIT 1",

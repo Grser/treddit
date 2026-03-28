@@ -1,4 +1,5 @@
 2026-03-28
-- Se alineó visualmente el cuadro de mensajes con el cuadro de escritura en chat de grupo.
-- Se agregaron funciones del chat personal al chat grupal: responder mensajes, adjuntar archivos (imagen/video/audio/archivo), previsualización de adjuntos y envío con respuesta.
-- Se añadió contador de caracteres en tiempo real en el cuadro de escritura del chat grupal (ej: 0/1000) con límite máximo de 1000 caracteres.
+- Se mantuvieron las mejoras visuales y funcionales del chat grupal solicitadas en la rama 814a35c (alineación del cuadro, respuestas y adjuntos), pero se eliminó el aviso de "Máximo 1000 letras" del chat grupal para no confundirlo con la publicación de posts.
+- En chat grupal ya no se recorta el texto a 1000 caracteres al escribir o enviar.
+- Se corrigió el formulario de anuncios para evitar publicaciones duplicadas por múltiples clics en "Publicar anuncio".
+- Se corrigió la visibilidad del menú de tres puntos en la vista del post para que vuelva a mostrarse en posts propios.
