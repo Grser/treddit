@@ -156,7 +156,7 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
 
   return (
     <section className={`rounded-2xl border border-border bg-surface p-3 sm:p-4 ${className ?? ""}`.trim()}>
-      <div className="flex gap-3 overflow-x-auto pb-1">
+      <div className="flex items-start gap-3 overflow-x-auto pb-1">
         <button
           type="button"
           onClick={() => {
@@ -177,7 +177,7 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
           className="group min-w-20 max-w-24 shrink-0 text-center"
           title={canInteract ? (myNote ? "Ver tu nota" : "Publicar nota") : "Inicia sesión para publicar notas"}
         >
-          <p className="mx-auto mb-2 inline-flex min-h-10 w-full items-center justify-center rounded-2xl bg-white/14 px-2 py-2 text-center text-[10px] leading-tight text-white/90">
+          <p className="mx-auto mb-2 inline-flex h-10 w-full items-center justify-center overflow-hidden rounded-2xl bg-white/14 px-2 py-2 text-center text-[10px] leading-tight text-white/90 line-clamp-2">
             {myNote?.content || "Publica una nota rápida"}
           </p>
           <div className="relative mx-auto mb-1 size-[58px] rounded-full bg-gradient-to-tr from-amber-400 via-fuchsia-500 to-violet-500 p-[2px] transition group-hover:scale-[1.03]">
@@ -201,7 +201,7 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
               className="group min-w-20 max-w-24 shrink-0 text-center"
               title={isSelf ? "Ver tu nota" : `Ver nota de ${entry.username}`}
             >
-              <p className="mx-auto mb-2 inline-flex min-h-10 w-full items-center justify-center rounded-2xl bg-white/14 px-2 py-2 text-center text-[10px] leading-tight text-white/90">
+              <p className="mx-auto mb-2 inline-flex h-10 w-full items-center justify-center overflow-hidden rounded-2xl bg-white/14 px-2 py-2 text-center text-[10px] leading-tight text-white/90 line-clamp-2">
                 {entry.content}
               </p>
               {(entry.song_title || entry.song_artist) && (
