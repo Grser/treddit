@@ -13,8 +13,8 @@ export async function ensureBlockTables() {
   if (blocksTableReady || !isDatabaseConfigured()) return;
   await db.execute(`
     CREATE TABLE IF NOT EXISTS User_Blocks (
-      blocker_id INT UNSIGNED NOT NULL,
-      blocked_id INT UNSIGNED NOT NULL,
+      blocker_id INT NOT NULL,
+      blocked_id INT NOT NULL,
       created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY (blocker_id, blocked_id),
       INDEX idx_user_blocks_blocked (blocked_id),
