@@ -13,6 +13,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <head>
         <script
           nonce={nonce}
+          suppressHydrationWarning
           dangerouslySetInnerHTML={{
             __html: `(() => {
               try {
