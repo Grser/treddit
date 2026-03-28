@@ -163,13 +163,6 @@ export async function GET(req: Request) {
     whereParts.push("NOT EXISTS (SELECT 1 FROM Follows fExplore WHERE fExplore.follower = ? AND fExplore.followed = p.user)");
     whereParams.push(meId);
   }
-  if (meId) {
-    whereParts.push(
-      "NOT EXISTS (SELECT 1 FROM User_Blocks ub WHERE (ub.blocker_id = p.user AND ub.blocked_id = ?) OR (ub.blocker_id = ? AND ub.blocked_id = p.user))",
-    );
-    whereParams.push(meId, meId);
-  }
-
   const canUseAnonCache = shouldUseAnonFeedCache(url, meId);
   const canUseAuthCache = shouldUseAuthFeedCache(url, meId);
   const anonCacheKey = canUseAnonCache ? createAnonFeedCacheKey(url) : null;
@@ -242,10 +235,15 @@ export async function GET(req: Request) {
     console.warn("Profile privacy schema unavailable, skipping privacy filter for feed", error);
   }
 
+  let blockFilterEnabled = false;
   const [communityColumn, sensitiveColumn] = await Promise.all([
     getPostsCommunityColumn(),
     getPostsSensitiveColumn(),
-    ensureBlockTables(),
+    ensureBlockTables().then(() => {
+      blockFilterEnabled = true;
+    }).catch((error) => {
+      console.warn("Block tables unavailable, skipping block filter for feed", error);
+    }),
   ]);
   const hasCommunityColumn = Boolean(communityColumn);
   const hasSensitiveColumn = Boolean(sensitiveColumn);
@@ -255,6 +253,13 @@ export async function GET(req: Request) {
     if (meId) {
       whereParams.push(meId, meId);
     }
+  }
+
+  if (meId && blockFilterEnabled) {
+    whereParts.push(
+      "NOT EXISTS (SELECT 1 FROM User_Blocks ub WHERE (ub.blocker_id = p.user AND ub.blocked_id = ?) OR (ub.blocker_id = ? AND ub.blocked_id = p.user))",
+    );
+    whereParams.push(meId, meId);
   }
 
   if (wantsCommunityFilter) {
