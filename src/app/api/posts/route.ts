@@ -327,8 +327,8 @@ export async function GET(req: Request) {
           WHEN ? IS NULL THEN 0
           WHEN EXISTS (
             SELECT 1
-            FROM Close_Friends cf
-            WHERE cf.user_id = p.user AND cf.friend_id = ?
+            FROM CloseFriends cf
+            WHERE cf.user_id = p.user AND cf.friend_user_id = ?
           ) THEN 1
           ELSE 0
         END AS isCloseFriendAuthor

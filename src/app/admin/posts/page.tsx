@@ -5,6 +5,7 @@ import { AdminSection, AdminShell } from "@/components/admin/AdminShell";
 import UserBadges from "@/components/UserBadges";
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { ensurePostReportsSchema } from "@/lib/postReports";
 
 export const dynamic = "force-dynamic";
 
@@ -32,8 +33,35 @@ type AdminPost = {
   createdAt: string;
 };
 
+type ReportRow = RowDataPacket & {
+  id: number;
+  post_id: number;
+  reason: string | null;
+  status: "pending" | "reviewed";
+  created_at: Date | string;
+  reporter_username: string;
+  reporter_nickname: string | null;
+  author_username: string;
+  author_nickname: string | null;
+  post_description: string | null;
+};
+
+type AdminReport = {
+  id: number;
+  postId: number;
+  reason: string | null;
+  status: "pending" | "reviewed";
+  createdAt: string;
+  reporterUsername: string;
+  reporterNickname: string | null;
+  authorUsername: string;
+  authorNickname: string | null;
+  postDescription: string | null;
+};
+
 export default async function AdminPosts({ searchParams }: AdminPostsProps) {
   await requireAdmin();
+  await ensurePostReportsSchema();
 
   const resolvedSearchParams = await searchParams;
   const username = (resolvedSearchParams.user || "").trim();
@@ -72,6 +100,40 @@ export default async function AdminPosts({ searchParams }: AdminPostsProps) {
     isVerified: Boolean(row.is_verified),
     description: String(row.description),
     createdAt: new Date(row.created_at).toISOString(),
+  }));
+  const [reportRows] = await db.query<ReportRow[]>(
+    `
+    SELECT
+      pr.id,
+      pr.post_id,
+      pr.reason,
+      pr.status,
+      pr.created_at,
+      reporter.username AS reporter_username,
+      reporter.nickname AS reporter_nickname,
+      author.username AS author_username,
+      author.nickname AS author_nickname,
+      p.description AS post_description
+    FROM Post_Reports pr
+    JOIN Users reporter ON reporter.id = pr.reporter_id
+    JOIN Posts p ON p.id = pr.post_id
+    JOIN Users author ON author.id = p.user
+    ORDER BY pr.created_at DESC
+    LIMIT 150
+    `,
+    [],
+  ).catch(() => [[] as ReportRow[]]);
+  const reports: AdminReport[] = reportRows.map((row) => ({
+    id: Number(row.id),
+    postId: Number(row.post_id),
+    reason: row.reason ? String(row.reason) : null,
+    status: row.status,
+    createdAt: new Date(row.created_at).toISOString(),
+    reporterUsername: String(row.reporter_username),
+    reporterNickname: row.reporter_nickname ? String(row.reporter_nickname) : null,
+    authorUsername: String(row.author_username),
+    authorNickname: row.author_nickname ? String(row.author_nickname) : null,
+    postDescription: row.post_description ? String(row.post_description) : null,
   }));
 
   return (
@@ -116,6 +178,42 @@ export default async function AdminPosts({ searchParams }: AdminPostsProps) {
               </li>
             ))}
           </ul>
+        </AdminSection>
+
+        <AdminSection title="Reportes de posts" description={`Mostrando ${reports.length} reportes recientes enviados por la comunidad.`}>
+          {reports.length === 0 ? (
+            <p className="rounded-xl border border-border bg-surface p-4 text-sm opacity-70">Aún no hay reportes.</p>
+          ) : (
+            <ul className="space-y-3">
+              {reports.map((report) => (
+                <li key={report.id} className="rounded-xl border border-border/70 bg-surface p-4">
+                  <p className="text-sm">
+                    <span className="font-semibold">
+                      {report.reporterNickname || report.reporterUsername}
+                    </span>{" "}
+                    <span className="opacity-70">(@{report.reporterUsername})</span>{" "}
+                    reportó un post de{" "}
+                    <span className="font-semibold">
+                      {report.authorNickname || report.authorUsername}
+                    </span>{" "}
+                    <span className="opacity-70">(@{report.authorUsername})</span>.
+                  </p>
+                  <p className="mt-1 text-xs opacity-65">{new Date(report.createdAt).toLocaleString()}</p>
+                  {report.reason && <p className="mt-2 text-sm">Motivo: {report.reason}</p>}
+                  {report.postDescription && (
+                    <p className="mt-2 whitespace-pre-wrap rounded-lg border border-border/60 bg-background/30 p-2 text-xs opacity-80">
+                      {report.postDescription}
+                    </p>
+                  )}
+                  <div className="mt-3">
+                    <a href={`/p/${report.postId}`} className="rounded-full border border-border px-3 py-1 text-xs">
+                      Ver post #{report.postId}
+                    </a>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </AdminSection>
       </AdminShell>
     </div>
