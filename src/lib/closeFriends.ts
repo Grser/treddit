@@ -15,18 +15,21 @@ export async function ensureCloseFriendsTable() {
   if (ensured) return;
   await db.execute(`
     CREATE TABLE IF NOT EXISTS CloseFriends (
-      user_id INT NOT NULL,
-      friend_user_id INT NOT NULL,
+      user_id INT(10) UNSIGNED NOT NULL,
+      friend_user_id INT(10) UNSIGNED NOT NULL,
       created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY (user_id, friend_user_id),
       INDEX idx_close_friends_friend (friend_user_id),
       CONSTRAINT fk_close_friends_user
         FOREIGN KEY (user_id) REFERENCES Users(id)
-        ON DELETE CASCADE,
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
       CONSTRAINT fk_close_friends_friend
         FOREIGN KEY (friend_user_id) REFERENCES Users(id)
         ON DELETE CASCADE
+        ON UPDATE CASCADE
     )
+    ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
   ensured = true;
 }
