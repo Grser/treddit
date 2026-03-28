@@ -7,6 +7,8 @@ import { getSessionUser } from "@/lib/auth";
 import { db, isDatabaseConfigured } from "@/lib/db";
 import NotificationSettingsPanel from "@/components/notifications/NotificationSettingsPanel";
 import { getNotificationPreferences } from "@/lib/notifications";
+import FollowRequestsPanel from "@/components/notifications/FollowRequestsPanel";
+import { ensureProfilePrivacySchema } from "@/lib/profilePrivacy";
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +43,15 @@ type RepostEvent = {
   is_verified?: boolean;
 };
 
+type FollowRequestEvent = {
+  id: number;
+  requesterId: number;
+  username: string;
+  nickname: string | null;
+  avatar_url: string | null;
+  created_at: string;
+};
+
 type LikeGroupEvent = {
   postId: number;
   postDescription: string | null;
@@ -63,14 +74,15 @@ export default async function NotificationsPage() {
     ? await getNotificationPreferences(me.id)
     : { follows: true, likes: true, reposts: true, mentions: true, ads: true, lastSeenAt: null, clearedBefore: null };
 
-  const [follows, posts, reposts, likes]: [FollowEvent[], PostEvent[], RepostEvent[], LikeGroupEvent[]] = me && databaseReady
+  const [follows, posts, reposts, likes, followRequests]: [FollowEvent[], PostEvent[], RepostEvent[], LikeGroupEvent[], FollowRequestEvent[]] = me && databaseReady
     ? await Promise.all([
         preferences.follows ? loadFollowers(me.id, preferences.clearedBefore) : Promise.resolve([]),
         preferences.ads ? loadFollowedPosts(me.id, preferences.clearedBefore) : Promise.resolve([]),
         preferences.reposts ? loadRepostsOnMyPosts(me.id, preferences.clearedBefore) : Promise.resolve([]),
         preferences.likes ? loadLikesOnMyPosts(me.id, preferences.clearedBefore) : Promise.resolve([]),
+        loadPendingFollowRequests(me.id),
       ])
-    : [[], [], [], []];
+    : [[], [], [], [], []];
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
@@ -119,11 +131,13 @@ export default async function NotificationsPage() {
           />
         )}
 
-        {me && databaseReady && follows.length === 0 && posts.length === 0 && reposts.length === 0 && likes.length === 0 && (
+        {me && databaseReady && follows.length === 0 && posts.length === 0 && reposts.length === 0 && likes.length === 0 && followRequests.length === 0 && (
           <div className="rounded-xl border border-border bg-surface p-6 text-sm opacity-70">
             No hay novedades por ahora. Sigue a más personas para mantenerte al día.
           </div>
         )}
+
+        {me && followRequests.length > 0 && <FollowRequestsPanel initialItems={followRequests} />}
 
         {me && follows.length > 0 && (
           <section className="space-y-3">
@@ -402,4 +416,23 @@ async function loadLikesOnMyPosts(userId: number, clearedBefore: string | null):
   return Array.from(byPost.values())
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 40);
+}
+
+
+async function loadPendingFollowRequests(userId: number): Promise<FollowRequestEvent[]> {
+  await ensureProfilePrivacySchema();
+
+  const [rows] = await db.query(
+    `
+    SELECT fr.id, fr.requester_id AS requesterId, fr.created_at, u.username, u.nickname, u.avatar_url
+    FROM Follow_Requests fr
+    JOIN Users u ON u.id = fr.requester_id
+    WHERE fr.target_id = ? AND fr.status = 'pending'
+    ORDER BY fr.created_at DESC
+    LIMIT 40
+    `,
+    [userId]
+  );
+
+  return rows as FollowRequestEvent[];
 }

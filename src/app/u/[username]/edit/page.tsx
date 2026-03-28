@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { ensureUsersAgeColumns, ensureAgeVerificationRequestsTable } from "@/lib/ageVerification";
 import { getAllowMessagesFromAnyone } from "@/lib/messages";
 import { COUNTRY_OPTIONS } from "@/lib/countries";
+import { ensureProfilePrivacySchema } from "@/lib/profilePrivacy";
 import Navbar from "@/components/Navbar";
 import ImagePickerField from "@/components/profile/ImagePickerField";
 
@@ -22,6 +23,7 @@ type ProfileRow = RowDataPacket & {
   is_age_verified: number;
   has_age_request: number;
   id_document_url: string | null;
+  is_private: number;
 };
 
 function toDateInputValue(raw: Date | string | null | undefined) {
@@ -44,13 +46,14 @@ export default async function EditProfilePage({ params }: { params: Promise<{ us
   const me = await requireUser();
   if (!me || me.username !== username) return <div className="p-6">No autorizado</div>;
 
-  await Promise.all([ensureUsersAgeColumns(), ensureAgeVerificationRequestsTable()]);
+  await Promise.all([ensureUsersAgeColumns(), ensureAgeVerificationRequestsTable(), ensureProfilePrivacySchema()]);
 
   const [[rows], allowMessages] = await Promise.all([
     db.query<ProfileRow[]>(
       `SELECT u.nickname, u.avatar_url, u.banner_url, u.description, u.location, u.website,
               u.show_likes, u.show_bookmarks, u.birth_date, u.is_age_verified,
               u.country_of_origin,
+              u.is_private,
               EXISTS(SELECT 1 FROM Age_Verification_Requests avr WHERE avr.user_id = u.id) AS has_age_request
               ,(SELECT avr.id_document_url FROM Age_Verification_Requests avr WHERE avr.user_id = u.id LIMIT 1) AS id_document_url
        FROM Users u
@@ -74,6 +77,7 @@ export default async function EditProfilePage({ params }: { params: Promise<{ us
     has_age_request: 0,
     country_of_origin: "",
     id_document_url: null,
+    is_private: 0,
   };
 
   const birthDateValue = toDateInputValue(u.birth_date);
@@ -190,6 +194,10 @@ export default async function EditProfilePage({ params }: { params: Promise<{ us
               <label className="inline-flex items-center gap-2">
                 <input type="checkbox" name="allow_messages_anyone" defaultChecked={allowMessages} />
                 Aceptar mensajes de terceros
+              </label>
+              <label className="inline-flex items-center gap-2">
+                <input type="checkbox" name="is_private" defaultChecked={Boolean(u.is_private)} />
+                Perfil privado (solo seguidores verán tus publicaciones)
               </label>
             </div>
           </section>

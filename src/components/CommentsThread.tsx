@@ -27,9 +27,11 @@ type MentionUser = { id: number; username: string; nickname: string | null };
 export default function CommentsThread({
   postId,
   canInteract,
+  canReply,
 }: {
   postId: number;
   canInteract: boolean;
+  canReply: boolean;
 }) {
   const { strings } = useLocale();
   const t = strings.comments;
@@ -147,7 +149,7 @@ export default function CommentsThread({
 
   return (
     <div className="mt-3">
-      {canInteract && (
+      {canInteract && canReply && (
         <div className="mb-3">
           <div className="flex items-start gap-2">
             <textarea
@@ -184,7 +186,9 @@ export default function CommentsThread({
         </div>
       )}
 
-      <CommentList nodes={tree} postId={postId} canInteract={canInteract} onReplied={load} />
+      {canInteract && !canReply && <p className="mb-3 text-sm opacity-70">No puedes responder en esta publicación.</p>}
+
+      <CommentList nodes={tree} postId={postId} canInteract={canInteract && canReply} onReplied={load} />
     </div>
   );
 }
