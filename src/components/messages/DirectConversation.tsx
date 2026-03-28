@@ -495,6 +495,7 @@ export default function DirectConversation({
         if (!nextMessage.attachments?.length && attachments.length) {
           nextMessage.attachments = attachments;
         }
+        shouldAutoScrollRef.current = true;
         setMessages((prev) => mergeById(prev, [nextMessage]));
         window.dispatchEvent(new CustomEvent("treddit:messages-updated"));
         setText("");
@@ -514,11 +515,11 @@ export default function DirectConversation({
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 md:gap-3">
-      <div className="flex min-h-0 flex-1 flex-col rounded-3xl border border-border bg-surface/90 p-3 shadow-sm md:p-4">
+      <div className="flex min-h-0 flex-1 flex-col rounded-3xl border border-border/80 bg-gradient-to-b from-surface/95 to-background/70 p-3 shadow-sm md:p-4">
         {messages.length === 0 && (
           <p className="text-sm opacity-70">{strings.comments.none || "Aún no hay mensajes. Inicia la conversación."}</p>
         )}
-        <ul ref={scrollRef} className="hide-scrollbar mt-2 min-h-0 flex-1 space-y-1 overflow-x-hidden overflow-y-auto pr-0.5 sm:pr-1">
+        <ul ref={scrollRef} className="hide-scrollbar mt-2 min-h-0 flex-1 space-y-1 overflow-x-hidden overflow-y-auto pr-0.5 pb-3 [overflow-anchor:none] sm:pr-1">
           {messages.map((msg, index) => {
             const isMine = msg.senderId === viewerId;
             const previous = messages[index - 1];
@@ -752,7 +753,7 @@ export default function DirectConversation({
         </ul>
       </div>
 
-      <form onSubmit={sendMessage} className="shrink-0 space-y-3 rounded-2xl border border-border bg-surface p-2.5 shadow-sm sm:p-3.5 md:rounded-3xl md:p-4">
+      <form onSubmit={sendMessage} className="sticky bottom-0 z-10 shrink-0 space-y-3 rounded-2xl border border-border/90 bg-surface/95 p-2.5 shadow-lg backdrop-blur sm:p-3.5 md:rounded-3xl md:p-4">
         {replyingTo && (
           <div className="flex items-start justify-between rounded-xl border border-border bg-muted/40 px-3 py-2 text-xs">
             <div>

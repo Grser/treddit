@@ -60,9 +60,9 @@ export default function EditPostForm({ postId, initialDescription, initialReplyS
           defaultValue={initialReplyScope}
           className="h-10 px-3 rounded-md bg-input ring-1 ring-border"
         >
-          <option value={0}>Todos</option>
-          <option value={1}>Personas que sigues</option>
-          <option value={2}>Solo mencionados</option>
+          <option value={0}>Todo el mundo</option>
+          <option value={1}>Solo seguidores</option>
+          <option value={2}>Mejores amigos</option>
         </select>
       </label>
 

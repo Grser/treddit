@@ -734,7 +734,7 @@ export default function GroupConversation({
           </div>
         </div>
       )}
-      <ul ref={messagesListRef} className="hide-scrollbar min-h-0 flex-1 space-y-2 overflow-y-auto rounded-2xl border border-border bg-surface/90 p-3">
+      <ul ref={messagesListRef} className="hide-scrollbar min-h-0 flex-1 space-y-2 overflow-y-auto rounded-2xl border border-border/80 bg-gradient-to-b from-surface/95 to-background/70 p-3 pb-3 [overflow-anchor:none]">
         {messages.map((msg, index) => {
           const mine = msg.senderId === viewerId;
           const previous = messages[index - 1];
@@ -908,7 +908,7 @@ export default function GroupConversation({
         </div>
       )}
       <form
-        className="flex gap-2 rounded-2xl border border-border bg-input p-2.5"
+        className="sticky bottom-0 z-10 flex gap-2 rounded-2xl border border-border/90 bg-surface/95 p-2.5 shadow-lg backdrop-blur"
         onSubmit={async (event) => {
           event.preventDefault();
           const trimmed = text.trim();
@@ -923,6 +923,7 @@ export default function GroupConversation({
             });
             const payload = await res.json().catch(() => ({}));
             if (res.ok && payload.message) {
+              shouldAutoScrollRef.current = true;
               setMessages((prev) => mergeMessagesById(prev, [payload.message as GroupMessageEntry]));
               setText("");
             } else {
@@ -976,6 +977,7 @@ export default function GroupConversation({
                     });
                     const payload = await res.json().catch(() => ({}));
                     if (res.ok && payload.message) {
+                      shouldAutoScrollRef.current = true;
                       setMessages((prev) => mergeMessagesById(prev, [payload.message as GroupMessageEntry]));
                     } else {
                       setSendError(typeof payload.error === "string" ? payload.error : "No se pudo enviar el sticker");
