@@ -45,6 +45,14 @@ type SharedPostPreview = {
   canViewSensitive: boolean;
 };
 
+type LinkPreview = {
+  url: string;
+  title: string;
+  description: string | null;
+  image: string | null;
+  domain: string;
+};
+
 function parseSharedPostText(text: string | null | undefined) {
   if (!text) return null;
   const trimmed = text.trim();
@@ -93,14 +101,37 @@ function parseSticker(text: string | null | undefined) {
   return match[1];
 }
 
+function extractUrls(text: string | null | undefined) {
+  if (!text) return [];
+  const matches = text.match(/https?:\/\/[^\s<>"'`]+/gi) || [];
+  return [...new Set(matches.map((url) => url.replace(/[),.;!?]+$/g, "")))];
+}
+
 function renderMessageText(text: string) {
-  const parts = text.split(/([@][\p{L}\p{N}_]+)/gu);
-  return parts.map((part, index) => {
-    if (/^@[\p{L}\p{N}_]+$/u.test(part)) {
-      const username = part.slice(1);
-      return <MentionUserLink key={`${part}-${index}`} username={username} text={part} className="font-medium" />;
+  const urlChunks = text.split(/(https?:\/\/[^\s<>"'`]+)/gi);
+  return urlChunks.map((chunk, chunkIndex) => {
+    if (/^https?:\/\/[^\s<>"'`]+$/i.test(chunk)) {
+      const href = chunk.replace(/[),.;!?]+$/g, "");
+      return (
+        <a
+          key={`url-${href}-${chunkIndex}`}
+          href={href}
+          target="_blank"
+          rel="noreferrer"
+          className="break-all text-sky-400 underline decoration-sky-400/70 underline-offset-2"
+        >
+          {href}
+        </a>
+      );
     }
-    return <span key={`text-${index}`}>{part}</span>;
+    const mentionParts = chunk.split(/([@][\p{L}\p{N}_]+)/gu);
+    return mentionParts.map((part, index) => {
+      if (/^@[\p{L}\p{N}_]+$/u.test(part)) {
+        const username = part.slice(1);
+        return <MentionUserLink key={`${part}-${chunkIndex}-${index}`} username={username} text={part} className="font-medium" />;
+      }
+      return <span key={`text-${chunkIndex}-${index}`}>{part}</span>;
+    });
   });
 }
 
@@ -145,6 +176,7 @@ export default function GroupConversation({
   const [settingsError, setSettingsError] = useState<string | null>(null);
   const [sharedPostPreviews, setSharedPostPreviews] = useState<Record<number, SharedPostPreview | null>>({});
   const [revealedSensitivePosts, setRevealedSensitivePosts] = useState<Record<number, boolean>>({});
+  const [linkPreviews, setLinkPreviews] = useState<Record<string, LinkPreview | null>>({});
   const [messageMenuId, setMessageMenuId] = useState<number | null>(null);
   const [showStickerTray, setShowStickerTray] = useState(false);
   const [replyingTo, setReplyingTo] = useState<GroupMessageEntry | null>(null);
@@ -312,6 +344,42 @@ export default function GroupConversation({
     }
     setMessageMenuId(null);
   }
+
+  useEffect(() => {
+    const urls = [...new Set(messages.flatMap((message) => {
+      if (parseSharedPostText(message.text)) return [];
+      return extractUrls(message.text);
+    }))];
+    const missing = urls.filter((url) => !(url in linkPreviews));
+    if (!missing.length) return;
+
+    let active = true;
+    const loadPreviews = async () => {
+      const results = await Promise.all(missing.map(async (url) => {
+        try {
+          const res = await fetch(`/api/link-preview?url=${encodeURIComponent(url)}`, { cache: "no-store" });
+          const payload = await res.json().catch(() => ({}));
+          if (!res.ok || !payload.preview) return [url, null] as const;
+          return [url, payload.preview as LinkPreview] as const;
+        } catch {
+          return [url, null] as const;
+        }
+      }));
+      if (!active) return;
+      setLinkPreviews((prev) => {
+        const next = { ...prev };
+        results.forEach(([url, preview]) => {
+          next[url] = preview;
+        });
+        return next;
+      });
+    };
+
+    void loadPreviews();
+    return () => {
+      active = false;
+    };
+  }, [linkPreviews, messages]);
 
   useEffect(() => {
     const sharedPostIds = [
@@ -786,7 +854,7 @@ export default function GroupConversation({
           </div>
         </div>
       )}
-      <ul ref={messagesListRef} className="hide-scrollbar min-h-0 flex-1 space-y-2 overflow-y-auto rounded-3xl border border-border/80 bg-gradient-to-b from-surface/95 to-background/70 p-3.5 pb-6 [overflow-anchor:none] sm:pb-8">
+      <ul ref={messagesListRef} className="hide-scrollbar mt-2 min-h-0 flex-1 space-y-1 overflow-x-hidden overflow-y-auto rounded-2xl bg-background/50 px-2 pr-0.5 pb-6 [overflow-anchor:none] sm:pr-1 sm:pb-8">
         {messages.map((msg, index) => {
           const mine = msg.senderId === viewerId;
           const previous = messages[index - 1];
@@ -821,8 +889,8 @@ export default function GroupConversation({
                   ) : <div className="size-8" />
                 )}
                 <div
-                  className={`relative max-w-[92%] rounded-2xl px-4 py-2 text-sm shadow-sm ${
-                    mine ? "border border-brand/45 bg-brand/15 text-foreground" : "bg-input text-foreground"
+                  className={`relative max-w-[92%] rounded-2xl px-3 py-2 text-sm shadow-lg shadow-black/20 sm:px-4 ${
+                    mine ? "border border-brand/45 bg-brand/15 text-foreground" : "border border-border bg-background/75 text-foreground"
                   }`}
                 >
                   <div data-message-menu-root="true">
@@ -853,7 +921,29 @@ export default function GroupConversation({
                     </button>
                   )}
                   {!sharedPost && !stickerUrl ? (
-                    <p className="whitespace-pre-wrap">{renderMessageText(msg.text || "")}</p>
+                    <div className="space-y-2">
+                      <p className="whitespace-pre-wrap break-words">{renderMessageText(msg.text || "")}</p>
+                      {(() => {
+                        const firstUrl = extractUrls(msg.text)[0];
+                        const preview = firstUrl ? linkPreviews[firstUrl] : null;
+                        if (!preview) return null;
+                        return (
+                          <a
+                            href={preview.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className={`block overflow-hidden rounded-2xl border p-2 transition hover:scale-[1.01] ${mine ? "border-brand/35 bg-brand/10" : "border-border bg-background/80"}`}
+                          >
+                            {preview.image ? (
+                              <Image src={preview.image} alt={preview.title} width={360} height={220} className="h-[150px] w-full rounded-xl object-cover" unoptimized />
+                            ) : null}
+                            <p className="mt-2 line-clamp-1 text-xs font-semibold">{preview.title}</p>
+                            <p className="text-[11px] opacity-70">{preview.domain}</p>
+                            {preview.description ? <p className="mt-1 line-clamp-2 text-xs opacity-80">{preview.description}</p> : null}
+                          </a>
+                        );
+                      })()}
+                    </div>
                   ) : stickerUrl ? (
                     <Image
                       src={stickerUrl}
