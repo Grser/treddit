@@ -20,8 +20,72 @@ type ShareTarget = {
   avatarUrl: string | null;
 };
 
-const ANIME_SITE_SHARE_BASE =
-  process.env.NEXT_PUBLIC_ANIME_SITE_SHARE_URL?.trim() || "https://github.com/Grser/Anime-site-astro";
+type ExternalSharePlatform = "x" | "telegram" | "whatsapp" | "facebook" | "copy";
+
+const externalShareOptions: Array<{
+  id: ExternalSharePlatform;
+  label: string;
+  className: string;
+  title: string;
+  icon: JSX.Element;
+}> = [
+  {
+    id: "x",
+    label: "X",
+    className: "bg-zinc-800",
+    title: "Compartir por X",
+    icon: (
+      <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4 fill-current">
+        <path d="M18.9 2H22l-6.8 7.8L23 22h-6.1l-4.8-6.9L6 22H2.9l7.3-8.4L1 2h6.2l4.3 6.2L18.9 2Zm-2.1 17.3h1.7L6.2 4.6H4.4l12.4 14.7Z" />
+      </svg>
+    ),
+  },
+  {
+    id: "telegram",
+    label: "Telegram",
+    className: "bg-sky-500",
+    title: "Compartir por Telegram",
+    icon: (
+      <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4 fill-current">
+        <path d="m21.6 4.4-3.1 14.7c-.2 1-1 1.3-1.8.8l-4.7-3.5-2.3 2.2c-.2.2-.4.4-.8.4l.3-4.9L18.1 6c.4-.4-.1-.6-.6-.3L6.8 12.4l-4.6-1.4c-1-.3-1-.9.2-1.3l17.8-6.9c.8-.3 1.5.2 1.3 1.6Z" />
+      </svg>
+    ),
+  },
+  {
+    id: "whatsapp",
+    label: "WhatsApp",
+    className: "bg-emerald-500",
+    title: "Compartir por WhatsApp",
+    icon: (
+      <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4 fill-current">
+        <path d="M20.5 3.5A11 11 0 0 0 3.7 17.1L2 22l5-1.6A11 11 0 1 0 20.5 3.5ZM12 20.2c-1.7 0-3.3-.5-4.7-1.4l-.3-.2-3 .9 1-2.9-.2-.3a8.7 8.7 0 1 1 7.2 3.9Zm4.8-6.5c-.3-.1-1.8-.9-2.1-1-.3-.1-.5-.1-.8.2l-.6.8c-.2.2-.3.2-.6.1-.3-.1-1.2-.4-2.2-1.3-.8-.7-1.3-1.6-1.4-1.9-.1-.3 0-.4.1-.6l.5-.5.2-.3.1-.2c.1-.2.1-.4 0-.6l-.8-2c-.2-.4-.4-.4-.6-.4h-.5c-.2 0-.6.1-.8.4-.3.3-1 1-.9 2.4.1 1.4 1 2.7 1.2 2.9.2.2 2 3 4.9 4.2.7.3 1.3.5 1.8.6.8.2 1.5.2 2 .1.6-.1 1.8-.8 2-1.5.3-.7.3-1.3.2-1.5-.1-.2-.3-.3-.6-.4Z" />
+      </svg>
+    ),
+  },
+  {
+    id: "facebook",
+    label: "Facebook",
+    className: "bg-blue-600",
+    title: "Compartir por Facebook",
+    icon: (
+      <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4 fill-current">
+        <path d="M24 12a12 12 0 1 0-13.9 11.9v-8.4H7.1V12h3V9.4c0-3 1.8-4.6 4.5-4.6 1.3 0 2.7.2 2.7.2V8h-1.5c-1.5 0-2 1-2 1.9V12h3.4l-.6 3.5h-2.8v8.4A12 12 0 0 0 24 12Z" />
+      </svg>
+    ),
+  },
+  {
+    id: "copy",
+    label: "Copiar link",
+    className: "bg-zinc-700",
+    title: "Copiar enlace",
+    icon: (
+      <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4 fill-none stroke-current" strokeWidth="2">
+        <path d="M10 13a5 5 0 0 0 7.1 0l2.8-2.8a5 5 0 0 0-7.1-7.1L11 4.9" />
+        <path d="M14 11a5 5 0 0 0-7.1 0L4.1 13.8a5 5 0 1 0 7.1 7.1l1.8-1.8" />
+      </svg>
+    ),
+  },
+];
 
 export default function PostActions({
   postId,
@@ -184,7 +248,7 @@ export default function PostActions({
     return customMessage ? `${customMessage}\n${postUrl}` : `Te compartieron este post\n${postUrl}`;
   }
 
-  function openExternalShare(platform: "x" | "telegram" | "whatsapp" | "facebook" | "copy" | "anime") {
+  function openExternalShare(platform: ExternalSharePlatform) {
     const postUrl = buildPostUrl();
     const text = buildText(postUrl);
     const encodedUrl = encodeURIComponent(postUrl);
@@ -196,14 +260,12 @@ export default function PostActions({
           ? `https://t.me/share/url?url=${encodedUrl}&text=${encodedText}`
           : platform === "whatsapp"
             ? `https://wa.me/?text=${encodedText}`
-            : platform === "facebook"
-              ? `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`
-              : platform === "anime"
-                ? `${ANIME_SITE_SHARE_BASE}${ANIME_SITE_SHARE_BASE.includes("?") ? "&" : "?"}sharedUrl=${encodedUrl}&text=${encodedText}`
+              : platform === "facebook"
+                ? `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`
                 : "";
 
     if (platform === "copy") {
-      void navigator.clipboard.writeText(text).then(() => alert("Enlace copiado"));
+      void navigator.clipboard.writeText(postUrl).then(() => alert("Enlace copiado"));
       return;
     }
 
@@ -319,21 +381,15 @@ export default function PostActions({
               <button className="text-sm opacity-70" onClick={() => setShowShareModal(false)}>Cerrar</button>
             </div>
             <div className="mb-3 flex items-center gap-2 overflow-x-auto pb-1">
-              {[
-                { id: "x", label: "X", className: "bg-zinc-800" },
-                { id: "telegram", label: "TG", className: "bg-sky-500" },
-                { id: "whatsapp", label: "WA", className: "bg-emerald-500" },
-                { id: "facebook", label: "f", className: "bg-blue-600" },
-                { id: "anime", label: "Anime", className: "bg-fuchsia-600" },
-                { id: "copy", label: "↗", className: "bg-zinc-700" },
-              ].map((item) => (
+              {externalShareOptions.map((item) => (
                 <button
                   key={item.id}
-                  onClick={() => openExternalShare(item.id as "x" | "telegram" | "whatsapp" | "facebook" | "copy" | "anime")}
-                  className={`inline-flex h-9 min-w-9 items-center justify-center rounded-full px-2 text-xs font-semibold text-white ${item.className}`}
-                  title={`Compartir por ${item.label}`}
+                  onClick={() => openExternalShare(item.id)}
+                  className={`inline-flex h-9 min-w-9 items-center justify-center rounded-full px-3 text-xs font-semibold text-white ${item.className}`}
+                  title={item.title}
+                  aria-label={item.title}
                 >
-                  {item.label}
+                  {item.icon}
                 </button>
               ))}
             </div>
