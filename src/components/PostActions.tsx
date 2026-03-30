@@ -1,6 +1,6 @@
 "use client";
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactElement } from "react";
 import {
   IconBookmark,
   IconComment,
@@ -27,7 +27,7 @@ const externalShareOptions: Array<{
   label: string;
   className: string;
   title: string;
-  icon: JSX.Element;
+  icon: ReactElement;
 }> = [
   {
     id: "x",
