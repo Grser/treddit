@@ -7,6 +7,7 @@ import { useLocale } from "@/contexts/LocaleContext";
 import UserBadges from "./UserBadges";
 import MentionUserLink from "./MentionUserLink";
 import SafeExternalLink from "./SafeExternalLink";
+import EmojiPicker from "./EmojiPicker";
 
 type CommentNode = {
   id: number;
@@ -42,6 +43,7 @@ export default function CommentsThread({
   const [mentionQuery, setMentionQuery] = useState("");
   const [mentionResults, setMentionResults] = useState<MentionUser[]>([]);
   const [mentionsLoading, setMentionsLoading] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -117,6 +119,11 @@ export default function CommentsThread({
     setMentionResults([]);
   }
 
+  function addEmoji(emoji: string) {
+    setText((prev) => `${prev}${emoji}`);
+    setShowEmojiPicker(false);
+  }
+
   async function addRoot() {
     if (!canInteract || !text.trim() || busy) return;
     setBusy(true);
@@ -151,22 +158,35 @@ export default function CommentsThread({
     <div className="mt-3">
       {canInteract && canReply && (
         <div className="mb-3">
-          <div className="flex items-start gap-2">
-            <textarea
-              className="flex-1 resize-none rounded-md bg-input p-2 text-sm outline-none ring-1 ring-border focus:ring-2"
-              placeholder={t.placeholder}
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              rows={2}
-              disabled={busy}
-            />
-            <button
-              onClick={addRoot}
-              disabled={busy || !text.trim()}
-              className="h-9 rounded-full bg-brand px-3 text-sm text-white disabled:opacity-50"
-            >
-              {t.add}
-            </button>
+          <div className="relative">
+            <div className="flex items-start gap-2">
+              <textarea
+                className="flex-1 resize-none rounded-md bg-input p-2 text-sm outline-none ring-1 ring-border focus:ring-2"
+                placeholder={t.placeholder}
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                rows={2}
+                disabled={busy}
+              />
+              <div className="flex items-center gap-1">
+                <button type="button" onClick={() => setText((prev) => `${prev}${prev.endsWith(" ") || !prev ? "" : " "}@`)} className="rounded-full bg-muted px-2 py-1 text-sm" title="Etiquetar usuario">
+                  @
+                </button>
+                <button type="button" onClick={() => setShowEmojiPicker((prev) => !prev)} className="rounded-full bg-muted px-2 py-1 text-sm" title="Agregar emoji">
+                  🙂
+                </button>
+                <button
+                  onClick={addRoot}
+                  disabled={busy || !text.trim()}
+                  className="h-9 rounded-full bg-brand px-3 text-sm text-white disabled:opacity-50"
+                >
+                  {t.add}
+                </button>
+              </div>
+            </div>
+            {showEmojiPicker && (
+              <EmojiPicker onSelect={addEmoji} className="absolute right-0 z-20 mt-2 w-[min(20rem,90vw)]" />
+            )}
           </div>
           {(mentionsLoading || mentionResults.length > 0) && (
             <div className="mt-2 flex flex-wrap gap-2">
@@ -238,6 +258,7 @@ function CommentItem({
   const [mentionQuery, setMentionQuery] = useState("");
   const [mentionResults, setMentionResults] = useState<MentionUser[]>([]);
   const [mentionsLoading, setMentionsLoading] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   const avatar = node.avatar_url?.trim() || "/demo-reddit.png";
 
@@ -286,6 +307,11 @@ function CommentItem({
     setReplyText((prev) => prev.replace(/(?:^|\s)@[\p{L}\p{N}_]{1,32}$/u, (full) => `${full[0] === " " ? " " : ""}@${username} `));
     setMentionResults([]);
     setMentionQuery("");
+  }
+
+  function addReplyEmoji(emoji: string) {
+    setReplyText((prev) => `${prev}${emoji}`);
+    setShowEmojiPicker(false);
   }
 
   async function reply() {
@@ -344,7 +370,8 @@ function CommentItem({
 
         {replyOpen && (
           <div className="mt-2">
-            <div className="flex items-start gap-2">
+            <div className="relative">
+              <div className="flex items-start gap-2">
               <textarea
                 className="flex-1 resize-none rounded-md bg-input p-2 text-sm outline-none ring-1 ring-border focus:ring-2"
                 placeholder={t.replyPlaceholder}
@@ -352,6 +379,12 @@ function CommentItem({
                 onChange={(e) => setReplyText(e.target.value)}
                 rows={2}
               />
+              <button type="button" onClick={() => setReplyText((prev) => `${prev}${prev.endsWith(" ") || !prev ? "" : " "}@`)} className="rounded-full bg-muted px-2 py-1 text-sm" title="Etiquetar usuario">
+                @
+              </button>
+              <button type="button" onClick={() => setShowEmojiPicker((prev) => !prev)} className="rounded-full bg-muted px-2 py-1 text-sm" title="Agregar emoji">
+                🙂
+              </button>
               <button
                 className="h-8 rounded-full bg-brand px-3 text-sm text-white disabled:opacity-50"
                 onClick={reply}
@@ -359,6 +392,10 @@ function CommentItem({
               >
                 {t.send}
               </button>
+              </div>
+              {showEmojiPicker && (
+                <EmojiPicker onSelect={addReplyEmoji} className="absolute right-0 z-20 mt-2 w-[min(20rem,90vw)]" />
+              )}
             </div>
             {(mentionsLoading || mentionResults.length > 0) && (
               <div className="mt-2 flex flex-wrap gap-2">

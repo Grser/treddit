@@ -6,6 +6,8 @@ import { useEffect, useRef, useState } from "react";
 
 import { validateUploadSize } from "@/lib/upload";
 import { uploadFile } from "@/lib/clientUpload";
+import EmojiPicker from "@/components/EmojiPicker";
+import MentionUserLink from "@/components/MentionUserLink";
 
 import type { GroupMessageEntry } from "@/lib/messages";
 
@@ -91,6 +93,17 @@ function parseSticker(text: string | null | undefined) {
   return match[1];
 }
 
+function renderMessageText(text: string) {
+  const parts = text.split(/([@][\p{L}\p{N}_]+)/gu);
+  return parts.map((part, index) => {
+    if (/^@[\p{L}\p{N}_]+$/u.test(part)) {
+      const username = part.slice(1);
+      return <MentionUserLink key={`${part}-${index}`} username={username} text={part} className="font-medium" />;
+    }
+    return <span key={`text-${index}`}>{part}</span>;
+  });
+}
+
 export default function GroupConversation({
   groupId,
   viewerId,
@@ -138,12 +151,46 @@ export default function GroupConversation({
   const [attachments, setAttachments] = useState<GroupMessageEntry["attachments"]>([]);
   const [oneTimeImageMode, setOneTimeImageMode] = useState(false);
   const [manageView, setManageView] = useState<"general" | "members" | "roles">("general");
+  const [mentionQuery, setMentionQuery] = useState("");
+  const [groupMentionResults, setGroupMentionResults] = useState<GroupMember[]>([]);
   const shouldAutoScrollRef = useRef(true);
   const initialScrollDoneRef = useRef(false);
   const groupAvatar = avatarUrl || "/demo-reddit.png";
 
   const myMember = members.find((member) => member.id === viewerId);
   const canSendMessages = Boolean(myMember?.can_send_messages ?? true);
+
+  useEffect(() => {
+    const match = text.match(/(?:^|\s)@([\p{L}\p{N}_]{0,32})$/u);
+    const query = match ? match[1].toLowerCase() : "";
+    setMentionQuery(query);
+  }, [text]);
+
+  useEffect(() => {
+    if (!mentionQuery && !text.endsWith("@")) {
+      setGroupMentionResults([]);
+      return;
+    }
+    const normalized = mentionQuery.trim().toLowerCase();
+    const filtered = members
+      .filter((member) => member.id !== viewerId)
+      .filter((member) => {
+        if (!normalized) return true;
+        const haystack = `${member.username} ${member.nickname || ""}`.toLowerCase();
+        return haystack.includes(normalized);
+      })
+      .slice(0, 8);
+    setGroupMentionResults(filtered);
+  }, [mentionQuery, members, text, viewerId]);
+
+  function insertGroupMention(username: string) {
+    setText((prev) => prev.replace(/(?:^|\s)@[\p{L}\p{N}_]{0,32}$/u, (full) => `${full[0] === " " ? " " : ""}@${username} `));
+    setGroupMentionResults([]);
+  }
+
+  function addEmoji(emoji: string) {
+    setText((prev) => `${prev}${emoji}`);
+  }
 
   useEffect(() => {
     const id = setInterval(async () => {
@@ -806,7 +853,7 @@ export default function GroupConversation({
                     </button>
                   )}
                   {!sharedPost && !stickerUrl ? (
-                    <p className="whitespace-pre-wrap">{msg.text}</p>
+                    <p className="whitespace-pre-wrap">{renderMessageText(msg.text || "")}</p>
                   ) : stickerUrl ? (
                     <Image
                       src={stickerUrl}
@@ -1018,31 +1065,51 @@ export default function GroupConversation({
             ))}
           </div>
         )}
-        <div className="flex flex-1 items-end gap-2">
-          <button
-            type="button"
-            onClick={() => setShowStickerTray((prev) => !prev)}
-            className="inline-flex size-10 items-center justify-center rounded-full bg-background/70 text-lg"
-            disabled={!canSendMessages || sendingRef.current}
-            aria-label="Abrir stickers"
-          >
-            🙂
-          </button>
-          <div className="flex-1 rounded-3xl border border-border/70 bg-background/70 px-3 py-2">
-          <textarea
-            value={text}
-            onChange={(event) => setText(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && !event.shiftKey) {
-                event.preventDefault();
-                event.currentTarget.form?.requestSubmit();
-              }
-            }}
-            className="max-h-40 min-h-12 w-full resize-none bg-transparent text-sm outline-none"
-            rows={2}
-            placeholder={canSendMessages ? "Escribe un mensaje" : "Solo lectura"}
-            disabled={!canSendMessages || sendingRef.current}
-          />
+        <div className="relative">
+          {(groupMentionResults.length > 0 && canSendMessages) && (
+            <div className="absolute bottom-full left-0 z-30 mb-2 w-[min(19rem,90vw)] overflow-hidden rounded-2xl border border-border bg-surface shadow-xl">
+              {groupMentionResults.map((member) => (
+                <button
+                  key={member.id}
+                  type="button"
+                  onClick={() => insertGroupMention(member.username)}
+                  className="flex w-full items-center gap-2 border-b border-border/60 px-3 py-2 text-left text-sm last:border-b-0 hover:bg-muted/70"
+                >
+                  <Image src={member.avatar_url || "/demo-reddit.png"} alt={member.username} width={30} height={30} className="size-7 rounded-full object-cover" unoptimized />
+                  <span>{member.nickname || member.username} <span className="opacity-70">@{member.username}</span></span>
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="flex flex-1 items-end gap-2">
+            <button
+              type="button"
+              onClick={() => setShowStickerTray((prev) => !prev)}
+              className="inline-flex size-10 items-center justify-center rounded-full bg-background/70 text-lg"
+              disabled={!canSendMessages || sendingRef.current}
+              aria-label="Abrir stickers"
+            >
+              🙂
+            </button>
+            <div className="flex-1 rounded-3xl border border-border/70 bg-background/70 px-3 py-2">
+            <textarea
+              value={text}
+              onChange={(event) => setText(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault();
+                  event.currentTarget.form?.requestSubmit();
+                }
+              }}
+              className="max-h-40 min-h-12 w-full resize-none bg-transparent text-sm outline-none"
+              rows={2}
+              placeholder={canSendMessages ? "Escribe un mensaje" : "Solo lectura"}
+              disabled={!canSendMessages || sendingRef.current}
+            />
+            <div className="mt-1 flex justify-end">
+              <button type="button" onClick={() => setText((prev) => `${prev}${prev.endsWith(" ") || !prev ? "" : " "}@`)} className="rounded-full bg-muted px-2 py-1 text-xs" disabled={!canSendMessages || sendingRef.current}>@</button>
+            </div>
+            </div>
           </div>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1052,11 +1119,12 @@ export default function GroupConversation({
             </button>
             <div className="flex flex-wrap gap-1">
               {QUICK_EMOJIS.map((emoji) => (
-                <button key={emoji} type="button" className="rounded-full border border-border/70 px-2 py-1 text-sm" onClick={() => setText((prev) => `${prev}${emoji}`)}>
+                <button key={emoji} type="button" className="rounded-full border border-border/70 px-2 py-1 text-sm" onClick={() => addEmoji(emoji)}>
                   {emoji}
                 </button>
               ))}
             </div>
+            <EmojiPicker onSelect={addEmoji} className="max-w-sm" />
           </div>
           <button type="submit" disabled={!canSendMessage} className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
             Enviar
