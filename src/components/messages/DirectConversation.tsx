@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import UserBadges from "@/components/UserBadges";
 import UserHoverPreview from "@/components/UserHoverPreview";
 import { useLocale } from "@/contexts/LocaleContext";
+import EmojiPicker from "@/components/EmojiPicker";
 
 import type { DirectMessageAttachment, DirectMessageEntry } from "@/lib/messages";
 
@@ -736,6 +737,7 @@ export default function DirectConversation({
                 </button>
               ))}
             </div>
+            <EmojiPicker onSelect={addEmoji} />
             <div className="flex flex-wrap items-center gap-2">
               {QUICK_MEDIA.map((item) => (
                 <button

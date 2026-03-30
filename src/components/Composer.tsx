@@ -7,6 +7,7 @@ import { useLocale } from "@/contexts/LocaleContext";
 import { formatUploadLimit } from "@/lib/upload";
 import { uploadFile } from "@/lib/clientUpload";
 import { isImageMediaUrl } from "@/lib/sensitiveMedia";
+import EmojiPicker from "@/components/EmojiPicker";
 
 type Tab = "post" | "media" | "poll";
 
@@ -38,6 +39,7 @@ export default function Composer({ enabled }: { enabled: boolean }) {
   const [mentionQuery, setMentionQuery] = useState("");
   const [mentionResults, setMentionResults] = useState<MentionUser[]>([]);
   const [mentionsLoading, setMentionsLoading] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const canMarkSensitive = Boolean(mediaUrl && isImageMediaUrl(mediaUrl));
 
   const [question, setQuestion] = useState("");
@@ -150,6 +152,12 @@ export default function Composer({ enabled }: { enabled: boolean }) {
     setText((prev) => prev.replace(/(?:^|\s)@[\p{L}\p{N}_]{1,32}$/u, (full) => `${full[0] === " " ? " " : ""}@${username} `));
     setMentionQuery("");
     setMentionResults([]);
+    clearError();
+  }
+
+  function addEmoji(emoji: string) {
+    setText((prev) => `${prev}${emoji}`);
+    setShowEmojiPicker(false);
     clearError();
   }
 
@@ -296,18 +304,31 @@ export default function Composer({ enabled }: { enabled: boolean }) {
 
       {tab !== "poll" && (
         <>
-          <textarea
-            className="w-full resize-none rounded-md bg-input text-sm p-3 outline-none ring-1 ring-border focus:ring-2"
-            placeholder={enabled ? t.placeholderEnabled : t.placeholderDisabled}
-            disabled={!enabled}
-            rows={3}
-            value={text}
-            maxLength={POST_TEXT_LIMIT}
-            onChange={(e) => {
-              clearError();
-              setText(e.target.value);
-            }}
-          />
+          <div className="relative">
+            <textarea
+              className="w-full resize-none rounded-md bg-input p-3 pr-20 text-sm outline-none ring-1 ring-border focus:ring-2"
+              placeholder={enabled ? t.placeholderEnabled : t.placeholderDisabled}
+              disabled={!enabled}
+              rows={3}
+              value={text}
+              maxLength={POST_TEXT_LIMIT}
+              onChange={(e) => {
+                clearError();
+                setText(e.target.value);
+              }}
+            />
+            <div className="absolute bottom-2 right-2 flex items-center gap-1">
+              <button type="button" disabled={!enabled} onClick={() => setText((prev) => `${prev}${prev.endsWith(" ") || !prev ? "" : " "}@`)} className="rounded-full bg-muted px-2 py-1 text-sm disabled:opacity-60" title="Etiquetar usuario">
+                @
+              </button>
+              <button type="button" disabled={!enabled} onClick={() => setShowEmojiPicker((prev) => !prev)} className="rounded-full bg-muted px-2 py-1 text-sm disabled:opacity-60" title="Agregar emoji">
+                🙂
+              </button>
+            </div>
+            {showEmojiPicker && enabled && (
+              <EmojiPicker onSelect={addEmoji} className="absolute right-0 z-20 mt-2 w-[min(20rem,90vw)]" />
+            )}
+          </div>
           <p className="mt-1 text-right text-xs opacity-65">
             {text.length}/{POST_TEXT_LIMIT}
           </p>
