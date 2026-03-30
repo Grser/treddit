@@ -20,6 +20,9 @@ type ShareTarget = {
   avatarUrl: string | null;
 };
 
+const ANIME_SITE_SHARE_BASE =
+  process.env.NEXT_PUBLIC_ANIME_SITE_SHARE_URL?.trim() || "https://github.com/Grser/Anime-site-astro";
+
 export default function PostActions({
   postId,
   canInteract,
@@ -44,6 +47,8 @@ export default function PostActions({
   const [shareBusy, setShareBusy] = useState(false);
   const [shareQuery, setShareQuery] = useState("");
   const [shareTargets, setShareTargets] = useState<ShareTarget[]>([]);
+  const [selectedTargets, setSelectedTargets] = useState<Record<string, ShareTarget>>({});
+  const [shareMessage, setShareMessage] = useState("");
 
   const [likedState, setLiked] = useState(!!liked);
   const [likesState, setLikes] = useState(likes);
@@ -165,23 +170,76 @@ export default function PostActions({
     }
     setShowShareModal(true);
     setShareQuery("");
+    setSelectedTargets({});
+    setShareMessage("");
     await loadShareTargets();
   }
 
-  async function sendPostTo(target: ShareTarget) {
+  function buildPostUrl() {
+    return new URL(`/p/${postId}`, window.location.origin).toString();
+  }
+
+  function buildText(postUrl: string) {
+    const customMessage = shareMessage.trim();
+    return customMessage ? `${customMessage}\n${postUrl}` : `Te compartieron este post\n${postUrl}`;
+  }
+
+  function openExternalShare(platform: "x" | "telegram" | "whatsapp" | "facebook" | "copy" | "anime") {
+    const postUrl = buildPostUrl();
+    const text = buildText(postUrl);
+    const encodedUrl = encodeURIComponent(postUrl);
+    const encodedText = encodeURIComponent(text);
+    const base =
+      platform === "x"
+        ? `https://x.com/intent/tweet?url=${encodedUrl}&text=${encodedText}`
+        : platform === "telegram"
+          ? `https://t.me/share/url?url=${encodedUrl}&text=${encodedText}`
+          : platform === "whatsapp"
+            ? `https://wa.me/?text=${encodedText}`
+            : platform === "facebook"
+              ? `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`
+              : platform === "anime"
+                ? `${ANIME_SITE_SHARE_BASE}${ANIME_SITE_SHARE_BASE.includes("?") ? "&" : "?"}sharedUrl=${encodedUrl}&text=${encodedText}`
+                : "";
+
+    if (platform === "copy") {
+      void navigator.clipboard.writeText(text).then(() => alert("Enlace copiado"));
+      return;
+    }
+
+    window.open(base, "_blank", "noopener,noreferrer");
+  }
+
+  function toggleTarget(target: ShareTarget) {
+    const key = `${target.type}-${target.id}`;
+    setSelectedTargets((prev) => {
+      if (prev[key]) {
+        const clone = { ...prev };
+        delete clone[key];
+        return clone;
+      }
+      return { ...prev, [key]: target };
+    });
+  }
+
+  async function sendPostToTargets() {
+    const targets = Object.values(selectedTargets);
+    if (targets.length === 0) return;
     setShareBusy(true);
-    const postUrl = new URL(`/p/${postId}`, window.location.origin).toString();
-    const text = `Te compartieron este post\n${postUrl}`;
+    const postUrl = buildPostUrl();
+    const text = buildText(postUrl);
 
     try {
-      const endpoint = target.type === "group" ? `/api/messages/groups/${target.id}/messages` : "/api/messages";
-      const payload = target.type === "group" ? { text } : { recipientId: target.id, text };
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error();
+      for (const target of targets) {
+        const endpoint = target.type === "group" ? `/api/messages/groups/${target.id}/messages` : "/api/messages";
+        const payload = target.type === "group" ? { text } : { recipientId: target.id, text };
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error();
+      }
       setShowShareModal(false);
     } catch {
       alert("No se pudo compartir este post");
@@ -257,14 +315,33 @@ export default function PostActions({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4">
           <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-4">
             <div className="mb-2 flex items-center justify-between">
-              <h3 className="text-base font-semibold">Compartir en chats o grupos</h3>
+              <h3 className="text-base font-semibold">Enviar a amigos</h3>
               <button className="text-sm opacity-70" onClick={() => setShowShareModal(false)}>Cerrar</button>
+            </div>
+            <div className="mb-3 flex items-center gap-2 overflow-x-auto pb-1">
+              {[
+                { id: "x", label: "X", className: "bg-zinc-800" },
+                { id: "telegram", label: "TG", className: "bg-sky-500" },
+                { id: "whatsapp", label: "WA", className: "bg-emerald-500" },
+                { id: "facebook", label: "f", className: "bg-blue-600" },
+                { id: "anime", label: "Anime", className: "bg-fuchsia-600" },
+                { id: "copy", label: "↗", className: "bg-zinc-700" },
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => openExternalShare(item.id as "x" | "telegram" | "whatsapp" | "facebook" | "copy" | "anime")}
+                  className={`inline-flex h-9 min-w-9 items-center justify-center rounded-full px-2 text-xs font-semibold text-white ${item.className}`}
+                  title={`Compartir por ${item.label}`}
+                >
+                  {item.label}
+                </button>
+              ))}
             </div>
             <input
               value={shareQuery}
               onChange={(event) => setShareQuery(event.target.value)}
               className="w-full rounded-xl border border-border bg-input px-3 py-2 text-sm"
-              placeholder="Buscar chat o grupo"
+              placeholder="Buscar"
             />
             <div className="mt-3 max-h-72 overflow-y-auto rounded-xl border border-border/70">
               {loadingTargets && <p className="p-3 text-sm opacity-70">Cargando chats…</p>}
@@ -275,7 +352,7 @@ export default function PostActions({
                 <button
                   key={`${target.type}-${target.id}`}
                   className="flex w-full items-center gap-3 border-b border-border/70 px-3 py-2 text-left hover:bg-muted/40"
-                  onClick={() => void sendPostTo(target)}
+                  onClick={() => toggleTarget(target)}
                   disabled={shareBusy}
                 >
                   {target.avatarUrl ? (
@@ -289,8 +366,35 @@ export default function PostActions({
                     <p className="text-sm font-medium">{target.title}</p>
                     <p className="text-xs opacity-65">{target.subtitle}</p>
                   </div>
+                  <span
+                    className={`ml-auto inline-flex size-6 items-center justify-center rounded-full border ${
+                      selectedTargets[`${target.type}-${target.id}`]
+                        ? "border-rose-500 bg-rose-500 text-white"
+                        : "border-border text-transparent"
+                    }`}
+                  >
+                    ✓
+                  </span>
                 </button>
               ))}
+            </div>
+            <div className="mt-3 border-t border-border/70 pt-3">
+              <input
+                value={shareMessage}
+                onChange={(event) => setShareMessage(event.target.value)}
+                className="w-full rounded-xl border border-border bg-input px-3 py-2 text-sm"
+                placeholder="Escribe un mensaje..."
+                maxLength={200}
+              />
+              <div className="mt-3 flex justify-end">
+                <button
+                  className="rounded-xl bg-rose-500 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+                  onClick={() => void sendPostToTargets()}
+                  disabled={shareBusy || Object.keys(selectedTargets).length === 0}
+                >
+                  Enviar ({Object.keys(selectedTargets).length})
+                </button>
+              </div>
             </div>
           </div>
         </div>
