@@ -30,6 +30,14 @@ type SharedPostPreview = {
   canViewSensitive: boolean;
 };
 
+type LinkPreview = {
+  url: string;
+  title: string;
+  description: string | null;
+  image: string | null;
+  domain: string;
+};
+
 const QUICK_EMOJIS = ["😀", "😂", "🔥", "❤️", "👏", "😮", "🙏", "🎉"] as const;
 const MESSAGE_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"] as const;
 
@@ -76,6 +84,33 @@ function parseSharedPostText(text: string | null | undefined) {
   };
 }
 
+function extractUrls(text: string | null | undefined) {
+  if (!text) return [];
+  const matches = text.match(/https?:\/\/[^\s<>"'`]+/gi) || [];
+  return [...new Set(matches.map((url) => url.replace(/[),.;!?]+$/g, "")))];
+}
+
+function renderTextWithLinks(text: string) {
+  const parts = text.split(/(https?:\/\/[^\s<>"'`]+)/gi);
+  return parts.map((part, index) => {
+    if (/^https?:\/\/[^\s<>"'`]+$/i.test(part)) {
+      const href = part.replace(/[),.;!?]+$/g, "");
+      return (
+        <a
+          key={`url-${href}-${index}`}
+          href={href}
+          target="_blank"
+          rel="noreferrer"
+          className="break-all text-sky-400 underline decoration-sky-400/70 underline-offset-2"
+        >
+          {href}
+        </a>
+      );
+    }
+    return <span key={`txt-${index}`}>{part}</span>;
+  });
+}
+
 export default function DirectConversation({
   initialMessages,
   viewerId,
@@ -101,6 +136,7 @@ export default function DirectConversation({
   const [isTrayOpen, setIsTrayOpen] = useState(false);
   const [sharedPostPreviews, setSharedPostPreviews] = useState<Record<number, SharedPostPreview | null>>({});
   const [revealedSensitivePosts, setRevealedSensitivePosts] = useState<Record<number, boolean>>({});
+  const [linkPreviews, setLinkPreviews] = useState<Record<string, LinkPreview | null>>({});
   const [oneTimeImageMode, setOneTimeImageMode] = useState(false);
   const [imageModal, setImageModal] = useState<{
     src: string;
@@ -197,6 +233,42 @@ export default function DirectConversation({
     markRead();
   }, [messages, recipient.id]);
 
+
+  useEffect(() => {
+    const urls = [...new Set(messages.flatMap((message) => {
+      if (parseSharedPostText(message.text)) return [];
+      return extractUrls(message.text);
+    }))];
+    const missing = urls.filter((url) => !(url in linkPreviews));
+    if (!missing.length) return;
+
+    let active = true;
+    const loadPreviews = async () => {
+      const results = await Promise.all(missing.map(async (url) => {
+        try {
+          const res = await fetch(`/api/link-preview?url=${encodeURIComponent(url)}`, { cache: "no-store" });
+          const payload = await res.json().catch(() => ({}));
+          if (!res.ok || !payload.preview) return [url, null] as const;
+          return [url, payload.preview as LinkPreview] as const;
+        } catch {
+          return [url, null] as const;
+        }
+      }));
+
+      if (!active) return;
+      setLinkPreviews((prev) => {
+        const next = { ...prev };
+        results.forEach(([url, preview]) => {
+          next[url] = preview;
+        });
+        return next;
+      });
+    };
+    void loadPreviews();
+    return () => {
+      active = false;
+    };
+  }, [linkPreviews, messages]);
 
   useEffect(() => {
     const sharedPostIds = [...new Set(messages
@@ -495,7 +567,28 @@ export default function DirectConversation({
                     {(() => {
                       const sharedPost = parseSharedPostText(msg.text);
                       if (!sharedPost) {
-                        return msg.text ? <p className="whitespace-pre-wrap break-words">{msg.text}</p> : null;
+                        const firstUrl = extractUrls(msg.text)[0];
+                        const preview = firstUrl ? linkPreviews[firstUrl] : null;
+                        return (
+                          <div className="space-y-2">
+                            {msg.text ? <p className="whitespace-pre-wrap break-words">{renderTextWithLinks(msg.text)}</p> : null}
+                            {preview ? (
+                              <a
+                                href={preview.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className={`block overflow-hidden rounded-2xl border p-2 transition hover:scale-[1.01] ${isMine ? "border-brand/35 bg-brand/10" : "border-border bg-background/80"}`}
+                              >
+                                {preview.image ? (
+                                  <Image src={preview.image} alt={preview.title} width={360} height={220} className="h-[150px] w-full rounded-xl object-cover" unoptimized />
+                                ) : null}
+                                <p className="mt-2 line-clamp-1 text-xs font-semibold">{preview.title}</p>
+                                <p className="text-[11px] opacity-70">{preview.domain}</p>
+                                {preview.description ? <p className="mt-1 line-clamp-2 text-xs opacity-80">{preview.description}</p> : null}
+                              </a>
+                            ) : null}
+                          </div>
+                        );
                       }
 
                       const preview = sharedPostPreviews[sharedPost.postId];
