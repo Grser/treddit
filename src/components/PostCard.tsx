@@ -10,7 +10,15 @@ import MentionUserLink from "./MentionUserLink";
 import SafeExternalLink from "./SafeExternalLink";
 
 import { useLocale } from "@/contexts/LocaleContext";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+
+type LinkPreview = {
+  url: string;
+  title: string;
+  description: string | null;
+  image: string | null;
+  domain: string;
+};
 
 export type Post = {
   id: number;
@@ -61,14 +69,14 @@ export default function PostCard({
   const hasSensitiveImage = Boolean(post.is_sensitive && mediaUrl && !isVideoUrl(mediaUrl));
   const [showSensitive, setShowSensitive] = useState(!hasSensitiveImage);
   const shouldBlurSensitiveImage = hasSensitiveImage && !showSensitive;
-  const [showLinkPreview, setShowLinkPreview] = useState(false);
-  const previewTimerRef = useRef<number | null>(null);
+  const [linkPreview, setLinkPreview] = useState<LinkPreview | null>(null);
+  const [isLoadingLinkPreview, setIsLoadingLinkPreview] = useState(false);
+  const previewUrl = post.description ? extractFirstUrl(post.description) : null;
   const createdAtLabel = new Intl.DateTimeFormat(locale, {
     dateStyle: "short",
     timeStyle: "medium",
     timeZone: "UTC",
   }).format(new Date(post.created_at));
-  const previewUrl = post.description ? extractFirstUrl(post.description) : null;
   const canReplyToPost =
     canInteract &&
     (post.reply_scope === 2
@@ -78,9 +86,31 @@ export default function PostCard({
         : true);
 
 
-  useEffect(() => () => {
-    if (previewTimerRef.current) window.clearTimeout(previewTimerRef.current);
-  }, []);
+  useEffect(() => {
+    setLinkPreview(null);
+    if (!previewUrl) return;
+
+    let active = true;
+    setIsLoadingLinkPreview(true);
+
+    const loadLinkPreview = async () => {
+      try {
+        const res = await fetch(`/api/link-preview?url=${encodeURIComponent(previewUrl)}`, { cache: "no-store" });
+        const payload = await res.json().catch(() => ({}));
+        if (!active || !res.ok || !payload.preview) return;
+        setLinkPreview(payload.preview as LinkPreview);
+      } catch {
+        // noop
+      } finally {
+        if (active) setIsLoadingLinkPreview(false);
+      }
+    };
+
+    void loadLinkPreview();
+    return () => {
+      active = false;
+    };
+  }, [previewUrl]);
 
   useEffect(() => {
     setCanViewSensitive(Boolean(post.can_view_sensitive));
@@ -105,16 +135,6 @@ export default function PostCard({
       active = false;
     };
   }, [canViewSensitive, hasSensitiveImage]);
-
-  function handlePreviewEnter() {
-    if (previewTimerRef.current) window.clearTimeout(previewTimerRef.current);
-    previewTimerRef.current = window.setTimeout(() => setShowLinkPreview(true), 2000);
-  }
-
-  function handlePreviewLeave() {
-    if (previewTimerRef.current) window.clearTimeout(previewTimerRef.current);
-    setShowLinkPreview(false);
-  }
 
   async function deleteAsAdmin() {
     if (!confirm("¿Eliminar este post?")) return;
@@ -237,18 +257,26 @@ export default function PostCard({
       )}
 
       {previewUrl && (
-        <div onMouseEnter={handlePreviewEnter} onMouseLeave={handlePreviewLeave}>
-          {showLinkPreview && (
         <SafeExternalLink
-          href={previewUrl}
+          href={linkPreview?.url || previewUrl}
           className="mb-2 block rounded-lg border border-border bg-input/60 p-3 hover:bg-input"
         >
           <p className="text-xs uppercase tracking-wide opacity-60">Vista previa del enlace</p>
-          <p className="mt-1 truncate text-sm font-medium">{getUrlHostname(previewUrl)}</p>
-          <p className="truncate text-xs opacity-70">{previewUrl}</p>
-        </SafeExternalLink>
+          {linkPreview?.image && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={linkPreview.image} alt="" className="mt-2 h-36 w-full rounded-md object-cover" loading="lazy" />
           )}
-        </div>
+          <p className="mt-2 truncate text-sm font-medium">
+            {linkPreview?.title || getUrlHostname(previewUrl)}
+          </p>
+          {linkPreview?.description && (
+            <p className="line-clamp-2 text-xs opacity-80">{linkPreview.description}</p>
+          )}
+          <p className="mt-1 truncate text-xs opacity-70">
+            {linkPreview?.domain || getUrlHostname(previewUrl)}
+            {isLoadingLinkPreview && !linkPreview ? " · cargando…" : ""}
+          </p>
+        </SafeExternalLink>
       )}
 
       {mediaUrl && (
