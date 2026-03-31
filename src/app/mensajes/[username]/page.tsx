@@ -79,11 +79,11 @@ function ConversationLayout({
             />
           </aside>
 
-          <section className="flex h-full min-h-0 flex-col">
+          <section className="flex h-full min-h-0 flex-col pt-2 sm:pt-3">
             <div className="border-b border-border/80 px-3 py-2 sm:px-4 lg:hidden">
               <Link href="/mensajes" className="text-sm font-medium text-brand hover:underline">← Volver a chats</Link>
             </div>
-            <header className="flex items-center gap-3 border-b border-border/80 bg-surface/70 px-3 py-3 sm:px-4">
+            <header className="mx-2 flex items-center gap-3 rounded-2xl border border-border/80 bg-surface/70 px-3 py-3 sm:mx-3 sm:px-4">
               <Link href={`/u/${participant.username}`} className="inline-flex rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/70">
                 <Image
                   src={avatar}

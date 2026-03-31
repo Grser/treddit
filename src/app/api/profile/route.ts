@@ -7,6 +7,7 @@ import { setAllowMessagesFromAnyone } from "@/lib/messages";
 import { ensureAgeVerificationRequestsTable, ensureUsersAgeColumns } from "@/lib/ageVerification";
 import { getRequestBaseUrl } from "@/lib/requestBaseUrl";
 import { ensureProfilePrivacySchema } from "@/lib/profilePrivacy";
+import { deleteAllPostsByUser } from "@/lib/userCleanup";
 
 type ProfileStatusRow = RowDataPacket & {
   is_age_verified: number;
@@ -24,6 +25,22 @@ type SessionRefreshRow = RowDataPacket & {
 export async function POST(req: Request) {
   const me = await requireUser();
   const form = await req.formData();
+  const mode = String(form.get("mode") || "update");
+  if (mode === "delete_account") {
+    await deleteAllPostsByUser(me.id);
+    await db.execute("UPDATE Users SET visible=0 WHERE id=?", [me.id]);
+    const requestBaseUrl = await getRequestBaseUrl();
+    const response = NextResponse.redirect(new URL("/", requestBaseUrl));
+    response.cookies.set("treddit_token", "", {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 0,
+    });
+    return response;
+  }
+
   const nickname = String(form.get("nickname") || "").slice(0, 80);
   const description = String(form.get("description") || "").slice(0, 200);
   const avatar_url = String(form.get("avatar_url") || "").trim();
