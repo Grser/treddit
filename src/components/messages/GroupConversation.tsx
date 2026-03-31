@@ -1089,7 +1089,7 @@ export default function GroupConversation({
         </div>
       )}
       <form
-        className="z-10 shrink-0 space-y-3 rounded-3xl border border-border/90 bg-surface/95 p-3.5 shadow-lg backdrop-blur"
+        className="z-10 shrink-0 space-y-3 rounded-2xl border border-border/80 bg-surface/95 p-2.5 shadow-2xl shadow-black/25 backdrop-blur sm:p-3.5 md:rounded-3xl md:p-4"
         onSubmit={async (event) => {
           event.preventDefault();
           const trimmed = text.trim();
@@ -1128,7 +1128,7 @@ export default function GroupConversation({
               <p className="font-semibold">Respondiendo a {replyingTo.sender.nickname || replyingTo.sender.username}</p>
               <p className="line-clamp-2 opacity-80">{replyingTo.text || "Mensaje con adjunto"}</p>
             </div>
-            <button type="button" onClick={() => setReplyingTo(null)} className="rounded-full border border-border px-2 py-0.5 text-[11px]">Quitar</button>
+            <button type="button" onClick={() => setReplyingTo(null)} className="text-sm opacity-70 hover:opacity-100">✕</button>
           </div>
         )}
         {attachments && attachments.length > 0 && (
@@ -1153,6 +1153,61 @@ export default function GroupConversation({
                 )}
               </div>
             ))}
+          </div>
+        )}
+        {showStickerTray && canSendMessages && (
+          <div className="space-y-2 rounded-2xl border border-border bg-background/90 p-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {QUICK_EMOJIS.map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  onClick={() => addEmoji(emoji)}
+                  className="rounded-full border border-border px-2 py-1 text-sm hover:bg-muted"
+                  disabled={sendingRef.current}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+            <EmojiPicker onSelect={addEmoji} />
+            <div className="space-y-1">
+              <p className="text-[11px] font-semibold uppercase tracking-wide opacity-70">Stickers</p>
+              <div className="flex flex-wrap gap-2">
+                {GROUP_STICKERS.map((url, index) => (
+                  <button
+                    key={`${url}-${index}`}
+                    type="button"
+                    onClick={async () => {
+                      if (sendingRef.current) return;
+                      sendingRef.current = true;
+                      setSendError(null);
+                      try {
+                        const res = await fetch(`/api/messages/groups/${groupId}/messages`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ text: `[[sticker:${url}]]` }),
+                        });
+                        const payload = await res.json().catch(() => ({}));
+                        if (res.ok && payload.message) {
+                          shouldAutoScrollRef.current = true;
+                          setMessages((prev) => mergeMessagesById(prev, [payload.message as GroupMessageEntry]));
+                        } else {
+                          setSendError(typeof payload.error === "string" ? payload.error : "No se pudo enviar el sticker");
+                        }
+                      } finally {
+                        sendingRef.current = false;
+                      }
+                    }}
+                    className="overflow-hidden rounded-2xl border border-border bg-background/70 p-1 transition hover:scale-[1.03] hover:bg-muted"
+                    disabled={sendingRef.current}
+                    title={`Sticker ${index + 1}`}
+                  >
+                    <Image src={url} alt={`Sticker ${index + 1}`} width={64} height={64} className="size-14 object-contain" unoptimized />
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         )}
         <div className="relative">
@@ -1197,9 +1252,9 @@ export default function GroupConversation({
               <button
                 type="button"
                 onClick={() => setShowStickerTray((prev) => !prev)}
-                className="pb-1 text-lg opacity-80 transition hover:opacity-100 sm:text-xl"
+                className="pb-1 pr-0.5 text-lg opacity-80 transition hover:opacity-100 sm:text-xl"
                 disabled={!canSendMessages || sendingRef.current}
-                aria-label="Abrir stickers"
+                aria-label="Abrir emojis y stickers"
               >
                 🙂
               </button>
@@ -1217,54 +1272,7 @@ export default function GroupConversation({
             </button>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex flex-wrap gap-1">
-              {QUICK_EMOJIS.map((emoji) => (
-                <button key={emoji} type="button" className="rounded-full border border-border/70 px-2 py-1 text-sm" onClick={() => addEmoji(emoji)}>
-                  {emoji}
-                </button>
-              ))}
-          </div>
-          <EmojiPicker onSelect={addEmoji} className="max-w-sm" />
-        </div>
       </form>
-      {showStickerTray && canSendMessages && (
-        <div className="rounded-2xl border border-border bg-surface p-3">
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide opacity-70">Stickers</p>
-          <div className="flex flex-wrap gap-2">
-            {GROUP_STICKERS.map((url, index) => (
-              <button
-                key={`${url}-${index}`}
-                type="button"
-                className="overflow-hidden rounded-2xl border border-border bg-background/70 p-1 transition hover:scale-[1.03] hover:bg-muted"
-                onClick={async () => {
-                  if (sendingRef.current) return;
-                  sendingRef.current = true;
-                  setSendError(null);
-                  try {
-                    const res = await fetch(`/api/messages/groups/${groupId}/messages`, {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ text: `[[sticker:${url}]]` }),
-                    });
-                    const payload = await res.json().catch(() => ({}));
-                    if (res.ok && payload.message) {
-                      shouldAutoScrollRef.current = true;
-                      setMessages((prev) => mergeMessagesById(prev, [payload.message as GroupMessageEntry]));
-                    } else {
-                      setSendError(typeof payload.error === "string" ? payload.error : "No se pudo enviar el sticker");
-                    }
-                  } finally {
-                    sendingRef.current = false;
-                  }
-                }}
-              >
-                <Image src={url} alt={`Sticker ${index + 1}`} width={64} height={64} className="size-14 object-contain" unoptimized />
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
       {sendError && <p className="text-xs text-rose-400">{sendError}</p>}
     </div>
   );
