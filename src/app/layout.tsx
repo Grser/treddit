@@ -1,9 +1,44 @@
 import "./globals.css";
 import { headers } from "next/headers";
+import type { Metadata } from "next";
 
 import { LocaleProvider } from "@/contexts/LocaleContext";
 
-export const metadata = { title: "Treddit" };
+const siteName = "Treddit";
+const siteDescription = "Treddit: comunidad para compartir posts, descubrir personas y seguir conversaciones en tiempo real.";
+const siteUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://treddit.clawn.cat";
+const socialImage = "/demo-reddit.png";
+
+export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
+  title: siteName,
+  description: siteDescription,
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    locale: "es_ES",
+    url: "/",
+    siteName,
+    title: siteName,
+    description: siteDescription,
+    images: [
+      {
+        url: socialImage,
+        width: 1200,
+        height: 630,
+        alt: "Vista previa de Treddit",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: siteName,
+    description: siteDescription,
+    images: [socialImage],
+  },
+};
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const nonce = (await headers()).get("x-nonce") ?? undefined;
