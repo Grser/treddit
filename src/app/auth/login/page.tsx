@@ -8,6 +8,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -54,10 +55,24 @@ function LoginForm() {
           </label>
           <label className="block">
             <span className="text-sm">Contraseña</span>
-            <input
-              type="password" required value={password} onChange={e => setPassword(e.target.value)}
-              className="mt-1 w-full h-10 px-3 rounded-md bg-input outline-none ring-1 ring-border focus:ring-2"
-            />
+            <div className="mt-1 relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                required
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                className="w-full h-10 pl-3 pr-10 rounded-md bg-input outline-none ring-1 ring-border focus:ring-2"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((value) => !value)}
+                className="absolute inset-y-0 right-0 px-3 text-sm opacity-70 hover:opacity-100"
+                aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                title={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+              >
+                {showPassword ? "🙈" : "👁️"}
+              </button>
+            </div>
           </label>
 
           {(error || oauthErrorMessage) && <p className="text-sm text-red-400">{error || oauthErrorMessage}</p>}
