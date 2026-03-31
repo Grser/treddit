@@ -1,9 +1,42 @@
+import type { Metadata } from "next";
 import "./globals.css";
 import { headers } from "next/headers";
 
 import { LocaleProvider } from "@/contexts/LocaleContext";
 
-export const metadata = { title: "Treddit" };
+const SITE_URL = "https://anime.clawn.cat";
+const PREVIEW_IMAGE = `${SITE_URL}/demo-reddit.png`;
+
+export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
+  title: "Treddit",
+  description: "Comunidad social para descubrir, compartir y conversar sobre anime.",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "Treddit",
+    description: "Comunidad social para descubrir, compartir y conversar sobre anime.",
+    url: SITE_URL,
+    siteName: "Treddit",
+    locale: "es_ES",
+    type: "website",
+    images: [
+      {
+        url: PREVIEW_IMAGE,
+        width: 1200,
+        height: 630,
+        alt: "Treddit - comunidad de anime",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Treddit",
+    description: "Comunidad social para descubrir, compartir y conversar sobre anime.",
+    images: [PREVIEW_IMAGE],
+  },
+};
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const nonce = (await headers()).get("x-nonce") ?? undefined;
