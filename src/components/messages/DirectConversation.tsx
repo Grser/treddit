@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import UserBadges from "@/components/UserBadges";
@@ -121,6 +122,7 @@ export default function DirectConversation({
   recipient: ConversationParticipant;
 }) {
   const { strings } = useLocale();
+  const pathname = usePathname();
   const [messages, setMessages] = useState<DirectMessageEntry[]>(initialMessages);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
@@ -193,6 +195,17 @@ export default function DirectConversation({
       });
     }
   }, [messages]);
+
+  useEffect(() => {
+    if (!pathname?.startsWith("/mensajes/")) return;
+    const container = scrollRef.current;
+    if (!container) return;
+    shouldAutoScrollRef.current = true;
+    requestAnimationFrame(() => {
+      container.scrollTop = container.scrollHeight;
+      initialScrollDoneRef.current = true;
+    });
+  }, [pathname]);
 
   useEffect(() => {
     let mounted = true;
