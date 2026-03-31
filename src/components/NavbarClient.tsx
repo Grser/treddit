@@ -3,6 +3,8 @@
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import type { FormEvent } from "react";
 
 import type { SessionUser } from "@/lib/auth";
 import { supportedLocales, useLocale } from "@/contexts/LocaleContext";
@@ -48,6 +50,7 @@ const LIGHT_PALETTES: Array<{ key: LightPaletteKey; label: string }> = [
 
 export default function NavbarClient({ session }: { session?: SessionUser | null }) {
   const { strings } = useLocale();
+  const router = useRouter();
   const [resolvedSession, setResolvedSession] = useState<SessionUser | null | undefined>(session);
   const avatar = resolvedSession?.avatar_url?.trim() || "/demo-reddit.png";
   const [isDarkMode, setIsDarkMode] = useState(true);
@@ -138,6 +141,20 @@ export default function NavbarClient({ session }: { session?: SessionUser | null
 
     if (selectedLightPalette !== "custom") {
       changeLightPalette("custom");
+    }
+  }
+
+  async function handleLogout(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        cache: "no-store",
+      });
+    } finally {
+      setResolvedSession(null);
+      router.push("/");
+      router.refresh();
     }
   }
 
@@ -500,7 +517,7 @@ export default function NavbarClient({ session }: { session?: SessionUser | null
                   />
                 </Link>
 
-                <form method="POST" action="/api/auth/logout">
+                <form method="POST" action="/api/auth/logout" onSubmit={handleLogout}>
                   <button className="hidden h-9 items-center justify-center rounded-full border border-border px-3 text-sm sm:inline-flex">
                     {strings.navbar.logout}
                   </button>
