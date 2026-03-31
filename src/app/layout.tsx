@@ -1,9 +1,17 @@
+import type { Metadata } from "next";
 import "./globals.css";
 import { headers } from "next/headers";
 import type { Metadata } from "next";
 
 import { LocaleProvider } from "@/contexts/LocaleContext";
 
+const SITE_URL = "https://anime.clawn.cat";
+const PREVIEW_IMAGE = `${SITE_URL}/demo-reddit.png`;
+
+export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
+  title: "Treddit",
+  description: "Comunidad social para descubrir, compartir y conversar sobre anime.",
 const siteName = "Treddit";
 const siteDescription = "Treddit: comunidad para compartir posts, descubrir personas y seguir conversaciones en tiempo real.";
 const siteUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://treddit.clawn.cat";
@@ -17,6 +25,18 @@ export const metadata: Metadata = {
     canonical: "/",
   },
   openGraph: {
+    title: "Treddit",
+    description: "Comunidad social para descubrir, compartir y conversar sobre anime.",
+    url: SITE_URL,
+    siteName: "Treddit",
+    locale: "es_ES",
+    type: "website",
+    images: [
+      {
+        url: PREVIEW_IMAGE,
+        width: 1200,
+        height: 630,
+        alt: "Treddit - comunidad de anime",
     type: "website",
     locale: "es_ES",
     url: "/",
@@ -34,6 +54,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
+    title: "Treddit",
+    description: "Comunidad social para descubrir, compartir y conversar sobre anime.",
+    images: [PREVIEW_IMAGE],
     title: siteName,
     description: siteDescription,
     images: [socialImage],
