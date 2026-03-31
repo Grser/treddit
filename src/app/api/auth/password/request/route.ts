@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import crypto from "node:crypto";
 import { db } from "@/lib/db";
 import type { RowDataPacket } from "mysql2/promise";
 import { invalidateResetCodes, storeResetCode } from "@/lib/password-reset";
@@ -27,9 +28,7 @@ export async function POST(req: Request) {
 
   try {
     await invalidateResetCodes(user.id);
-    const code = Math.floor(100000 + Math.random() * 900000)
-      .toString()
-      .padStart(6, "0");
+    const code = crypto.randomInt(0, 1_000_000).toString().padStart(6, "0");
     await storeResetCode(user.id, code);
     await sendPasswordResetEmail(user.email, code);
   } catch (err) {
