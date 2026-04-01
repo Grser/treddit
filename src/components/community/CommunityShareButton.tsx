@@ -78,19 +78,18 @@ export default function CommunityShareButton({
     setSending(true);
     try {
       const text = buildText();
-      await Promise.all(
-        selectedTargets.map((target) =>
-          fetch("/api/messages", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(
-              target.type === "direct"
-                ? { to: target.id, text }
-                : { groupId: target.id, text },
-            ),
-          }),
-        ),
-      );
+      for (const target of selectedTargets) {
+        const endpoint = target.type === "group" ? `/api/messages/groups/${target.id}/messages` : "/api/messages";
+        const payload = target.type === "group" ? { text } : { recipientId: target.id, text };
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+          throw new Error("SHARE_FAILED");
+        }
+      }
       setOpen(false);
     } catch {
       alert("No se pudo compartir la comunidad");
@@ -119,7 +118,7 @@ export default function CommunityShareButton({
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Buscar amigos o grupos"
+              placeholder="Buscar amigos o chats"
               className="mt-3 h-10 w-full rounded-xl border border-border bg-input px-3 text-sm outline-none"
             />
             <div className="mt-3 max-h-52 space-y-2 overflow-auto rounded-xl border border-border p-2">
