@@ -416,7 +416,7 @@ function getUrlHostname(value: string) {
 }
 
 function renderDescription(text: string) {
-  const parts = text.split(/(https?:\/\/[^\s]+|@grupo\[\d+(?::[^\]]+)?\]|[#@][\p{L}\p{N}_]+)/gu);
+  const parts = text.split(/(https?:\/\/[^\s]+|@grupo\[\d+(?::[^\]]+)?\]|@comunidad\[[a-z0-9-]+(?::[^\]]+)?\]|[#@][\p{L}\p{N}_]+)/gu);
   return parts.map((part, index) => {
     if (/^https?:\/\//i.test(part)) {
       const normalized = sanitizeUrlToken(part);
@@ -456,6 +456,22 @@ function renderDescription(text: string) {
           className="text-violet-400 font-semibold hover:underline"
         >
           @{groupName}
+        </a>
+      );
+    }
+
+    if (/^@comunidad\[[a-z0-9-]+(?::[^\]]+)?\]$/u.test(part)) {
+      const match = part.match(/^@comunidad\[([a-z0-9-]+)(?::([^\]]+))?\]$/u);
+      const slug = match?.[1] ?? "";
+      const communityName = match?.[2]?.replace(/_/g, " ") || `c/${slug}`;
+      if (!slug) return <span key={`community-text-${index}`}>{part}</span>;
+      return (
+        <a
+          key={`community-${index}-${slug}`}
+          href={`/c/${encodeURIComponent(slug)}`}
+          className="text-violet-400 font-semibold hover:underline"
+        >
+          {communityName}
         </a>
       );
     }
