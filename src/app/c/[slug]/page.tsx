@@ -3,6 +3,7 @@ import type { RowDataPacket } from "mysql2";
 import CommunityChat from "@/components/community/CommunityChat";
 import JoinCommunityButton from "@/components/community/JoinCommunityButton";
 import PromoteSelfCommunityButton from "@/components/community/PromoteSelfCommunityButton";
+import CommunityShareButton from "@/components/community/CommunityShareButton";
 import Navbar from "@/components/Navbar";
 import Feed from "@/components/Feed";
 import { getSessionUser } from "@/lib/auth";
@@ -149,6 +150,7 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
                   initiallyMember={community.isMember}
                   canInteract={canInteract}
                 />
+                <CommunityShareButton communitySlug={community.slug} communityName={community.name} canInteract={canInteract} />
                 {canEditCommunity && (
                   <a
                     href={`/c/${community.slug}/editar`}
