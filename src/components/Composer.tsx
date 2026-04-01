@@ -15,6 +15,7 @@ type ComposerErrorKey = "needContent" | "uploadFailed" | "createFailed" | "pollI
 
 type CommunityOption = { id: number; name: string; slug: string };
 type MentionUser = { id: number; username: string; nickname: string | null };
+type MentionGroup = { id: number; name: string };
 const POST_TEXT_LIMIT = 2000;
 
 export default function Composer({ enabled }: { enabled: boolean }) {
@@ -38,6 +39,7 @@ export default function Composer({ enabled }: { enabled: boolean }) {
   const [communityId, setCommunityId] = useState<number>(0);
   const [mentionQuery, setMentionQuery] = useState("");
   const [mentionResults, setMentionResults] = useState<MentionUser[]>([]);
+  const [groupResults, setGroupResults] = useState<MentionGroup[]>([]);
   const [mentionsLoading, setMentionsLoading] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const canMarkSensitive = Boolean(mediaUrl && isImageMediaUrl(mediaUrl));
@@ -148,10 +150,41 @@ export default function Composer({ enabled }: { enabled: boolean }) {
     };
   }, [enabled, mentionQuery]);
 
+  useEffect(() => {
+    if (!enabled) {
+      setGroupResults([]);
+      return;
+    }
+
+    fetch("/api/messages/share-targets", { cache: "no-store" })
+      .then(async (res) => {
+        if (!res.ok) return;
+        const data = (await res.json().catch(() => ({ items: [] }))) as {
+          items?: Array<{ type: "direct" | "group"; id: number; title: string }>;
+        };
+        const groups = Array.isArray(data.items)
+          ? data.items
+              .filter((item) => item.type === "group")
+              .map((item) => ({ id: Number(item.id), name: item.title }))
+          : [];
+        setGroupResults(groups);
+      })
+      .catch(() => {
+        setGroupResults([]);
+      });
+  }, [enabled]);
+
   function insertMention(username: string) {
     setText((prev) => prev.replace(/(?:^|\s)@[\p{L}\p{N}_]{1,32}$/u, (full) => `${full[0] === " " ? " " : ""}@${username} `));
     setMentionQuery("");
     setMentionResults([]);
+    clearError();
+  }
+
+  function insertGroup(group: MentionGroup) {
+    const normalizedName = group.name.replace(/\s+/g, "_").slice(0, 36);
+    const token = `@grupo[${group.id}:${normalizedName}]`;
+    setText((prev) => `${prev}${prev.endsWith(" ") || !prev ? "" : " "}${token} `);
     clearError();
   }
 
@@ -321,6 +354,9 @@ export default function Composer({ enabled }: { enabled: boolean }) {
               <button type="button" disabled={!enabled} onClick={() => setText((prev) => `${prev}${prev.endsWith(" ") || !prev ? "" : " "}@`)} className="rounded-full bg-muted px-2 py-1 text-sm disabled:opacity-60" title="Etiquetar usuario">
                 @
               </button>
+              <button type="button" disabled={!enabled || groupResults.length === 0} onClick={() => setText((prev) => `${prev}${prev.endsWith(" ") || !prev ? "" : " "}@grupo[`)} className="rounded-full bg-muted px-2 py-1 text-sm disabled:opacity-60" title="Etiquetar grupo">
+                👥
+              </button>
               <button type="button" disabled={!enabled} onClick={() => setShowEmojiPicker((prev) => !prev)} className="rounded-full bg-muted px-2 py-1 text-sm disabled:opacity-60" title="Agregar emoji">
                 🙂
               </button>
@@ -343,6 +379,20 @@ export default function Composer({ enabled }: { enabled: boolean }) {
                   className="rounded-full border border-border px-3 py-1 text-xs hover:bg-muted/60"
                 >
                   {user.nickname || user.username} <span className="opacity-70">@{user.username}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          {groupResults.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {groupResults.slice(0, 6).map((group) => (
+                <button
+                  key={group.id}
+                  type="button"
+                  onClick={() => insertGroup(group)}
+                  className="rounded-full border border-border px-3 py-1 text-xs hover:bg-muted/60"
+                >
+                  👥 {group.name}
                 </button>
               ))}
             </div>

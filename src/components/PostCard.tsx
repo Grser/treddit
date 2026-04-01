@@ -416,7 +416,7 @@ function getUrlHostname(value: string) {
 }
 
 function renderDescription(text: string) {
-  const parts = text.split(/(https?:\/\/[^\s]+|[#@][\p{L}\p{N}_]+)/gu);
+  const parts = text.split(/(https?:\/\/[^\s]+|@grupo\[\d+(?::[^\]]+)?\]|[#@][\p{L}\p{N}_]+)/gu);
   return parts.map((part, index) => {
     if (/^https?:\/\//i.test(part)) {
       const normalized = sanitizeUrlToken(part);
@@ -440,6 +440,22 @@ function renderDescription(text: string) {
           className="text-brand font-semibold hover:underline"
         >
           {part}
+        </a>
+      );
+    }
+
+    if (/^@grupo\[\d+(?::[^\]]+)?\]$/u.test(part)) {
+      const match = part.match(/^@grupo\[(\d+)(?::([^\]]+))?\]$/u);
+      const groupId = match ? Number(match[1]) : 0;
+      const groupName = match?.[2]?.replace(/_/g, " ") || `Grupo ${groupId}`;
+      if (!groupId) return <span key={`group-text-${index}`}>{part}</span>;
+      return (
+        <a
+          key={`group-${index}-${groupId}`}
+          href={`/mensajes/grupos/${groupId}`}
+          className="text-violet-400 font-semibold hover:underline"
+        >
+          @{groupName}
         </a>
       );
     }
