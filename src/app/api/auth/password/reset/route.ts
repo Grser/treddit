@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { hash } from "bcryptjs";
 import type { RowDataPacket } from "mysql2/promise";
 import { db } from "@/lib/db";
+import { isStrongPassword, PASSWORD_POLICY_MESSAGE } from "@/lib/passwordPolicy";
 import {
   cleanupOldResetCodes,
   findValidResetCode,
@@ -30,8 +31,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Código inválido o expirado" }, { status: 400 });
   }
 
-  if (newPassword.length < 6) {
-    return NextResponse.json({ error: "La contraseña debe tener al menos 6 caracteres" }, { status: 400 });
+  if (!isStrongPassword(newPassword)) {
+    return NextResponse.json({ error: PASSWORD_POLICY_MESSAGE }, { status: 400 });
   }
 
   const [rows] = await db.execute<

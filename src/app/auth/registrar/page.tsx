@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { isStrongPassword, PASSWORD_POLICY_MESSAGE } from "@/lib/passwordPolicy";
 
 export default function RegisterPage() {
   const r = useRouter();
@@ -16,6 +17,11 @@ export default function RegisterPage() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (!isStrongPassword(password.trim())) {
+      setError(PASSWORD_POLICY_MESSAGE);
+      return;
+    }
+
     setLoading(true);
     const res = await fetch("/api/auth/register", {
       method: "POST",
@@ -68,6 +74,7 @@ export default function RegisterPage() {
                 required
                 value={password}
                 onChange={e => setPassword(e.target.value)}
+                minLength={8}
                 className="w-full h-10 pl-3 pr-10 rounded-md bg-input outline-none ring-1 ring-border focus:ring-2"
               />
               <button
@@ -81,6 +88,7 @@ export default function RegisterPage() {
               </button>
             </div>
           </label>
+          <p className="text-xs opacity-70">Mínimo 8 caracteres con mayúscula, minúscula, número y símbolo.</p>
 
         {error && <p className="text-sm text-red-400">{error}</p>}
 

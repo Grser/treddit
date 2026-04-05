@@ -181,7 +181,7 @@ export default async function AdminUsers({ searchParams }: PageProps) {
 
         <AdminSection title="Usuarios" description="Acciones rápidas por cuenta y contraseña desde una vista más clara.">
           {passwordUpdated && <p className="mb-4 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">Contraseña actualizada correctamente.</p>}
-          {passwordError && <p className="mb-4 rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-700 dark:text-rose-300">No se pudo actualizar la contraseña. Debe tener al menos 6 caracteres.</p>}
+          {passwordError && <p className="mb-4 rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-700 dark:text-rose-300">No se pudo actualizar la contraseña. Debe tener mínimo 8 caracteres, mayúscula, minúscula, número y carácter especial.</p>}
           <div className="space-y-3">
             {users.map((u) => (
               <article key={u.id} className="rounded-xl border border-border/70 p-4">
@@ -210,12 +210,13 @@ export default async function AdminUsers({ searchParams }: PageProps) {
                   <input
                     type="password"
                     name="password"
-                    minLength={6}
+                    minLength={8}
                     required
                     placeholder="Nueva contraseña"
                     className="h-9 w-52 rounded-lg border border-border bg-input px-3 text-sm"
                   />
                   <button className="rounded-full bg-brand px-3 py-1.5 text-xs font-medium text-white">Cambiar contraseña</button>
+                  <span className="text-xs opacity-70">8+ caracteres, mayúscula, minúscula, número y símbolo.</span>
                 </form>
               </article>
             ))}
