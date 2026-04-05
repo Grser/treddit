@@ -544,7 +544,7 @@ export default function NavbarClient({ session }: { session?: SessionUser | null
 function MobileBottomNav({ pathname }: { pathname: string }) {
   const links = [
     { href: "/", label: "Inicio", icon: <HomeIcon /> },
-    { href: "/explorar", label: "Comunidades", icon: <CommunitiesIcon /> },
+    { href: "/comunidades", label: "Comunidades", icon: <CommunitiesIcon /> },
     { href: "/mensajes", label: "Chats", icon: <ChatIcon /> },
     { href: "/explorar", label: "Descubrir", icon: <ProfileIcon /> },
   ] as const;
@@ -560,7 +560,7 @@ function MobileBottomNav({ pathname }: { pathname: string }) {
         {links.map((link) => {
           const active = isActive(link.href);
           return (
-            <li key={link.href}>
+            <li key={`${link.href}-${link.label}`}>
               <Link
                 href={link.href}
                 className={`flex flex-col items-center justify-center rounded-xl px-2 py-1.5 text-[11px] transition ${
