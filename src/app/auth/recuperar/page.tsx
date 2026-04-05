@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { isStrongPassword, PASSWORD_POLICY_MESSAGE } from "@/lib/passwordPolicy";
 
 export default function RecoverPage() {
   const r = useRouter();
@@ -51,8 +52,8 @@ export default function RecoverPage() {
       return;
     }
 
-    if (password.trim().length < 6) {
-      setError("La contraseña debe tener al menos 6 caracteres");
+    if (!isStrongPassword(password.trim())) {
+      setError(PASSWORD_POLICY_MESSAGE);
       return;
     }
 
@@ -142,11 +143,13 @@ export default function RecoverPage() {
               <input
                 type="password"
                 required
+                minLength={8}
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 className="mt-1 w-full h-10 px-3 rounded-md bg-input outline-none ring-1 ring-border focus:ring-2"
               />
             </label>
+            <p className="text-xs opacity-70">Mínimo 8 caracteres con mayúscula, minúscula, número y símbolo.</p>
 
             {error && <p className="text-sm text-red-400">{error}</p>}
             {message && <p className="text-sm text-green-500">{message}</p>}

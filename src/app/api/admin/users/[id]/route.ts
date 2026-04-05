@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/auth";
 import { ensureAgeVerificationRequestsTable, ensureUsersAgeColumns } from "@/lib/ageVerification";
 import { getRequestBaseUrl } from "@/lib/requestBaseUrl";
 import { deleteAllPostsByUser } from "@/lib/userCleanup";
+import { isStrongPassword } from "@/lib/passwordPolicy";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   await requireAdmin();
@@ -36,7 +37,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       break;
     case "set_password": {
       const newPassword = String(form.get("password") || "").trim();
-      if (newPassword.length < 6) {
+      if (!isStrongPassword(newPassword)) {
         return NextResponse.redirect(new URL("/admin/users?password=error", baseUrl));
       }
       const passwordHash = await hash(newPassword, 10);

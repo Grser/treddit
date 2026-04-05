@@ -5,6 +5,7 @@ import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { hash } from "bcryptjs";
+import { isStrongPassword, PASSWORD_POLICY_MESSAGE } from "@/lib/passwordPolicy";
 
 type RegisterRequestBody = {
   username?: unknown;
@@ -28,6 +29,10 @@ export async function POST(req: Request) {
 
   if (!username || !nickname || !email || !password) {
     return NextResponse.json({ error: "Faltan campos" }, { status: 400 });
+  }
+
+  if (!isStrongPassword(password)) {
+    return NextResponse.json({ error: PASSWORD_POLICY_MESSAGE }, { status: 400 });
   }
 
   const [exists] = await db.execute<RowDataPacket[]>(

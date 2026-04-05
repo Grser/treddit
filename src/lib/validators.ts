@@ -1,10 +1,11 @@
 import { z } from "zod";
+import { isStrongPassword, PASSWORD_POLICY_MESSAGE } from "@/lib/passwordPolicy";
 
 export const registerSchema = z.object({
   username: z.string().min(3).max(32),
   nickname: z.string().min(1).max(80),
   email: z.string().email().max(191),
-  password: z.string().min(6).max(100),
+  password: z.string().max(100).refine(isStrongPassword, PASSWORD_POLICY_MESSAGE),
 });
 
 export const loginSchema = z.object({
