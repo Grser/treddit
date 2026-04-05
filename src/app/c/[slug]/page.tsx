@@ -29,6 +29,7 @@ type Community = {
   isMember: boolean;
   myRole: string | null;
   visible: boolean;
+  isVerified: boolean;
 };
 
 type Moderator = {
@@ -58,6 +59,7 @@ type CommunityRow = RowDataPacket & {
   description: string | null;
   created_at: Date | string;
   visible: number;
+  is_verified?: number;
   members: number;
   isMember: number;
   myRole: string | null;
@@ -122,29 +124,45 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
   return (
     <div className="min-h-dvh bg-background text-foreground">
       <Navbar />
-      <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-8">
-        <header className="rounded-3xl border border-border bg-surface p-6 shadow-sm">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-wide text-foreground/60">Comunidad</p>
+      <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-8">
+        <header className="overflow-hidden rounded-3xl border border-border bg-surface shadow-sm">
+          <div className="bg-gradient-to-r from-brand/20 via-sky-500/10 to-violet-500/15 px-6 py-7">
+            <p className="text-xs uppercase tracking-[0.15em] text-foreground/60">Comunidad</p>
+            <div className="mt-2 flex flex-wrap items-center gap-3">
               <h1 className="text-3xl font-semibold tracking-tight">{community.name}</h1>
-              <p className="text-sm text-foreground/70">treddit.clawn.cat/c/{community.slug}</p>
-              <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-foreground/80">
-                <span className="rounded-full bg-muted px-3 py-1">
+              {community.isVerified && (
+                <span className="rounded-full border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-200">
+                  ✓ Comunidad verificada
+                </span>
+              )}
+            </div>
+            <p className="mt-1 text-sm text-foreground/70">treddit.clawn.cat/c/{community.slug}</p>
+          </div>
+
+          <div className="flex flex-col gap-4 p-6 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <div className="flex flex-wrap items-center gap-3 text-sm text-foreground/80">
+                <span className="rounded-full border border-border bg-muted/40 px-3 py-1">
                   {community.members.toLocaleString()} miembros
                 </span>
-                <span className="rounded-full bg-muted px-3 py-1">
+                <span className="rounded-full border border-border bg-muted/40 px-3 py-1">
                   Creada el {new Date(community.created_at).toLocaleDateString()}
                 </span>
+                <span className={`rounded-full border px-3 py-1 ${community.visible ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" : "border-amber-500/30 bg-amber-500/10 text-amber-200"}`}>
+                  {community.visible ? "Pública" : "Privada"}
+                </span>
                 {community.myRole && (
-                  <span className="rounded-full bg-brand/10 px-3 py-1 text-brand">
+                  <span className="rounded-full border border-brand/30 bg-brand/10 px-3 py-1 text-brand">
                     {formatRole(community.myRole) || community.myRole}
                   </span>
                 )}
               </div>
+              {community.description && (
+                <p className="mt-4 max-w-3xl whitespace-pre-wrap text-sm text-foreground/80">{community.description}</p>
+              )}
             </div>
             {isAuthorized ? (
-              <div className="flex flex-col items-end gap-2">
+              <div className="grid gap-2 sm:grid-cols-2 lg:min-w-[20rem]">
                 <JoinCommunityButton
                   communityId={community.id}
                   initiallyMember={community.isMember}
@@ -173,9 +191,6 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
               </div>
             )}
           </div>
-          {community.description && (
-            <p className="mt-4 max-w-3xl whitespace-pre-wrap text-sm text-foreground/80">{community.description}</p>
-          )}
         </header>
 
         {!community.visible && !community.isMember && !me?.is_admin ? (
@@ -183,8 +198,12 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
             Esta comunidad está actualmente oculta. Solo sus miembros pueden acceder a su contenido.
           </section>
         ) : (
-          <section className="grid gap-6 lg:grid-cols-[1fr_18rem]">
-            <div className="space-y-4">
+          <section className="grid gap-6 lg:grid-cols-[1fr_20rem]">
+            <div className="space-y-4 rounded-3xl border border-border bg-surface/40 p-3 sm:p-4">
+              <div className="rounded-2xl border border-border/70 bg-background/60 px-4 py-3">
+                <h2 className="text-base font-semibold">Publicaciones recientes</h2>
+                <p className="text-xs opacity-70">Novedades de la comunidad en tiempo real.</p>
+              </div>
               {initialPosts.length > 0 ? (
                 <Feed
                   canInteract={canInteract}
@@ -206,7 +225,8 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
               />
 
               <section className="rounded-2xl border border-border bg-surface p-5">
-                <h2 className="text-lg font-semibold">Moderación</h2>
+                <h2 className="text-lg font-semibold">Equipo de moderación</h2>
+                <p className="mt-1 text-xs opacity-70">Personas encargadas de las reglas y seguridad.</p>
                 {moderators.length > 0 ? (
                   <ul className="mt-3 space-y-2 text-sm">
                     {moderators.map((mod) => (
@@ -235,6 +255,8 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
 
 async function loadCommunity(slug: string, viewerId: number | null, baseUrl: string): Promise<CommunityViewModel | null> {
   const normalized = slug.toLowerCase();
+  const [verifiedColumnRows] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM Communities LIKE 'is_verified'");
+  const hasVerifiedColumn = verifiedColumnRows.length > 0;
   const [rows] = await db.query<CommunityRow[]>(
     `
     SELECT
@@ -244,6 +266,7 @@ async function loadCommunity(slug: string, viewerId: number | null, baseUrl: str
       c.description,
       c.created_at,
       c.visible,
+      ${hasVerifiedColumn ? "c.is_verified" : "0 AS is_verified"},
       (SELECT COUNT(*) FROM Community_Members cm WHERE cm.community_id = c.id) AS members,
       CASE WHEN ? IS NULL THEN 0 ELSE EXISTS(
         SELECT 1 FROM Community_Members cm WHERE cm.community_id = c.id AND cm.user_id = ?
@@ -271,6 +294,7 @@ async function loadCommunity(slug: string, viewerId: number | null, baseUrl: str
     created_at: new Date(row.created_at).toISOString(),
     members: Number(row.members) || 0,
     visible: Boolean(row.visible),
+    isVerified: Boolean(row.is_verified),
     isMember: Boolean(row.isMember),
     myRole: row.myRole ? String(row.myRole) : null,
   };

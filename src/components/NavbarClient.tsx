@@ -391,21 +391,12 @@ export default function NavbarClient({ session }: { session?: SessionUser | null
                 <AdIcon />
               </IconLink>
             </div>
-            <IconLink href="/mensajes" title={strings.navbar.messages} badge={unreadMessages}>
-              <ChatIcon />
-            </IconLink>
+            <div className="hidden sm:block">
+              <IconLink href="/mensajes" title={strings.navbar.messages} badge={unreadMessages}>
+                <ChatIcon />
+              </IconLink>
+            </div>
             <div className="hidden sm:block h-6 w-px bg-border mx-1" />
-            {resolvedSession ? (
-              <Link
-                href="/crear"
-                className="inline-grid size-9 place-items-center rounded-full bg-brand text-white sm:hidden"
-                title={strings.navbar.create}
-              >
-                <PlusIcon />
-              </Link>
-            ) : null}
-
-
             {resolvedSession ? (
               <Link
                 href="/crear"
@@ -554,8 +545,8 @@ function MobileBottomNav({ pathname }: { pathname: string }) {
   const links = [
     { href: "/", label: "Inicio", icon: <HomeIcon /> },
     { href: "/explorar", label: "Comunidades", icon: <CommunitiesIcon /> },
-    { href: "/mensajes", label: "Chats", icon: <ChatIcon /> },
-    { href: "/buscar", label: "Descubrir", icon: <DiscoverIcon /> },
+    { href: "/notificaciones", label: "Avisos", icon: <BellIcon /> },
+    { href: "/u/me/edit", label: "Perfil", icon: <ProfileIcon /> },
   ] as const;
 
   function isActive(href: string) {
@@ -823,11 +814,11 @@ function CommunitiesIcon() {
   );
 }
 
-function DiscoverIcon() {
+function ProfileIcon() {
   return (
     <svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <circle cx="12" cy="12" r="8" />
-      <path d="m15.5 8.5-2.8 5.9-5.2 2.6 2.8-5.9z" />
+      <circle cx="12" cy="8" r="4" />
+      <path d="M5 20a7 7 0 0 1 14 0" />
     </svg>
   );
 }
