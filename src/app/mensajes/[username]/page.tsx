@@ -65,11 +65,13 @@ function ConversationLayout({
   return (
     <div className="min-h-dvh bg-[radial-gradient(circle_at_top,#1c3247_0%,#121c27_45%,#0b1219_100%)] text-foreground">
       <Navbar session={me} />
-      <main className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-6xl flex-col gap-3 px-2 py-4 sm:gap-4 sm:px-4 sm:py-6">
-        <NotesBar notes={notes} me={me} />
+      <main className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-6xl flex-col gap-2 px-0 py-2 sm:gap-4 sm:px-4 sm:py-6">
+        <div className="px-2 sm:px-0">
+          <NotesBar notes={notes} me={me} />
+        </div>
         <MessagesRealtimeSync />
 
-        <div className="grid min-h-0 flex-1 overflow-hidden rounded-3xl border border-white/10 bg-[#122130]/90 shadow-2xl shadow-black/35 lg:grid-cols-[360px_minmax(0,1fr)]">
+        <div className="grid min-h-0 flex-1 overflow-hidden border-y border-white/10 bg-[#101c29]/95 shadow-2xl shadow-black/35 sm:rounded-3xl sm:border sm:bg-[#122130]/90 lg:grid-cols-[360px_minmax(0,1fr)]">
           <aside className="hidden border-r border-white/10 lg:block">
             <InboxList
               entries={inbox}
@@ -79,11 +81,11 @@ function ConversationLayout({
             />
           </aside>
 
-          <section className="flex h-full min-h-0 flex-col pt-2 sm:pt-3">
-            <div className="border-b border-border/80 px-3 py-2 sm:px-4 lg:hidden">
-              <Link href="/mensajes" className="text-sm font-medium text-brand hover:underline">← Volver a chats</Link>
+          <section className="flex h-full min-h-0 flex-col pt-1 sm:pt-3">
+            <div className="border-b border-white/10 bg-[#0e1925]/95 px-3 py-2 sm:px-4 lg:hidden">
+              <Link href="/mensajes" className="text-sm font-medium text-brand hover:underline">← Chats</Link>
             </div>
-            <header className="mx-2 flex items-center gap-3 rounded-2xl border border-border/80 bg-surface/70 px-3 py-3 sm:mx-3 sm:px-4">
+            <header className="mx-2 mt-2 flex items-center gap-3 rounded-2xl border border-white/10 bg-[#132334]/90 px-3 py-3 sm:mx-3 sm:px-4">
               <Link href={`/u/${participant.username}`} className="inline-flex rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/70">
                 <Image
                   src={avatar}
@@ -104,7 +106,7 @@ function ConversationLayout({
               </Link>
             </header>
 
-            <div className="min-h-0 flex-1 p-2 sm:p-3 md:p-4">
+            <div className="min-h-0 flex-1 p-1.5 sm:p-3 md:p-4">
               <DirectConversation initialMessages={messages} viewerId={viewerId} recipient={participant} />
             </div>
           </section>
