@@ -219,6 +219,14 @@ export type LocaleStrings = {
     join: string;
     leave: string;
     joinError: string;
+    banAppealTitle: string;
+    banAppealDescription: string;
+    banAppealPlaceholder: string;
+    banAppealSubmit: string;
+    banAppealSending: string;
+    banAppealSuccess: string;
+    banAppealError: string;
+    banAppealTooShort: string;
   };
   adminPage: {
     title: string;
@@ -482,6 +490,14 @@ const translations: Record<Locale, LocaleStrings> = {
     join: "Unirse",
     leave: "Abandonar",
     joinError: "No se pudo actualizar tu membresía",
+    banAppealTitle: "¿Te banearon? Envía una apelación",
+    banAppealDescription: "Puedes explicar tu situación para que la moderación revise tu caso.",
+    banAppealPlaceholder: "Escribe por qué crees que deberían quitarte el ban…",
+    banAppealSubmit: "Enviar apelación",
+    banAppealSending: "Enviando…",
+    banAppealSuccess: "Tu apelación fue enviada a moderación.",
+    banAppealError: "No se pudo enviar la apelación.",
+    banAppealTooShort: "La apelación debe tener al menos 10 caracteres.",
   },
     adminPage: {
       title: "Panel de administración",
@@ -760,6 +776,14 @@ const translations: Record<Locale, LocaleStrings> = {
       join: "Join",
       leave: "Leave",
       joinError: "We couldn't update your membership",
+      banAppealTitle: "Banned? Submit an appeal",
+      banAppealDescription: "Explain your situation so moderators can review your case.",
+      banAppealPlaceholder: "Write why you think your ban should be lifted…",
+      banAppealSubmit: "Send appeal",
+      banAppealSending: "Sending…",
+      banAppealSuccess: "Your appeal was sent to moderation.",
+      banAppealError: "We couldn't send your appeal.",
+      banAppealTooShort: "Your appeal must be at least 10 characters.",
     },
     adminPage: {
       title: "Admin dashboard",
@@ -1038,6 +1062,14 @@ const translations: Record<Locale, LocaleStrings> = {
       join: "Вступить",
       leave: "Покинуть",
       joinError: "Не удалось обновить участие",
+      banAppealTitle: "Вас забанили? Отправьте апелляцию",
+      banAppealDescription: "Опишите ситуацию, и модераторы рассмотрят ваш случай.",
+      banAppealPlaceholder: "Напишите, почему бан стоит снять…",
+      banAppealSubmit: "Отправить апелляцию",
+      banAppealSending: "Отправка…",
+      banAppealSuccess: "Апелляция отправлена модерации.",
+      banAppealError: "Не удалось отправить апелляцию.",
+      banAppealTooShort: "Апелляция должна быть не короче 10 символов.",
     },
     adminPage: {
       title: "Панель администратора",
