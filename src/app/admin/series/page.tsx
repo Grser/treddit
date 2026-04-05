@@ -1,5 +1,4 @@
 import Navbar from "@/components/Navbar";
-import AdminSeriesPreview from "@/components/admin/AdminSeriesPreview";
 import { AdminSection, AdminShell } from "@/components/admin/AdminShell";
 import { requireAdmin } from "@/lib/auth";
 
@@ -13,10 +12,15 @@ export default async function AdminSeriesPage() {
       <Navbar />
       <AdminShell
         title="Panel de series"
-        subtitle="Previsualiza datos de Kitsu antes de crear una serie en Treddit."
+        subtitle="La búsqueda de series en Kitsu fue retirada del panel de administración."
       >
-        <AdminSection title="Previsualización desde Kitsu" description="Revisa portada, banner y metadatos antes de publicar.">
-          <AdminSeriesPreview />
+        <AdminSection
+          title="Búsqueda externa deshabilitada"
+          description="Este módulo ya no consulta Kitsu desde admin. Si necesitas una serie, agrégala manualmente desde el flujo interno."
+        >
+          <div className="rounded-2xl border border-border bg-surface p-5 text-sm opacity-80">
+            Se eliminó la opción de búsqueda y previsualización en Kitsu para mantener una operación más simple y controlada.
+          </div>
         </AdminSection>
       </AdminShell>
     </div>

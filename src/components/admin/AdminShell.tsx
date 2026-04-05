@@ -3,14 +3,13 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 
 const adminLinks = [
-  { href: "/admin", label: "Overview", emoji: "🏠" },
-  { href: "/admin/users", label: "Usuarios", emoji: "👥" },
-  { href: "/admin/posts", label: "Posts", emoji: "📝" },
-  { href: "/admin/communities", label: "Comunidades", emoji: "🏘️" },
-  { href: "/admin/groups", label: "Grupos", emoji: "💬" },
-  { href: "/admin/reports", label: "Reportes", emoji: "🚨" },
-  { href: "/admin/anuncios", label: "Anuncios", emoji: "📣" },
-  { href: "/admin/series", label: "Series", emoji: "🎬" },
+  { href: "/admin", label: "Overview", icon: <OverviewIcon /> },
+  { href: "/admin/users", label: "Usuarios", icon: <UsersIcon /> },
+  { href: "/admin/posts", label: "Posts", icon: <PostsIcon /> },
+  { href: "/admin/communities", label: "Comunidades", icon: <CommunitiesIcon /> },
+  { href: "/admin/groups", label: "Grupos", icon: <GroupsIcon /> },
+  { href: "/admin/reports", label: "Reportes", icon: <ReportsIcon /> },
+  { href: "/admin/anuncios", label: "Anuncios", icon: <AdsIcon /> },
 ];
 
 export function AdminShell({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
@@ -30,7 +29,7 @@ export function AdminShell({ title, subtitle, children }: { title: string; subti
                 href={link.href}
                 className="flex items-center gap-2 rounded-xl border border-transparent px-3 py-2 text-sm transition hover:border-brand/40 hover:bg-brand/10"
               >
-                <span aria-hidden>{link.emoji}</span>
+                <span aria-hidden>{link.icon}</span>
                 <span>{link.label}</span>
               </Link>
             ))}
@@ -49,6 +48,72 @@ export function AdminShell({ title, subtitle, children }: { title: string; subti
         </section>
       </div>
     </main>
+  );
+}
+
+function OverviewIcon() {
+  return (
+    <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M3 12 12 4l9 8" />
+      <path d="M5 10.5V20h14v-9.5" />
+    </svg>
+  );
+}
+
+function UsersIcon() {
+  return (
+    <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <circle cx="9" cy="8" r="3" />
+      <path d="M3 19a6 6 0 0 1 12 0" />
+      <circle cx="17" cy="9" r="2" />
+      <path d="M15 19a4 4 0 0 1 6 0" />
+    </svg>
+  );
+}
+
+function PostsIcon() {
+  return (
+    <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <rect x="4" y="4" width="16" height="16" rx="2" />
+      <path d="M8 9h8M8 13h8M8 17h5" />
+    </svg>
+  );
+}
+
+function CommunitiesIcon() {
+  return (
+    <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M3 20h18" />
+      <path d="M5 20V9.5L12 5l7 4.5V20" />
+      <path d="M10 20v-4h4v4" />
+    </svg>
+  );
+}
+
+function GroupsIcon() {
+  return (
+    <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M21 14a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
+    </svg>
+  );
+}
+
+function ReportsIcon() {
+  return (
+    <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M12 9v4" />
+      <circle cx="12" cy="16.5" r=".8" fill="currentColor" stroke="none" />
+      <path d="M10.3 3.8 2.8 17a2 2 0 0 0 1.7 3h15a2 2 0 0 0 1.7-3L13.7 3.8a2 2 0 0 0-3.4 0z" />
+    </svg>
+  );
+}
+
+function AdsIcon() {
+  return (
+    <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M7 8h10M7 12h6M7 16h4" />
+    </svg>
   );
 }
 

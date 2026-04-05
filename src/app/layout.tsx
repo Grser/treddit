@@ -76,7 +76,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           }}
         />
       </head>
-      <body className="bg-app text-foreground antialiased">
+      <body className="bg-app pb-20 text-foreground antialiased sm:pb-0">
         <LocaleProvider>{children}</LocaleProvider>
       </body>
     </html>

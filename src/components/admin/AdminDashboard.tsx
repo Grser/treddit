@@ -21,43 +21,43 @@ export default function AdminDashboard({ stats }: { stats: AdminStats }) {
       title: t.links.users.title,
       description: t.links.users.description,
       badge: "Identity",
-      emoji: "👥",
+      icon: <UsersIcon />,
     },
     {
       href: "/admin/posts",
       title: t.links.posts.title,
       description: t.links.posts.description,
       badge: "Content",
-      emoji: "📝",
+      icon: <PostsIcon />,
     },
     {
       href: "/admin/communities",
       title: t.links.communities.title,
       description: t.links.communities.description,
       badge: "Community",
-      emoji: "🏘️",
+      icon: <CommunitiesIcon />,
     },
     {
       href: "/admin/groups",
       title: t.links.groups.title,
       description: t.links.groups.description,
       badge: "Messaging",
-      emoji: "💬",
+      icon: <GroupsIcon />,
     },
-    { href: "/admin/anuncios", title: t.links.ads.title, description: t.links.ads.description, badge: "Growth", emoji: "📣" },
+    { href: "/admin/anuncios", title: t.links.ads.title, description: t.links.ads.description, badge: "Growth", icon: <AdsIcon /> },
     {
       href: "/admin/users#verification",
       title: t.links.verification.title,
       description: t.links.verification.description,
       badge: "Trust & Safety",
-      emoji: "✅",
+      icon: <VerificationIcon />,
     },
     {
       href: "/admin/reports",
       title: "Reportes",
       description: "Revisa reportes de cuentas y posts en un centro de incidentes unificado.",
       badge: "Incidents",
-      emoji: "🚨",
+      icon: <ReportsIcon />,
     },
   ];
 
@@ -100,7 +100,7 @@ export default function AdminDashboard({ stats }: { stats: AdminStats }) {
             >
               <p className="text-[11px] font-semibold uppercase tracking-[0.2em] opacity-60">{link.badge}</p>
               <h4 className="mt-2 flex items-center gap-2 text-base font-semibold group-hover:text-brand">
-                <span aria-hidden>{link.emoji}</span>
+                <span aria-hidden>{link.icon}</span>
                 {link.title}
               </h4>
               <p className="mt-2 text-sm opacity-75">{link.description}</p>
@@ -109,6 +109,72 @@ export default function AdminDashboard({ stats }: { stats: AdminStats }) {
         </div>
       </section>
     </div>
+  );
+}
+
+function UsersIcon() {
+  return (
+    <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <circle cx="9" cy="8" r="3" />
+      <path d="M3 19a6 6 0 0 1 12 0" />
+      <circle cx="17" cy="9" r="2" />
+      <path d="M15 19a4 4 0 0 1 6 0" />
+    </svg>
+  );
+}
+
+function PostsIcon() {
+  return (
+    <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <rect x="4" y="4" width="16" height="16" rx="2" />
+      <path d="M8 9h8M8 13h8M8 17h5" />
+    </svg>
+  );
+}
+
+function CommunitiesIcon() {
+  return (
+    <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M3 20h18" />
+      <path d="M5 20V9.5L12 5l7 4.5V20" />
+      <path d="M10 20v-4h4v4" />
+    </svg>
+  );
+}
+
+function GroupsIcon() {
+  return (
+    <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M21 14a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
+    </svg>
+  );
+}
+
+function AdsIcon() {
+  return (
+    <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M7 8h10M7 12h6M7 16h4" />
+    </svg>
+  );
+}
+
+function VerificationIcon() {
+  return (
+    <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="m20 7-8.5 13L4 14" />
+      <path d="M12 3 4 7v5c0 4.5 3.1 7.9 8 9 4.9-1.1 8-4.5 8-9V7z" />
+    </svg>
+  );
+}
+
+function ReportsIcon() {
+  return (
+    <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M12 9v4" />
+      <circle cx="12" cy="16.5" r=".8" fill="currentColor" stroke="none" />
+      <path d="M10.3 3.8 2.8 17a2 2 0 0 0 1.7 3h15a2 2 0 0 0 1.7-3L13.7 3.8a2 2 0 0 0-3.4 0z" />
+    </svg>
   );
 }
 
