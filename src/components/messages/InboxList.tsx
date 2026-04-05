@@ -289,17 +289,20 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
 
   return (
     <>
-      <div className="border-b border-border/70 bg-gradient-to-b from-surface/90 to-background/80 px-4 py-4 backdrop-blur">
-        <h1 className="text-3xl font-semibold text-foreground">Chats</h1>
+      <div className="border-b border-white/10 bg-gradient-to-b from-[#142536] to-[#0f1b28] px-4 py-3 backdrop-blur sm:py-4">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-semibold text-foreground sm:text-3xl">Chats</h1>
+          <span className="rounded-full border border-white/15 bg-white/5 px-2.5 py-1 text-[11px] font-medium tracking-wide text-white/70">Inbox</span>
+        </div>
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           type="search"
           placeholder="Buscar chat o iniciar uno nuevo"
-          className="mt-3 w-full rounded-full border border-border bg-input px-4 py-2.5 text-sm text-foreground outline-none transition focus:border-brand"
+          className="mt-3 w-full rounded-full border border-white/15 bg-black/20 px-4 py-2.5 text-sm text-foreground outline-none transition placeholder:text-white/50 focus:border-brand"
           aria-label="Buscar contactos"
         />
-        <div className="mt-3 flex flex-wrap gap-2 text-sm">
+        <div className="mt-3 flex flex-wrap gap-2 text-xs sm:text-sm">
           <button type="button" onClick={() => setTab("all")} className={`rounded-full border px-3 py-1.5 transition ${tab === "all" ? "border-brand bg-brand/20 text-foreground" : "border-border text-foreground/80 hover:bg-background/70"}`}>Todos</button>
           <button type="button" onClick={() => setTab("archived")} className={`relative rounded-full border px-3 py-1.5 transition ${tab === "archived" ? "border-brand bg-brand/20 text-foreground" : "border-border text-foreground/80 hover:bg-background/70"}`}>
             Archivados
@@ -315,7 +318,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
           <button
             type="button"
             onClick={() => setShowOnlyUnread((prev) => !prev)}
-            className={`rounded-full border px-3 py-1 text-xs transition ${showOnlyUnread ? "border-brand bg-brand/20 text-foreground" : "border-border bg-input/70 text-foreground/75 hover:bg-muted"}`}
+            className={`rounded-full border px-3 py-1 text-xs transition ${showOnlyUnread ? "border-brand bg-brand/20 text-foreground" : "border-white/15 bg-black/20 text-foreground/75 hover:bg-white/10"}`}
           >
             {showOnlyUnread ? "Mostrando solo no leídos" : "Filtrar por no leídos"}
           </button>
@@ -419,7 +422,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
             : "No encontramos contactos con ese término."}
         </div>
       ) : (
-        <ul className={className || "hide-scrollbar h-[calc(100dvh-18rem)] min-h-[360px] overflow-y-auto bg-background/40"}>
+        <ul className={className || "hide-scrollbar h-[calc(100dvh-18rem)] min-h-[360px] overflow-y-auto bg-[#0f1b28]/90"}>
           {visibleEntries.map((item) => {
             const isStarter = Boolean(item.isStarter);
             const avatar = item.avatar_url?.trim() || "/demo-reddit.png";
@@ -439,7 +442,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
               <li key={item.userId} className="group relative">
                 <Link
                   href={href}
-                  className={`flex items-center gap-3 border-b border-white/10 px-4 py-3 pr-14 transition ${isActive ? "bg-brand/15" : "hover:bg-muted/60"}`}
+                  className={`flex items-center gap-3 border-b border-white/10 px-4 py-3 pr-14 transition ${isActive ? "bg-brand/15" : "hover:bg-white/5"}`}
                 >
                   {isGroup ? (
                     item.avatar_url ? (
@@ -465,7 +468,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
                       {item.isFavorite && <span className="text-amber-300">★</span>}
                       {item.isMuted && <span className="opacity-70">🔕</span>}
                       {item.isBlocked && <span className="opacity-70">🚫</span>}
-                      <span className="ml-auto rounded-full bg-black/25 px-2 py-0.5 text-xs opacity-70">{isStarter ? "Nuevo" : getCompactTime(item.createdAt)}</span>
+                      <span className="ml-auto rounded-full bg-black/25 px-2 py-0.5 text-[11px] opacity-70">{isStarter ? "Nuevo" : getCompactTime(item.createdAt)}</span>
                     </div>
                     <p className={`line-clamp-1 text-sm ${unread ? "font-semibold" : "opacity-70"}`}>
                       {isGroup ? "Grupo · " : isStarter ? "" : isMine ? "Tú: " : ""}
