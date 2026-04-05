@@ -16,46 +16,94 @@ export default function AdminDashboard({ stats }: { stats: AdminStats }) {
   const t = strings.adminPage;
 
   const quickLinks = [
-    { href: "/admin/users", title: t.links.users.title, description: t.links.users.description, emoji: "👥" },
-    { href: "/admin/posts", title: t.links.posts.title, description: t.links.posts.description, emoji: "📝" },
-    { href: "/admin/communities", title: t.links.communities.title, description: t.links.communities.description, emoji: "🏘️" },
-    { href: "/admin/groups", title: t.links.groups.title, description: t.links.groups.description, emoji: "💬" },
-    { href: "/admin/anuncios", title: t.links.ads.title, description: t.links.ads.description, emoji: "📣" },
-    { href: "/admin/users#verification", title: t.links.verification.title, description: t.links.verification.description, emoji: "✅" },
-    { href: "/admin/reports", title: "Reportes", description: "Revisa reportes de cuentas y posts en un solo panel.", emoji: "🚨" },
+    {
+      href: "/admin/users",
+      title: t.links.users.title,
+      description: t.links.users.description,
+      badge: "Identity",
+      emoji: "👥",
+    },
+    {
+      href: "/admin/posts",
+      title: t.links.posts.title,
+      description: t.links.posts.description,
+      badge: "Content",
+      emoji: "📝",
+    },
+    {
+      href: "/admin/communities",
+      title: t.links.communities.title,
+      description: t.links.communities.description,
+      badge: "Community",
+      emoji: "🏘️",
+    },
+    {
+      href: "/admin/groups",
+      title: t.links.groups.title,
+      description: t.links.groups.description,
+      badge: "Messaging",
+      emoji: "💬",
+    },
+    { href: "/admin/anuncios", title: t.links.ads.title, description: t.links.ads.description, badge: "Growth", emoji: "📣" },
+    {
+      href: "/admin/users#verification",
+      title: t.links.verification.title,
+      description: t.links.verification.description,
+      badge: "Trust & Safety",
+      emoji: "✅",
+    },
+    {
+      href: "/admin/reports",
+      title: "Reportes",
+      description: "Revisa reportes de cuentas y posts en un centro de incidentes unificado.",
+      badge: "Incidents",
+      emoji: "🚨",
+    },
   ];
 
   return (
-    <div className="space-y-8">
-      <header className="rounded-3xl border border-border bg-gradient-to-br from-surface to-brand/10 p-6 shadow-sm">
-        <h1 className="text-2xl font-bold">{t.title}</h1>
-        <p className="mt-1 text-sm opacity-75">{t.subtitle}</p>
-      </header>
+    <div className="space-y-6">
+      <section className="grid gap-4 xl:grid-cols-[1.2fr_1fr]">
+        <div className="rounded-3xl border border-border bg-gradient-to-br from-brand/20 via-brand/10 to-surface p-6 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand">{t.title}</p>
+          <h2 className="mt-3 text-2xl font-semibold">Centro operativo</h2>
+          <p className="mt-2 text-sm opacity-75">{t.subtitle}</p>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Link href="/admin/reports" className="rounded-full bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand/90">
+              Ir a incidentes
+            </Link>
+            <Link href="/admin/users" className="rounded-full border border-border bg-surface/80 px-4 py-2 text-sm hover:border-brand/40">
+              Revisar usuarios
+            </Link>
+          </div>
+        </div>
 
-      <section>
-        <h2 className="text-lg font-semibold">{t.statsTitle}</h2>
-        <dl className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard label={t.stats.users} value={stats.users} accent="from-sky-500/15 to-sky-500/5" />
-          <StatCard label={t.stats.posts} value={stats.posts} accent="from-fuchsia-500/15 to-fuchsia-500/5" />
-          <StatCard label={t.stats.communities} value={stats.communities} accent="from-emerald-500/15 to-emerald-500/5" />
-          <StatCard label={t.stats.moderators} value={stats.moderators} accent="from-amber-500/15 to-amber-500/5" />
-        </dl>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+          <KpiCard label={t.stats.users} value={stats.users} helper="Cuentas visibles" accent="from-sky-500/30 to-sky-500/5" />
+          <KpiCard label={t.stats.posts} value={stats.posts} helper="Contenido publicado" accent="from-violet-500/30 to-violet-500/5" />
+          <KpiCard label={t.stats.communities} value={stats.communities} helper="Espacios activos" accent="from-emerald-500/30 to-emerald-500/5" />
+          <KpiCard label={t.stats.moderators} value={stats.moderators} helper="Con permisos avanzados" accent="from-amber-500/30 to-amber-500/5" />
+        </div>
       </section>
 
       <section>
-        <h2 className="text-lg font-semibold">{t.quickLinks}</h2>
-        <div className="mt-3 grid gap-3 md:grid-cols-2">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h3 className="text-lg font-semibold">{t.quickLinks}</h3>
+          <span className="text-xs uppercase tracking-[0.15em] opacity-60">Workflows</span>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {quickLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
               className="group rounded-2xl border border-border bg-surface p-4 transition hover:-translate-y-0.5 hover:border-brand/60 hover:shadow"
             >
-              <h3 className="flex items-center gap-2 text-base font-semibold group-hover:text-brand">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] opacity-60">{link.badge}</p>
+              <h4 className="mt-2 flex items-center gap-2 text-base font-semibold group-hover:text-brand">
                 <span aria-hidden>{link.emoji}</span>
                 {link.title}
-              </h3>
-              <p className="mt-1 text-sm opacity-75">{link.description}</p>
+              </h4>
+              <p className="mt-2 text-sm opacity-75">{link.description}</p>
             </Link>
           ))}
         </div>
@@ -64,11 +112,12 @@ export default function AdminDashboard({ stats }: { stats: AdminStats }) {
   );
 }
 
-function StatCard({ label, value, accent }: { label: string; value: number; accent: string }) {
+function KpiCard({ label, value, helper, accent }: { label: string; value: number; helper: string; accent: string }) {
   return (
-    <div className={`rounded-2xl border border-border bg-gradient-to-br ${accent} p-4`}>
-      <dt className="text-sm opacity-70">{label}</dt>
-      <dd className="mt-1 text-2xl font-semibold">{value.toLocaleString()}</dd>
-    </div>
+    <article className={`rounded-2xl border border-border bg-gradient-to-br ${accent} p-4`}>
+      <p className="text-xs uppercase tracking-[0.14em] opacity-70">{label}</p>
+      <p className="mt-2 text-3xl font-semibold leading-none">{value.toLocaleString()}</p>
+      <p className="mt-1 text-xs opacity-70">{helper}</p>
+    </article>
   );
 }

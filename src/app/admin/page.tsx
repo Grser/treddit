@@ -23,7 +23,7 @@ export default async function AdminHome() {
   return (
     <div>
       <Navbar />
-      <div className="mx-auto max-w-5xl p-6">
+      <div className="mx-auto w-full max-w-7xl px-4 py-6 md:px-6 md:py-8">
         <AdminDashboard stats={stats} />
       </div>
     </div>
