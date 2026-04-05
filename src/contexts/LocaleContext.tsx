@@ -68,6 +68,7 @@ export type LocaleStrings = {
     home: string;
     popular: string;
     explore: string;
+    communitiesHub: string;
     communities: string;
     popularCommunities: string;
     top: string;
@@ -316,6 +317,7 @@ const translations: Record<Locale, LocaleStrings> = {
       home: "Inicio",
       popular: "Popular",
       explore: "Explorar",
+      communitiesHub: "Comunidades",
       communities: "Comunidades",
       popularCommunities: "Comunidades populares",
       top: "Top",
@@ -603,6 +605,7 @@ const translations: Record<Locale, LocaleStrings> = {
       home: "Home",
       popular: "Popular",
       explore: "Explore",
+      communitiesHub: "Communities",
       communities: "Communities",
       popularCommunities: "Popular communities",
       top: "Top",
@@ -889,6 +892,7 @@ const translations: Record<Locale, LocaleStrings> = {
       home: "Главная",
       popular: "Популярное",
       explore: "Обзор",
+      communitiesHub: "Сообщества",
       communities: "Сообщества",
       popularCommunities: "Популярные сообщества",
       top: "Топ",
