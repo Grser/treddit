@@ -53,6 +53,8 @@ type ParsedCursor = {
   groupedId: number | null;
 };
 
+type FeedPriorityMode = "followed-authors" | "followed-communities" | null;
+
 const ANON_FEED_CACHE_TTL_MS = 15_000;
 const AUTH_FEED_CACHE_TTL_MS = 8_000;
 const globalForPostsCache = globalThis as unknown as {
@@ -158,12 +160,6 @@ export async function GET(req: Request) {
     whereParams.push(`%${escapeLike(normalizedTag)}%`);
   }
 
-  if (filter === "exploring" && meId) {
-    whereParts.push("p.user <> ?");
-    whereParams.push(meId);
-    whereParts.push("NOT EXISTS (SELECT 1 FROM Follows fExplore WHERE fExplore.follower = ? AND fExplore.followed = p.user)");
-    whereParams.push(meId);
-  }
   const canUseAnonCache = shouldUseAnonFeedCache(url, meId);
   const canUseAuthCache = shouldUseAuthFeedCache(url, meId);
   const anonCacheKey = canUseAnonCache ? createAnonFeedCacheKey(url) : null;
@@ -194,11 +190,23 @@ export async function GET(req: Request) {
   }
 
   const isPopularFeed = filter === "popular";
-  const shouldPrioritizeFollowed = Boolean(
+  const shouldPrioritizeFollowedAuthors = Boolean(
     meId && !isPopularFeed && !userId && !likesOf && !wantsCommunityFilter && !usernameFilter && !normalizedTag,
   );
+  let feedPriorityMode: FeedPriorityMode = null;
 
-  if (shouldPrioritizeFollowed) {
+  if (filter === "exploring" && meId) {
+    whereParts.push("p.user <> ?");
+    whereParams.push(meId);
+  }
+
+  if (filter === "exploring" && meId) {
+    feedPriorityMode = "followed-communities";
+  } else if (shouldPrioritizeFollowedAuthors) {
+    feedPriorityMode = "followed-authors";
+  }
+
+  if (feedPriorityMode === "followed-authors") {
     joins.push("LEFT JOIN Follows ff ON ff.followed = p.user AND ff.follower = ?");
     joinParams.push(Number(meId));
     if (parsedCursor.groupedRank !== null && parsedCursor.groupedId !== null) {
@@ -208,7 +216,7 @@ export async function GET(req: Request) {
       whereParts.push("p.id < ?");
       whereParams.push(parsedCursor.legacyId);
     }
-  } else if (parsedCursor.legacyId !== null) {
+  } else if (feedPriorityMode !== "followed-communities" && parsedCursor.legacyId !== null) {
     whereParts.push("p.id < ?");
     whereParams.push(parsedCursor.legacyId);
   }
@@ -248,6 +256,26 @@ export async function GET(req: Request) {
   ]);
   const hasCommunityColumn = Boolean(communityColumn);
   const hasSensitiveColumn = Boolean(sensitiveColumn);
+
+  if (feedPriorityMode === "followed-communities") {
+    if (hasCommunityColumn && communityColumn) {
+      joins.push(`LEFT JOIN Community_Members cmExplore ON cmExplore.community_id = p.${communityColumn} AND cmExplore.user_id = ?`);
+      joinParams.push(Number(meId));
+      if (parsedCursor.groupedRank !== null && parsedCursor.groupedId !== null) {
+        whereParts.push("(CASE WHEN cmExplore.user_id IS NULL THEN 1 ELSE 0 END > ? OR (CASE WHEN cmExplore.user_id IS NULL THEN 1 ELSE 0 END = ? AND p.id < ?))");
+        whereParams.push(parsedCursor.groupedRank, parsedCursor.groupedRank, parsedCursor.groupedId);
+      } else if (parsedCursor.legacyId !== null) {
+        whereParts.push("p.id < ?");
+        whereParams.push(parsedCursor.legacyId);
+      }
+    } else {
+      feedPriorityMode = null;
+      if (parsedCursor.legacyId !== null) {
+        whereParts.push("p.id < ?");
+        whereParams.push(parsedCursor.legacyId);
+      }
+    }
+  }
   let closeFriendsReady = false;
   try {
     await ensureCloseFriendsTable();
@@ -289,9 +317,16 @@ export async function GET(req: Request) {
     : "";
   const idQueryOrderBy = isPopularFeed
     ? "COALESCE(popularLikeCount.likes, 0) DESC, p.id DESC"
-    : shouldPrioritizeFollowed
+    : feedPriorityMode === "followed-authors"
       ? "CASE WHEN ff.follower IS NULL THEN 1 ELSE 0 END, p.id DESC"
+      : feedPriorityMode === "followed-communities"
+        ? "CASE WHEN cmExplore.user_id IS NULL THEN 1 ELSE 0 END, p.id DESC"
       : "p.id DESC";
+  const idQueryPrioritySelect = feedPriorityMode === "followed-authors"
+    ? ", CASE WHEN ff.follower IS NULL THEN 1 ELSE 0 END AS feed_priority_rank"
+    : feedPriorityMode === "followed-communities"
+      ? ", CASE WHEN cmExplore.user_id IS NULL THEN 1 ELSE 0 END AS feed_priority_rank"
+      : ", NULL AS feed_priority_rank";
   const idQueryLimit = isPopularFeed ? Math.min(1000, limit + 1) : limit + 1;
   const communityIdSelect = hasCommunityColumn && communityColumn ? `p.${communityColumn}` : "NULL";
   const communityJoin = hasCommunityColumn && communityColumn ? `LEFT JOIN Communities c ON c.id = p.${communityColumn}` : "";
@@ -313,9 +348,10 @@ export async function GET(req: Request) {
     : "0 AS isCloseFriendAuthor";
 
   try {
-    const [idRows] = await db.query<Array<RowDataPacket & { id: number }>>(
+    const [idRows] = await db.query<Array<RowDataPacket & { id: number; feed_priority_rank: 0 | 1 | null }>>(
       `
       SELECT p.id
+      ${idQueryPrioritySelect}
       FROM Posts p
       ${joins.join(" ")}
       ${idQueryUsersJoin}
@@ -328,6 +364,11 @@ export async function GET(req: Request) {
     );
 
     const orderedIds = idRows.map((row) => Number(row.id)).filter((id) => Number.isFinite(id));
+    const priorityRankById = new Map(
+      idRows
+        .map((row) => [Number(row.id), row.feed_priority_rank === 0 || row.feed_priority_rank === 1 ? row.feed_priority_rank : null] as const)
+        .filter(([id]) => Number.isFinite(id)),
+    );
     if (!orderedIds.length) {
       return new NextResponse(JSON.stringify({ items: [], nextCursor: null }), {
         headers: { "Cache-Control": "no-store", "Content-Type": "application/json" },
@@ -456,8 +497,8 @@ export async function GET(req: Request) {
           : null,
     }));
     const nextCursor = list.length > limit
-      ? shouldPrioritizeFollowed
-        ? `${items[items.length - 1].isFollowedAuthor ? 0 : 1}:${items[items.length - 1].id}`
+      ? feedPriorityMode
+        ? `${priorityRankById.get(items[items.length - 1].id) ?? 1}:${items[items.length - 1].id}`
         : String(items[items.length - 1].id)
       : null;
 

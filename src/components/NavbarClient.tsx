@@ -545,8 +545,8 @@ function MobileBottomNav({ pathname }: { pathname: string }) {
   const links = [
     { href: "/", label: "Inicio", icon: <HomeIcon /> },
     { href: "/explorar", label: "Comunidades", icon: <CommunitiesIcon /> },
-    { href: "/notificaciones", label: "Avisos", icon: <BellIcon /> },
-    { href: "/u/me/edit", label: "Perfil", icon: <ProfileIcon /> },
+    { href: "/mensajes", label: "Chats", icon: <ChatIcon /> },
+    { href: "/explorar", label: "Descubrir", icon: <ProfileIcon /> },
   ] as const;
 
   function isActive(href: string) {
