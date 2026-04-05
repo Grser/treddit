@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 
 import type { SessionUser } from "@/lib/auth";
@@ -51,6 +51,7 @@ const LIGHT_PALETTES: Array<{ key: LightPaletteKey; label: string }> = [
 export default function NavbarClient({ session }: { session?: SessionUser | null }) {
   const { strings } = useLocale();
   const router = useRouter();
+  const pathname = usePathname();
   const [resolvedSession, setResolvedSession] = useState<SessionUser | null | undefined>(session);
   const avatar = resolvedSession?.avatar_url?.trim() || "/demo-reddit.png";
   const [isDarkMode, setIsDarkMode] = useState(true);
@@ -342,8 +343,9 @@ export default function NavbarClient({ session }: { session?: SessionUser | null
 
 
   return (
-    <header className="sticky top-0 z-50 bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80 border-b border-border">
-      <div className="mx-auto max-w-7xl px-3 sm:px-4">
+    <>
+      <header className="sticky top-0 z-50 bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80 border-b border-border">
+        <div className="mx-auto max-w-7xl px-3 sm:px-4">
         <div className="flex items-center gap-3 h-14">
           <Link href="/" className="flex items-center gap-2 shrink-0">
             <span className="inline-grid place-items-center size-8 rounded-full bg-brand text-white font-black">t</span>
@@ -541,8 +543,47 @@ export default function NavbarClient({ session }: { session?: SessionUser | null
             )}
           </nav>
         </div>
-      </div>
-    </header>
+        </div>
+      </header>
+      <MobileBottomNav pathname={pathname} />
+    </>
+  );
+}
+
+function MobileBottomNav({ pathname }: { pathname: string }) {
+  const links = [
+    { href: "/", label: "Inicio", icon: <HomeIcon /> },
+    { href: "/explorar", label: "Comunidades", icon: <CommunitiesIcon /> },
+    { href: "/mensajes", label: "Chats", icon: <ChatIcon /> },
+    { href: "/buscar", label: "Descubrir", icon: <DiscoverIcon /> },
+  ] as const;
+
+  function isActive(href: string) {
+    if (href === "/") return pathname === "/";
+    return pathname === href || pathname.startsWith(`${href}/`);
+  }
+
+  return (
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 px-2 pb-[calc(env(safe-area-inset-bottom)+0.3rem)] pt-2 backdrop-blur supports-[backdrop-filter]:bg-surface/85 sm:hidden">
+      <ul className="mx-auto grid max-w-md grid-cols-4 gap-1">
+        {links.map((link) => {
+          const active = isActive(link.href);
+          return (
+            <li key={link.href}>
+              <Link
+                href={link.href}
+                className={`flex flex-col items-center justify-center rounded-xl px-2 py-1.5 text-[11px] transition ${
+                  active ? "text-brand" : "opacity-75 hover:opacity-100"
+                }`}
+              >
+                <span className={active ? "scale-105" : ""}>{link.icon}</span>
+                <span className="mt-1 font-medium">{link.label}</span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
   );
 }
 
@@ -759,6 +800,34 @@ function ChatIcon() {
   return (
     <svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
+    </svg>
+  );
+}
+
+function HomeIcon() {
+  return (
+    <svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M3 11.5 12 4l9 7.5" />
+      <path d="M5 10.5V20h14v-9.5" />
+    </svg>
+  );
+}
+
+function CommunitiesIcon() {
+  return (
+    <svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M4 19h16" />
+      <path d="M6 19V9l6-4 6 4v10" />
+      <path d="M10 19v-4h4v4" />
+    </svg>
+  );
+}
+
+function DiscoverIcon() {
+  return (
+    <svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="8" />
+      <path d="m15.5 8.5-2.8 5.9-5.2 2.6 2.8-5.9z" />
     </svg>
   );
 }
