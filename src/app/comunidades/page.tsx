@@ -4,7 +4,6 @@ import { cookies } from "next/headers";
 import Navbar from "@/components/Navbar";
 import SidebarLeft from "@/components/SidebarLeft";
 import SidebarRight from "@/components/SidebarRight";
-import CommunityChannelsHub from "@/components/community/CommunityChannelsHub";
 import { getSessionUser } from "@/lib/auth";
 import { getRequestBaseUrl } from "@/lib/requestBaseUrl";
 
@@ -105,8 +104,6 @@ export default async function CommunitiesPage() {
               </div>
             </section>
           )}
-
-          <CommunityChannelsHub />
         </main>
 
         <SidebarRight trending={discovery.trendingTags} recommended={discovery.recommendedUsers} canInteract={Boolean(session)} />
