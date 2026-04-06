@@ -93,20 +93,20 @@ html:not(.dark)[data-light-palette="custom"] {
 }
 
 .wa-wallpaper {
-  background-color: #0b141a;
+  background-color: color-mix(in srgb, var(--color-app) 88%, black 12%);
   background-image:
-    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px),
-    radial-gradient(circle at 80% 10%, rgba(255, 255, 255, 0.03) 0 1px, transparent 1px),
-    radial-gradient(circle at 40% 80%, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px);
+    radial-gradient(circle at 20% 20%, color-mix(in srgb, var(--color-foreground) 12%, transparent) 0 1px, transparent 1px),
+    radial-gradient(circle at 80% 10%, color-mix(in srgb, var(--color-foreground) 10%, transparent) 0 1px, transparent 1px),
+    radial-gradient(circle at 40% 80%, color-mix(in srgb, var(--color-brand) 12%, transparent) 0 1px, transparent 1px);
   background-size: 26px 26px, 32px 32px, 38px 38px;
 }
 
 .wa-panel {
-  background-color: #111b21;
-  border-color: #2a3942;
+  background-color: color-mix(in srgb, var(--color-surface) 92%, var(--color-app) 8%);
+  border-color: color-mix(in srgb, var(--color-border) 85%, var(--color-brand) 15%);
 }
 
 .wa-input {
-  background-color: #202c33;
-  border-color: #2a3942;
+  background-color: color-mix(in srgb, var(--color-input) 92%, var(--color-app) 8%);
+  border-color: color-mix(in srgb, var(--color-border) 85%, var(--color-brand) 15%);
 }
