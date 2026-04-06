@@ -353,7 +353,7 @@ export default function NavbarClient({ session }: { session?: SessionUser | null
               alt="Treddit"
               width={32}
               height={32}
-              className="size-8 rounded-full object-cover"
+              className="size-8 rounded-full object-cover ring-1 ring-brand/45 shadow-[0_0_0_1px_rgba(255,255,255,0.15)]"
               priority
               unoptimized
             />
