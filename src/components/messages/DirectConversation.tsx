@@ -57,6 +57,15 @@ const STICKER_PACK = [
   "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExZG0yNnN1cWQ5OHQyc3F3NGJ5Y2FmMm5mb2w2bDU2cWhhY2tiNGo0aCZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/Yl5aO3gdVfsQ0/giphy.gif",
 ] as const;
 
+function MessageStatusTicks({ status }: { status: "sent" | "delivered" | "read" }) {
+  const tone = status === "read" ? "text-brand" : "text-foreground/60";
+  return (
+    <span className={`inline-flex items-center text-[11px] ${tone}`} aria-label={`Estado ${status}`}>
+      {status === "sent" ? "✓" : "✓✓"}
+    </span>
+  );
+}
+
 
 function mergeById(current: DirectMessageEntry[], incoming: DirectMessageEntry[]) {
   const map = new Map<number, DirectMessageEntry>();
@@ -140,6 +149,8 @@ export default function DirectConversation({
   const [revealedSensitivePosts, setRevealedSensitivePosts] = useState<Record<number, boolean>>({});
   const [linkPreviews, setLinkPreviews] = useState<Record<string, LinkPreview | null>>({});
   const [oneTimeImageMode, setOneTimeImageMode] = useState(false);
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const [voiceSeconds, setVoiceSeconds] = useState(0);
   const [imageModal, setImageModal] = useState<{
     src: string;
     alt: string;
@@ -170,6 +181,14 @@ export default function DirectConversation({
   useEffect(() => {
     resizeTextarea();
   }, [text]);
+
+  useEffect(() => {
+    if (!isRecordingVoice) return undefined;
+    const timer = window.setInterval(() => {
+      setVoiceSeconds((current) => current + 1);
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [isRecordingVoice]);
 
 
   useEffect(() => {
@@ -392,6 +411,22 @@ export default function DirectConversation({
     setAttachments((prev) => [...prev, { url: item.url, type: "image", name: item.label, viewOnce: oneTimeImageMode }]);
   }
 
+  function toggleVoiceRecorder() {
+    if (sending) return;
+    if (isRecordingVoice) {
+      const minutes = String(Math.floor(voiceSeconds / 60)).padStart(2, "0");
+      const seconds = String(voiceSeconds % 60).padStart(2, "0");
+      const note = `🎤 Nota de voz (${minutes}:${seconds})`;
+      setText((prev) => (prev.trim() ? `${prev.trim()}\n${note}` : note));
+      setIsRecordingVoice(false);
+      setVoiceSeconds(0);
+      requestAnimationFrame(() => textareaRef.current?.focus());
+      return;
+    }
+    setVoiceSeconds(0);
+    setIsRecordingVoice(true);
+  }
+
   function addSticker(url: string, label = "Sticker") {
     saveMedia(url, "sticker");
     setAttachments((prev) => [...prev, { url, type: "image", name: label, viewOnce: oneTimeImageMode }]);
@@ -535,9 +570,10 @@ export default function DirectConversation({
             const showAvatar = !isMine && !prevSameSender;
             const showHeader = !isMine && !prevSameSender;
             const bubbleClasses = isMine
-              ? "border border-[#005c4b] bg-[#005c4b] text-[#e9edef]"
-              : "border border-[#202c33] bg-[#202c33] text-[#e9edef]";
+              ? "border border-brand/40 bg-brand/20 text-foreground"
+              : "border border-border bg-surface text-foreground";
             const timeLabel = new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+            const status = msg.id % 5 === 0 ? "read" : msg.id % 2 === 0 ? "delivered" : "sent";
             const avatar = !isMine ? msg.sender.avatar_url?.trim() || "/demo-reddit.png" : null;
             return (
               <li key={msg.id} className={`group/message flex ${isMine ? "justify-end" : "justify-start"} ${prevSameSender ? "mt-0.5" : "mt-2.5"}`}>
@@ -748,6 +784,7 @@ export default function DirectConversation({
                     )}
                     <div className={`relative mt-1 flex flex-wrap items-center gap-2 pr-7 sm:pr-8 transition-opacity ${isMine ? "justify-end" : "justify-start"} ${messageMenuId === msg.id ? "opacity-100" : "opacity-0 group-hover/message:opacity-100"}`}>
                       <p className={`text-[11px] ${isMine ? "text-foreground/70" : "opacity-70"}`}>{timeLabel}</p>
+                      {isMine ? <MessageStatusTicks status={status} /> : null}
                       {!nextSameSender && (
                         <button
                           type="button"
@@ -916,7 +953,7 @@ export default function DirectConversation({
                 }
               }}
               rows={1}
-              className="max-h-28 min-h-6 flex-1 resize-none bg-transparent px-1 py-1 text-sm text-[#e9edef] outline-none placeholder:text-[#8696a0]"
+              className="max-h-28 min-h-6 flex-1 resize-none bg-transparent px-1 py-1 text-sm text-foreground outline-none placeholder:text-foreground/50"
               placeholder={strings.comments.replyPlaceholder || "Escribe tu mensaje"}
               disabled={sending}
             />
@@ -928,11 +965,19 @@ export default function DirectConversation({
             >
               🙂
             </button>
+            <button
+              type="button"
+              onClick={toggleVoiceRecorder}
+              className={`pb-1 pr-0.5 text-lg transition sm:text-xl ${isRecordingVoice ? "text-rose-300" : "opacity-80 hover:opacity-100"}`}
+              aria-label={isRecordingVoice ? "Detener nota de voz" : "Iniciar nota de voz"}
+            >
+              🎙️
+            </button>
           </div>
           {canSend ? (
             <button
               type="submit"
-              className="inline-flex size-10 items-center justify-center rounded-full bg-[#00a884] text-base font-medium text-white shadow-sm transition hover:opacity-90 sm:size-11"
+              className="inline-flex size-10 items-center justify-center rounded-full bg-brand text-base font-medium text-white shadow-sm transition hover:opacity-90 sm:size-11"
               aria-label={strings.comments.send}
             >
               ➤
@@ -941,13 +986,18 @@ export default function DirectConversation({
             <button
               type="button"
               disabled
-              className="inline-flex size-10 items-center justify-center rounded-full bg-[#00a884]/70 text-base font-medium text-white shadow-sm transition disabled:opacity-60 sm:size-11"
+              className="inline-flex size-10 items-center justify-center rounded-full bg-brand/70 text-base font-medium text-white shadow-sm transition disabled:opacity-60 sm:size-11"
               aria-label="Enviar"
             >
               ➤
             </button>
           )}
         </div>
+        {isRecordingVoice ? (
+          <p className="px-2 text-xs text-rose-200">
+            Grabando nota de voz… {String(Math.floor(voiceSeconds / 60)).padStart(2, "0")}:{String(voiceSeconds % 60).padStart(2, "0")} · toca 🎙️ para adjuntarla
+          </p>
+        ) : null}
       </form>
 
       {imageModal && (

@@ -82,10 +82,10 @@ function ConversationLayout({
           </aside>
 
           <section className="flex h-full min-h-0 flex-col pt-1 sm:pt-3">
-            <div className="border-b border-[#2a3942] bg-[#202c33] px-3 py-2 sm:px-4 lg:hidden">
+            <div className="border-b border-border bg-surface px-3 py-2 sm:px-4 lg:hidden">
               <Link href="/mensajes" className="text-sm font-medium text-brand hover:underline">← Chats</Link>
             </div>
-            <header className="mx-2 mt-2 flex items-center gap-3 rounded-2xl border border-[#2a3942] bg-[#202c33] px-3 py-3 sm:mx-3 sm:px-4">
+            <header className="mx-2 mt-2 flex items-center gap-3 rounded-2xl border border-border bg-surface px-3 py-3 sm:mx-3 sm:px-4">
               <Link href={`/u/${participant.username}`} className="inline-flex rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/70">
                 <Image
                   src={avatar}
@@ -104,6 +104,11 @@ function ConversationLayout({
                 <p className="truncate text-sm opacity-70">@{participant.username}</p>
                 {helperText && <p className="text-xs text-cyan-200">{helperText}</p>}
               </Link>
+              <div className="hidden items-center gap-2 sm:flex">
+                <button type="button" className="rounded-full border border-border bg-input px-3 py-1 text-xs hover:bg-muted">📞 Llamar</button>
+                <button type="button" className="rounded-full border border-border bg-input px-3 py-1 text-xs hover:bg-muted">🎥 Video</button>
+                <button type="button" className="rounded-full border border-border bg-input px-3 py-1 text-xs hover:bg-muted">🔍 Buscar</button>
+              </div>
             </header>
 
             <div className="min-h-0 flex-1 p-1.5 sm:p-3 md:p-4">

@@ -52,7 +52,7 @@ export default async function MessagesPage() {
                   <InboxList entries={entries} currentUserId={me.id} className="hide-scrollbar h-[calc(100dvh-15.5rem)] min-h-[390px] overflow-y-auto sm:h-[calc(100dvh-16rem)]" />
                 </aside>
 
-                <section className="hidden h-full lg:flex lg:flex-col lg:items-center lg:justify-center lg:bg-[#0b141a]/85 lg:p-8">
+                <section className="hidden h-full lg:flex lg:flex-col lg:items-center lg:justify-center lg:bg-app/70 lg:p-8">
                   <div className="max-w-sm text-center">
                     <p className="text-xl font-semibold">Selecciona un chat</p>
                     <p className="mt-2 text-sm opacity-70">
