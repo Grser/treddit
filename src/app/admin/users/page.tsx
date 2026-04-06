@@ -6,7 +6,7 @@ type PageProps = {
 
 import Navbar from "@/components/Navbar";
 import { AdminSection, AdminShell } from "@/components/admin/AdminShell";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminPermission } from "@/lib/auth";
 import { ensureAgeVerificationRequestsTable, ensureUsersAgeColumns } from "@/lib/ageVerification";
 import { db } from "@/lib/db";
 import { ensureUserReportsSchema } from "@/lib/userReports";
@@ -75,7 +75,7 @@ type UserReport = {
 };
 
 export default async function AdminUsers({ searchParams }: PageProps) {
-  await requireAdmin();
+  await requireAdminPermission("manage_users");
   await Promise.all([ensureUsersAgeColumns(), ensureAgeVerificationRequestsTable(), ensureUserReportsSchema()]);
   const params = searchParams ? await searchParams : {};
   const passwordUpdated = params.password === "updated";

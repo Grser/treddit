@@ -4,6 +4,7 @@ import { cache } from "react";
 import jwt, { type SignOptions } from "jsonwebtoken";
 import { cookies } from "next/headers";
 import { db } from "./db";
+import { getAdminPermissions, type AdminPermissionKey, ensureDefaultAdminManagerRole } from "./adminPermissions";
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 const JWT_EXPIRES: SignOptions["expiresIn"] = (process.env.JWT_EXPIRES as SignOptions["expiresIn"]) || "7d";
@@ -90,9 +91,27 @@ export async function findUserById(id: number) {
 
 export async function requireAdmin() {
   const me = await requireUser();
+  await ensureDefaultAdminManagerRole();
   const [rows] = await db.query<AdminRow[]>("SELECT is_admin FROM Users WHERE id=? LIMIT 1", [me.id]);
-  if (!rows[0]?.is_admin) {
+  if (rows[0]?.is_admin) return me;
+
+  const permissions = await getAdminPermissions(me.id);
+  if (!permissions.access_dashboard) {
     throw new Error("FORBIDDEN");
   }
+  return me;
+}
+
+export async function requireAdminPermission(permission: AdminPermissionKey) {
+  const me = await requireUser();
+  await ensureDefaultAdminManagerRole();
+  const [rows] = await db.query<AdminRow[]>("SELECT is_admin FROM Users WHERE id=? LIMIT 1", [me.id]);
+  if (rows[0]?.is_admin) return me;
+
+  const permissions = await getAdminPermissions(me.id);
+  if (!permissions.access_dashboard || !permissions[permission]) {
+    throw new Error("FORBIDDEN");
+  }
+
   return me;
 }

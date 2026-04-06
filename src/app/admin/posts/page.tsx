@@ -3,7 +3,7 @@ import type { RowDataPacket } from "mysql2";
 import Navbar from "@/components/Navbar";
 import { AdminSection, AdminShell } from "@/components/admin/AdminShell";
 import UserBadges from "@/components/UserBadges";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminPermission } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { ensurePostReportsSchema } from "@/lib/postReports";
 
@@ -60,7 +60,7 @@ type AdminReport = {
 };
 
 export default async function AdminPosts({ searchParams }: AdminPostsProps) {
-  await requireAdmin();
+  await requireAdminPermission("manage_posts");
   await ensurePostReportsSchema();
 
   const resolvedSearchParams = await searchParams;

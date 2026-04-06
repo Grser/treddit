@@ -1,11 +1,11 @@
 import Navbar from "@/components/Navbar";
 import { AdminSection, AdminShell } from "@/components/admin/AdminShell";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminPermission } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminSeriesPage() {
-  await requireAdmin();
+  await requireAdminPermission("access_dashboard");
 
   return (
     <div className="min-h-dvh bg-background text-foreground">

@@ -1,10 +1,10 @@
 import Navbar from "@/components/Navbar";
 import AdminDashboard, { type AdminStats } from "@/components/admin/AdminDashboard";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminPermission } from "@/lib/auth";
 import { db } from "@/lib/db";
 
 export default async function AdminHome() {
-  await requireAdmin();
+  await requireAdminPermission("access_dashboard");
 
   const [[{ totalUsers }]] = await db.query("SELECT COUNT(*) AS totalUsers FROM Users WHERE visible=1");
   const [[{ totalPosts }]] = await db.query("SELECT COUNT(*) AS totalPosts FROM Posts");

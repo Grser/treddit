@@ -3,7 +3,7 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminPermission } from "@/lib/auth";
 import { getRequestBaseUrl } from "@/lib/requestBaseUrl";
 
 async function hasVerifiedColumn() {
@@ -26,7 +26,7 @@ async function ensureVerifiedColumn() {
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  await requireAdmin();
+  await requireAdminPermission("manage_communities");
   const { id } = await params;
   const communityId = Number(id);
   if (!communityId) {

@@ -1,7 +1,7 @@
 import Navbar from "@/components/Navbar";
 import { AdminSection, AdminShell } from "@/components/admin/AdminShell";
 import SingleSubmitForm from "@/components/SingleSubmitForm";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminPermission } from "@/lib/auth";
 import { db, isDatabaseConfigured } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +19,7 @@ type AdminAdsProps = {
 };
 
 export default async function AdminAdsPage({ searchParams }: AdminAdsProps) {
-  const admin = await requireAdmin();
+  const admin = await requireAdminPermission("manage_announcements");
   const databaseReady = isDatabaseConfigured();
   const campaigns = databaseReady ? await loadCampaigns() : [];
   const params = await searchParams;

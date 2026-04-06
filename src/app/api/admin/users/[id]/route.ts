@@ -2,14 +2,14 @@ export const runtime = "nodejs";
 import { hash } from "bcryptjs";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminPermission } from "@/lib/auth";
 import { ensureAgeVerificationRequestsTable, ensureUsersAgeColumns } from "@/lib/ageVerification";
 import { getRequestBaseUrl } from "@/lib/requestBaseUrl";
 import { deleteAllPostsByUser } from "@/lib/userCleanup";
 import { isStrongPassword } from "@/lib/passwordPolicy";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  await requireAdmin();
+  await requireAdminPermission("manage_users");
   const { id: userId } = await params;
   const id = Number(userId);
   const form = await req.formData();

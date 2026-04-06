@@ -5,10 +5,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { IconMic, IconPhone, IconVideo } from "@/components/icons";
 
 type CallMode = "audio" | "video";
-type CallEventType =
-  | "started-audio"
-  | "started-video"
-  | "ended";
+type CallEventType = "started-audio" | "started-video" | "ended";
+type CallPhase = "idle" | "outgoing" | "incoming" | "active";
+
+type CallSignal = {
+  type: "invite" | "accepted" | "rejected" | "ended" | "timeout";
+  key?: string;
+  mode?: CallMode;
+  sender: string;
+  createdAt: string;
+};
 
 type CallLogDetail = {
   key?: string;
@@ -18,6 +24,8 @@ type CallLogDetail = {
   createdAt: string;
   summary: string;
 };
+
+const RING_TIMEOUT_MS = 15000;
 
 export default function LocalCallControls({
   contactName = "Contacto",
@@ -29,6 +37,8 @@ export default function LocalCallControls({
   chatLogKey?: string;
 }) {
   const [activeMode, setActiveMode] = useState<CallMode | null>(null);
+  const [phase, setPhase] = useState<CallPhase>("idle");
+  const [incomingMode, setIncomingMode] = useState<CallMode | null>(null);
   const [isLauncherOpen, setIsLauncherOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -36,12 +46,56 @@ export default function LocalCallControls({
   const [cameraEnabled, setCameraEnabled] = useState(true);
   const [monitorEnabled, setMonitorEnabled] = useState(false);
   const [seconds, setSeconds] = useState(0);
+
   const streamRef = useRef<MediaStream | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const launcherRef = useRef<HTMLDivElement | null>(null);
+  const callChannelRef = useRef<BroadcastChannel | null>(null);
+  const ringOscillatorsRef = useRef<Array<{ context: AudioContext; oscillators: OscillatorNode[]; gains: GainNode[] }>>([]);
+  const ringingTimeoutRef = useRef<number | null>(null);
 
-  const active = activeMode !== null;
+  const active = phase === "active" && activeMode !== null;
+
+  /* eslint-disable react-hooks/exhaustive-deps */
+  useEffect(() => {
+    const channel = new BroadcastChannel("treddit-call-signals");
+    callChannelRef.current = channel;
+
+    const onMessage = (event: MessageEvent<CallSignal>) => {
+      const signal = event.data;
+      if (!signal || signal.key !== chatLogKey) return;
+      if (signal.sender === contactName) return;
+
+      if (signal.type === "invite" && phase === "idle") {
+        setIncomingMode(signal.mode ?? "audio");
+        setPhase("incoming");
+        setNotice(`Llamada entrante de ${contactName}`);
+        startClassicRingTone();
+      } else if (signal.type === "accepted" && phase === "outgoing") {
+        stopClassicRingTone();
+        clearRingingTimeout();
+        void startMediaCall(signal.mode ?? activeMode ?? "audio", true);
+      } else if ((signal.type === "rejected" || signal.type === "timeout") && phase === "outgoing") {
+        stopClassicRingTone();
+        clearRingingTimeout();
+        setPhase("idle");
+        setNotice("La otra persona no aceptó la llamada.");
+      } else if (signal.type === "ended") {
+        stopClassicRingTone();
+        clearRingingTimeout();
+        internalEndCall(false);
+      }
+    };
+
+    channel.addEventListener("message", onMessage as EventListener);
+    return () => {
+      channel.removeEventListener("message", onMessage as EventListener);
+      channel.close();
+      callChannelRef.current = null;
+    };
+  }, [activeMode, chatLogKey, contactName, phase]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   useEffect(() => {
     if (!active) return undefined;
@@ -50,8 +104,10 @@ export default function LocalCallControls({
   }, [active]);
 
   useEffect(() => () => {
+    stopClassicRingTone();
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
+    clearRingingTimeout();
   }, []);
 
   useEffect(() => {
@@ -114,31 +170,65 @@ export default function LocalCallControls({
     );
   }
 
-  function playQuickTone(frequencies: number[]) {
+  function emitSignal(signal: Omit<CallSignal, "sender" | "createdAt">) {
+    callChannelRef.current?.postMessage({ ...signal, sender: contactName, createdAt: new Date().toISOString() });
+  }
+
+  function clearRingingTimeout() {
+    if (ringingTimeoutRef.current) {
+      window.clearTimeout(ringingTimeoutRef.current);
+      ringingTimeoutRef.current = null;
+    }
+  }
+
+  function startClassicRingTone() {
     if (typeof window === "undefined") return;
+    stopClassicRingTone();
     const AudioContextCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AudioContextCtor) return;
+
     const context = new AudioContextCtor();
-    const now = context.currentTime;
-    frequencies.forEach((frequency, index) => {
+    const oscillators: OscillatorNode[] = [];
+    const gains: GainNode[] = [];
+    const schedule = [440, 523.25];
+    const cycle = 2.6;
+
+    schedule.forEach((frequency, idx) => {
       const osc = context.createOscillator();
       const gain = context.createGain();
       osc.type = "sine";
       osc.frequency.value = frequency;
-      gain.gain.setValueAtTime(0.0001, now + index * 0.18);
-      gain.gain.exponentialRampToValueAtTime(0.11, now + index * 0.18 + 0.03);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + index * 0.18 + 0.16);
       osc.connect(gain);
       gain.connect(context.destination);
-      osc.start(now + index * 0.18);
-      osc.stop(now + index * 0.18 + 0.18);
+      gain.gain.setValueAtTime(0.0001, context.currentTime);
+
+      for (let i = 0; i < 8; i += 1) {
+        const start = context.currentTime + i * cycle + idx * 0.28;
+        gain.gain.exponentialRampToValueAtTime(0.08, start + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.42);
+      }
+
+      osc.start();
+      oscillators.push(osc);
+      gains.push(gain);
     });
-    window.setTimeout(() => {
-      void context.close();
-    }, frequencies.length * 220);
+
+    ringOscillatorsRef.current.push({ context, oscillators, gains });
   }
 
-  async function startLocalCall(mode: CallMode) {
+  function stopClassicRingTone() {
+    ringOscillatorsRef.current.forEach(({ context, oscillators }) => {
+      oscillators.forEach((osc) => {
+        try {
+          osc.stop();
+        } catch {}
+      });
+      void context.close();
+    });
+    ringOscillatorsRef.current = [];
+  }
+
+  async function startMediaCall(mode: CallMode, acceptedByPeer = false) {
     if (!navigator?.mediaDevices?.getUserMedia) {
       setError("Tu navegador no soporta llamadas locales.");
       return;
@@ -153,8 +243,8 @@ export default function LocalCallControls({
       setMonitorEnabled(false);
       setSeconds(0);
       setError(null);
-      setNotice(mode === "video" ? "Conectando videollamada…" : "Conectando llamada de audio…");
-      playQuickTone([660, 880]);
+      setPhase("active");
+      setNotice(acceptedByPeer ? "Llamada conectada." : "Conectando llamada…");
       dispatchCallEvent(mode === "video" ? "started-video" : "started-audio", mode === "video" ? "Videollamada iniciada" : "Llamada de voz iniciada");
       if (videoRef.current && mode === "video") {
         videoRef.current.srcObject = stream;
@@ -169,7 +259,42 @@ export default function LocalCallControls({
     }
   }
 
-  function endCall() {
+  function beginOutgoingCall(mode: CallMode) {
+    setIncomingMode(null);
+    setActiveMode(mode);
+    setPhase("outgoing");
+    setNotice("Llamando… esperando que el otro usuario conteste (15s)");
+    setError(null);
+    startClassicRingTone();
+    emitSignal({ type: "invite", key: chatLogKey, mode });
+    clearRingingTimeout();
+    ringingTimeoutRef.current = window.setTimeout(() => {
+      stopClassicRingTone();
+      setPhase("idle");
+      setNotice("Nadie respondió la llamada.");
+      emitSignal({ type: "timeout", key: chatLogKey, mode });
+    }, RING_TIMEOUT_MS);
+  }
+
+  async function acceptIncomingCall() {
+    if (!incomingMode) return;
+    stopClassicRingTone();
+    clearRingingTimeout();
+    emitSignal({ type: "accepted", key: chatLogKey, mode: incomingMode });
+    await startMediaCall(incomingMode, true);
+    setIncomingMode(null);
+  }
+
+  function rejectIncomingCall() {
+    stopClassicRingTone();
+    clearRingingTimeout();
+    setIncomingMode(null);
+    setPhase("idle");
+    setNotice("Llamada rechazada.");
+    emitSignal({ type: "rejected", key: chatLogKey, mode: activeMode ?? undefined });
+  }
+
+  function internalEndCall(notifyPeer: boolean) {
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
@@ -178,12 +303,29 @@ export default function LocalCallControls({
       audioRef.current.muted = true;
     }
     setActiveMode(null);
+    setIncomingMode(null);
+    setPhase("idle");
     setMicEnabled(true);
     setCameraEnabled(true);
     setMonitorEnabled(false);
     setSeconds(0);
     setNotice("Llamada finalizada");
+    if (notifyPeer) emitSignal({ type: "ended", key: chatLogKey });
     dispatchCallEvent("ended", "Llamada finalizada");
+  }
+
+  function endCall() {
+    stopClassicRingTone();
+    clearRingingTimeout();
+    internalEndCall(true);
+  }
+
+  function cancelOutgoingCall() {
+    stopClassicRingTone();
+    clearRingingTimeout();
+    setPhase("idle");
+    setNotice("Llamada cancelada.");
+    emitSignal({ type: "ended", key: chatLogKey, mode: activeMode ?? undefined });
   }
 
   function toggleMic() {
@@ -238,27 +380,45 @@ export default function LocalCallControls({
             <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <button
                 type="button"
-                onClick={() => startLocalCall("audio")}
-                className="rounded-2xl border border-violet-200/30 bg-violet-500/15 p-3 text-left text-slate-50 transition hover:bg-violet-400/20"
+                onClick={() => beginOutgoingCall("audio")}
+                disabled={phase !== "idle"}
+                className="rounded-2xl border border-violet-200/30 bg-violet-500/15 p-3 text-left text-slate-50 transition hover:bg-violet-400/20 disabled:opacity-60"
               >
                 <IconPhone className="mb-2 size-5" aria-hidden />
                 <p className="text-sm font-semibold">Llamada de audio</p>
-                <p className="text-[11px] text-slate-300">Como Instagram: pantalla dedicada y controles rápidos.</p>
               </button>
               <button
                 type="button"
-                onClick={() => startLocalCall("video")}
-                className="rounded-2xl border border-violet-200/30 bg-sky-500/10 p-3 text-left text-slate-50 transition hover:bg-sky-400/20"
+                onClick={() => beginOutgoingCall("video")}
+                disabled={phase !== "idle"}
+                className="rounded-2xl border border-violet-200/30 bg-sky-500/10 p-3 text-left text-slate-50 transition hover:bg-sky-400/20 disabled:opacity-60"
               >
                 <IconVideo className="mb-2 size-5" aria-hidden />
                 <p className="text-sm font-semibold">Videollamada</p>
-                <p className="text-[11px] text-slate-300">Vista inmersiva con temporizador y atajos.</p>
               </button>
             </div>
+            {phase === "outgoing" ? (
+              <button onClick={cancelOutgoingCall} className="mt-3 rounded-full border border-rose-300/60 px-3 py-1 text-xs text-rose-200">Cancelar llamada</button>
+            ) : null}
             {notice ? <p className="mt-3 rounded-xl border border-violet-200/20 bg-black/15 px-3 py-2 text-xs text-violet-100">{notice}</p> : null}
           </div>
         </div>
       ) : null}
+
+      {phase === "incoming" && incomingMode ? (
+        <div className="fixed inset-0 z-[115] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-3xl border border-violet-300/40 bg-[#0f172de6] p-5 text-center">
+            <p className="text-xs uppercase tracking-wide text-violet-200/80">Llamada entrante</p>
+            <p className="mt-2 text-lg font-semibold text-white">{contactName}</p>
+            <p className="mt-1 text-xs text-slate-300">{incomingMode === "video" ? "Videollamada" : "Llamada de audio"}</p>
+            <div className="mt-4 flex justify-center gap-2">
+              <button onClick={rejectIncomingCall} className="rounded-full border border-rose-300/60 px-4 py-1.5 text-xs text-rose-200">Rechazar</button>
+              <button onClick={() => void acceptIncomingCall()} className="rounded-full border border-emerald-300/60 px-4 py-1.5 text-xs text-emerald-200">Contestar</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {active ? (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 p-4 backdrop-blur-md">
           <div className="w-full max-w-xl rounded-3xl border border-violet-300/30 bg-[#0f172de6] p-5 shadow-2xl shadow-violet-950/40">
@@ -267,9 +427,6 @@ export default function LocalCallControls({
                 <p className="text-sm font-semibold text-white">Llamada con {contactName}</p>
                 <p className="text-xs text-slate-300">Duración {elapsedText} · {activeMode === "video" ? "Video" : "Audio"}</p>
               </div>
-              <span className="rounded-full border border-violet-300/50 bg-violet-500/20 px-3 py-1 text-[11px] font-medium text-violet-100">
-                Interfaz tipo Instagram
-              </span>
             </div>
             {activeMode === "video" ? (
               <video ref={videoRef} autoPlay muted playsInline className="mt-4 aspect-video w-full rounded-2xl border border-violet-200/20 bg-black/70 object-cover" />
@@ -279,7 +436,6 @@ export default function LocalCallControls({
                   <IconPhone className="size-7" aria-hidden />
                 </div>
                 <p className="text-base font-semibold text-white">{contactName}</p>
-                <p className="text-xs text-slate-300">Llamada de audio en curso</p>
               </div>
             )}
             <audio ref={audioRef} autoPlay playsInline className="hidden" />
@@ -301,9 +457,6 @@ export default function LocalCallControls({
                 Colgar
               </button>
             </div>
-            <p className="mt-2 text-[11px] text-slate-400">
-              Consejo: activa “Escuchar mi audio” solo para pruebas rápidas; puede generar eco.
-            </p>
           </div>
         </div>
       ) : null}
