@@ -73,6 +73,11 @@ type AuthUserRow = RowDataPacket & {
 
 type AdminRow = RowDataPacket & { is_admin: number };
 
+function isMissingAdminRolesTableError(error: unknown) {
+  if (!error || typeof error !== "object" || !("code" in error)) return false;
+  return (error as { code?: string }).code === "ER_NO_SUCH_TABLE";
+}
+
 export async function findUserByEmail(email: string) {
   const [rows] = await db.execute<AuthUserRow[]>(
     "SELECT id, username, email, password FROM Users WHERE email=? AND visible=1",
@@ -91,11 +96,20 @@ export async function findUserById(id: number) {
 
 export async function requireAdmin() {
   const me = await requireUser();
-  await ensureDefaultAdminManagerRole();
   const [rows] = await db.query<AdminRow[]>("SELECT is_admin FROM Users WHERE id=? LIMIT 1", [me.id]);
   if (rows[0]?.is_admin) return me;
 
-  const permissions = await getAdminPermissions(me.id);
+  let permissions;
+  try {
+    await ensureDefaultAdminManagerRole();
+    permissions = await getAdminPermissions(me.id);
+  } catch (error) {
+    if (isMissingAdminRolesTableError(error)) {
+      throw new Error("FORBIDDEN");
+    }
+    throw error;
+  }
+
   if (!permissions.access_dashboard) {
     throw new Error("FORBIDDEN");
   }
@@ -104,11 +118,20 @@ export async function requireAdmin() {
 
 export async function requireAdminPermission(permission: AdminPermissionKey) {
   const me = await requireUser();
-  await ensureDefaultAdminManagerRole();
   const [rows] = await db.query<AdminRow[]>("SELECT is_admin FROM Users WHERE id=? LIMIT 1", [me.id]);
   if (rows[0]?.is_admin) return me;
 
-  const permissions = await getAdminPermissions(me.id);
+  let permissions;
+  try {
+    await ensureDefaultAdminManagerRole();
+    permissions = await getAdminPermissions(me.id);
+  } catch (error) {
+    if (isMissingAdminRolesTableError(error)) {
+      throw new Error("FORBIDDEN");
+    }
+    throw error;
+  }
+
   if (!permissions.access_dashboard || !permissions[permission]) {
     throw new Error("FORBIDDEN");
   }
