@@ -19,7 +19,7 @@ export default async function MessagesPage() {
     : [[], []];
 
   return (
-    <div className="min-h-dvh bg-[radial-gradient(circle_at_top,#1c3247_0%,#121c27_45%,#0b1219_100%)] text-foreground">
+    <div className="min-h-dvh wa-wallpaper text-foreground">
       <Navbar session={me} />
       <main className="mx-auto w-full max-w-6xl px-0 py-3 sm:px-4 sm:py-6">
         {!me && (
@@ -44,7 +44,7 @@ export default async function MessagesPage() {
               <NotesBar notes={notes} me={me} />
             </div>
 
-            <div className="overflow-hidden border-y border-white/10 bg-[#101c29]/95 shadow-2xl shadow-black/35 sm:rounded-3xl sm:border sm:bg-[#122130]/90 sm:backdrop-blur">
+            <div className="overflow-hidden border-y shadow-2xl shadow-black/35 sm:rounded-3xl sm:border sm:backdrop-blur wa-panel">
               <MarkMessagesSeen />
               <MessagesRealtimeSync />
               <div className="grid h-[calc(100dvh-6.5rem)] min-h-[520px] sm:h-[calc(100dvh-7rem)] lg:grid-cols-[360px_minmax(0,1fr)]">
@@ -52,7 +52,7 @@ export default async function MessagesPage() {
                   <InboxList entries={entries} currentUserId={me.id} className="hide-scrollbar h-[calc(100dvh-15.5rem)] min-h-[390px] overflow-y-auto sm:h-[calc(100dvh-16rem)]" />
                 </aside>
 
-                <section className="hidden h-full lg:flex lg:flex-col lg:items-center lg:justify-center lg:bg-[#0f1a24]/80 lg:p-8">
+                <section className="hidden h-full lg:flex lg:flex-col lg:items-center lg:justify-center lg:bg-[#0b141a]/85 lg:p-8">
                   <div className="max-w-sm text-center">
                     <p className="text-xl font-semibold">Selecciona un chat</p>
                     <p className="mt-2 text-sm opacity-70">

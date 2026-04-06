@@ -289,17 +289,17 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
 
   return (
     <>
-      <div className="border-b border-white/10 bg-gradient-to-b from-[#142536] to-[#0f1b28] px-4 py-3 backdrop-blur sm:py-4">
+      <div className="border-b border-[#2a3942] bg-[#202c33] px-4 py-3 backdrop-blur sm:py-4">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold text-foreground sm:text-3xl">Chats</h1>
-          <span className="rounded-full border border-white/15 bg-white/5 px-2.5 py-1 text-[11px] font-medium tracking-wide text-white/70">Inbox</span>
+          <span className="rounded-full border border-[#2a3942] bg-[#111b21] px-2.5 py-1 text-[11px] font-medium tracking-wide text-white/70">WhatsApp</span>
         </div>
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           type="search"
           placeholder="Buscar chat o iniciar uno nuevo"
-          className="mt-3 w-full rounded-full border border-white/15 bg-black/20 px-4 py-2.5 text-sm text-foreground outline-none transition placeholder:text-white/50 focus:border-brand"
+          className="mt-3 w-full rounded-full border border-[#2a3942] bg-[#111b21] px-4 py-2.5 text-sm text-foreground outline-none transition placeholder:text-[#8696a0] focus:border-[#00a884]"
           aria-label="Buscar contactos"
         />
         <div className="mt-3 flex flex-wrap gap-2 text-xs sm:text-sm">
@@ -318,7 +318,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
           <button
             type="button"
             onClick={() => setShowOnlyUnread((prev) => !prev)}
-            className={`rounded-full border px-3 py-1 text-xs transition ${showOnlyUnread ? "border-brand bg-brand/20 text-foreground" : "border-white/15 bg-black/20 text-foreground/75 hover:bg-white/10"}`}
+            className={`rounded-full border px-3 py-1 text-xs transition ${showOnlyUnread ? "border-[#00a884] bg-[#00a884]/20 text-foreground" : "border-[#2a3942] bg-[#111b21] text-foreground/75 hover:bg-[#202c33]"}`}
           >
             {showOnlyUnread ? "Mostrando solo no leídos" : "Filtrar por no leídos"}
           </button>
@@ -347,7 +347,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
 
       {showCreateGroup && (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-3xl border border-white/15 bg-[#0e1720] p-4">
+          <div className="w-full max-w-md rounded-3xl border border-[#2a3942] bg-[#111b21] p-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Crear grupo</h2>
               <button onClick={() => setShowCreateGroup(false)} className="text-sm opacity-70">Cerrar</button>
@@ -422,7 +422,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
             : "No encontramos contactos con ese término."}
         </div>
       ) : (
-        <ul className={className || "hide-scrollbar h-[calc(100dvh-18rem)] min-h-[360px] overflow-y-auto bg-[#0f1b28]/90"}>
+        <ul className={className || "hide-scrollbar h-[calc(100dvh-18rem)] min-h-[360px] overflow-y-auto bg-[#111b21]/95"}>
           {visibleEntries.map((item) => {
             const isStarter = Boolean(item.isStarter);
             const avatar = item.avatar_url?.trim() || "/demo-reddit.png";
@@ -442,7 +442,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
               <li key={item.userId} className="group relative">
                 <Link
                   href={href}
-                  className={`flex items-center gap-3 border-b border-white/10 px-4 py-3 pr-14 transition ${isActive ? "bg-brand/15" : "hover:bg-white/5"}`}
+                  className={`flex items-center gap-3 border-b border-[#2a3942] px-4 py-3 pr-14 transition ${isActive ? "bg-[#2a3942]" : "hover:bg-[#202c33]"}`}
                 >
                   {isGroup ? (
                     item.avatar_url ? (
