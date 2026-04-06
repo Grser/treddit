@@ -289,17 +289,17 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
 
   return (
     <>
-      <div className="border-b border-[#2a3942] bg-[#202c33] px-4 py-3 backdrop-blur sm:py-4">
+      <div className="border-b border-border bg-surface px-4 py-3 backdrop-blur sm:py-4">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold text-foreground sm:text-3xl">Chats</h1>
-          <span className="rounded-full border border-[#2a3942] bg-[#111b21] px-2.5 py-1 text-[11px] font-medium tracking-wide text-white/70">WhatsApp</span>
+          <span className="rounded-full border border-border bg-input px-2.5 py-1 text-[11px] font-medium tracking-wide text-foreground/70">Mensajería</span>
         </div>
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           type="search"
           placeholder="Buscar chat o iniciar uno nuevo"
-          className="mt-3 w-full rounded-full border border-[#2a3942] bg-[#111b21] px-4 py-2.5 text-sm text-foreground outline-none transition placeholder:text-[#8696a0] focus:border-[#00a884]"
+          className="mt-3 w-full rounded-full border border-border bg-input px-4 py-2.5 text-sm text-foreground outline-none transition placeholder:text-foreground/50 focus:border-brand"
           aria-label="Buscar contactos"
         />
         <div className="mt-3 flex flex-wrap gap-2 text-xs sm:text-sm">
@@ -318,7 +318,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
           <button
             type="button"
             onClick={() => setShowOnlyUnread((prev) => !prev)}
-            className={`rounded-full border px-3 py-1 text-xs transition ${showOnlyUnread ? "border-[#00a884] bg-[#00a884]/20 text-foreground" : "border-[#2a3942] bg-[#111b21] text-foreground/75 hover:bg-[#202c33]"}`}
+            className={`rounded-full border px-3 py-1 text-xs transition ${showOnlyUnread ? "border-brand bg-brand/20 text-foreground" : "border-border bg-input text-foreground/75 hover:bg-surface"}`}
           >
             {showOnlyUnread ? "Mostrando solo no leídos" : "Filtrar por no leídos"}
           </button>
@@ -337,7 +337,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
         {tab === "groups" && (
           <div className="mt-3 rounded-2xl border border-brand/30 bg-brand/10 p-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-brand/90">Nuevo grupo</p>
-            <p className="mt-1 text-xs opacity-70">Como WhatsApp/Instagram: elige personas desde un selector visual.</p>
+            <p className="mt-1 text-xs opacity-70">Selector visual para crear grupos rápidamente.</p>
             <button type="button" onClick={() => setShowCreateGroup(true)} className="mt-2 rounded-full bg-brand px-3 py-1.5 text-xs font-semibold text-white">
               Abrir selector
             </button>
@@ -347,7 +347,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
 
       {showCreateGroup && (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-3xl border border-[#2a3942] bg-[#111b21] p-4">
+          <div className="w-full max-w-md rounded-3xl border border-border bg-surface p-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Crear grupo</h2>
               <button onClick={() => setShowCreateGroup(false)} className="text-sm opacity-70">Cerrar</button>
@@ -422,7 +422,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
             : "No encontramos contactos con ese término."}
         </div>
       ) : (
-        <ul className={className || "hide-scrollbar h-[calc(100dvh-18rem)] min-h-[360px] overflow-y-auto bg-[#111b21]/95"}>
+        <ul className={className || "hide-scrollbar h-[calc(100dvh-18rem)] min-h-[360px] overflow-y-auto bg-surface/95"}>
           {visibleEntries.map((item) => {
             const isStarter = Boolean(item.isStarter);
             const avatar = item.avatar_url?.trim() || "/demo-reddit.png";
@@ -442,7 +442,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
               <li key={item.userId} className="group relative">
                 <Link
                   href={href}
-                  className={`flex items-center gap-3 border-b border-[#2a3942] px-4 py-3 pr-14 transition ${isActive ? "bg-[#2a3942]" : "hover:bg-[#202c33]"}`}
+                  className={`flex items-center gap-3 border-b border-border px-4 py-3 pr-14 transition ${isActive ? "bg-input" : "hover:bg-input/65"}`}
                 >
                   {isGroup ? (
                     item.avatar_url ? (

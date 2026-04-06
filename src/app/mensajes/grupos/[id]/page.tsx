@@ -52,7 +52,7 @@ export default async function GroupConversationPage({ params }: { params: Promis
             <InboxList entries={inbox} currentUserId={me.id} activeUsername={`grupo-${group.id}`} className="hide-scrollbar h-[calc(100dvh-18rem)] min-h-[360px] overflow-y-auto" />
           </aside>
           <section className="flex h-full min-h-0 flex-col">
-            <div className="mb-2 border-b border-[#2a3942] bg-[#202c33] px-3 py-2 md:px-4">
+            <div className="mb-2 border-b border-border bg-surface px-3 py-2 md:px-4">
               <Link href="/mensajes" className="text-sm text-brand hover:underline lg:hidden">← Volver</Link>
             </div>
             <div className="min-h-0 flex-1 px-2 pb-2 md:px-4 md:pb-4">

@@ -483,7 +483,7 @@ export default function GroupConversation({
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3">
-      <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#2a3942] bg-[#202c33] px-3 py-2">
+      <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-surface px-3 py-2">
         <div className="flex min-w-0 items-center gap-3">
           <Image
             src={groupAvatar}
@@ -498,16 +498,20 @@ export default function GroupConversation({
             <p className="text-xs opacity-70">Grupo · {members.length} integrantes · Tu rol: {roleLabel(myRole)}</p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            setShowSettings((prev) => !prev);
-            setManageView("general");
-          }}
-          className="shrink-0 rounded-full border border-border px-3 py-1 text-xs"
-        >
-          {canManage ? "Editar grupo" : "Info del grupo"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button type="button" className="hidden rounded-full border border-border bg-input px-3 py-1 text-xs hover:bg-muted sm:inline-flex">📞 Llamar</button>
+          <button type="button" className="hidden rounded-full border border-border bg-input px-3 py-1 text-xs hover:bg-muted sm:inline-flex">🎥 Video</button>
+          <button
+            type="button"
+            onClick={() => {
+              setShowSettings((prev) => !prev);
+              setManageView("general");
+            }}
+            className="shrink-0 rounded-full border border-border px-3 py-1 text-xs"
+          >
+            {canManage ? "Editar grupo" : "Info del grupo"}
+          </button>
+        </div>
       </div>
       {showSettings && (
         <div className="fixed inset-0 z-[90] flex items-start justify-center bg-black/50 p-3 backdrop-blur-sm md:items-center md:p-6">
@@ -934,7 +938,7 @@ export default function GroupConversation({
                 )}
                 <div
                   className={`relative max-w-[92%] rounded-2xl px-3 py-2 text-sm shadow-lg shadow-black/20 sm:px-4 ${
-                    mine ? "border border-[#005c4b] bg-[#005c4b] text-[#e9edef]" : "border border-[#202c33] bg-[#202c33] text-[#e9edef]"
+                    mine ? "border border-brand/40 bg-brand/20 text-foreground" : "border border-border bg-surface text-foreground"
                   }`}
                 >
                   <div data-message-menu-root="true">
@@ -1309,7 +1313,7 @@ export default function GroupConversation({
                     event.currentTarget.form?.requestSubmit();
                   }
                 }}
-                className="max-h-28 min-h-6 flex-1 resize-none bg-transparent px-1 py-1 text-sm text-[#e9edef] outline-none placeholder:text-[#8696a0]"
+                className="max-h-28 min-h-6 flex-1 resize-none bg-transparent px-1 py-1 text-sm text-foreground outline-none placeholder:text-foreground/50"
                 rows={1}
                 placeholder={canSendMessages ? "Escribe un mensaje" : "Solo lectura"}
                 disabled={!canSendMessages || sendingRef.current || uploadingAttachment}
@@ -1332,7 +1336,7 @@ export default function GroupConversation({
                 @
               </button>
             </div>
-            <button type="submit" disabled={!canSendMessage} className="inline-flex size-10 items-center justify-center rounded-full bg-[#00a884] text-base font-medium text-white shadow-sm transition hover:opacity-90 disabled:opacity-50 sm:size-11">
+            <button type="submit" disabled={!canSendMessage} className="inline-flex size-10 items-center justify-center rounded-full bg-brand text-base font-medium text-white shadow-sm transition hover:opacity-90 disabled:opacity-50 sm:size-11">
               ➤
             </button>
           </div>
