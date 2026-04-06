@@ -1,6 +1,7 @@
 import type { RowDataPacket } from "mysql2";
 
 import CommunityChat from "@/components/community/CommunityChat";
+import CommunityChannelsHub from "@/components/community/CommunityChannelsHub";
 import JoinCommunityButton from "@/components/community/JoinCommunityButton";
 import PromoteSelfCommunityButton from "@/components/community/PromoteSelfCommunityButton";
 import CommunityShareButton from "@/components/community/CommunityShareButton";
@@ -218,6 +219,8 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
             </div>
 
             <aside className="space-y-4">
+              <CommunityChannelsHub />
+
               <CommunityChat
                 communityId={community.id}
                 canInteract={canInteract}

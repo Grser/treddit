@@ -44,8 +44,8 @@ export default function CommunityChannelsHub() {
   return (
     <section className="rounded-2xl border border-border bg-surface p-4 sm:p-5">
       <div className="mb-4">
-        <h2 className="text-xl font-semibold">Canales en grupos</h2>
-        <p className="mt-1 text-sm opacity-75">Ahora puedes crear canales de texto y voz a tu gusto dentro del grupo.</p>
+        <h2 className="text-xl font-semibold">Canales de la comunidad</h2>
+        <p className="mt-1 text-sm opacity-75">Administra canales de texto y voz de este espacio.</p>
       </div>
       <div className="grid gap-3 lg:grid-cols-[16rem_minmax(0,1fr)]">
         <aside className="rounded-2xl border border-border/80 bg-background/45 p-3">
