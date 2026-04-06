@@ -199,7 +199,7 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
             Esta comunidad está actualmente oculta. Solo sus miembros pueden acceder a su contenido.
           </section>
         ) : (
-          <section className="grid gap-6 lg:grid-cols-[1fr_20rem]">
+          <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
             <div className="space-y-4 rounded-3xl border border-border bg-surface/40 p-3 sm:p-4">
               <div className="rounded-2xl border border-border/70 bg-background/60 px-4 py-3">
                 <h2 className="text-base font-semibold">Publicaciones recientes</h2>
@@ -218,7 +218,7 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
               )}
             </div>
 
-            <aside className="space-y-4">
+            <aside className="space-y-4 xl:sticky xl:top-24 xl:self-start">
               <CommunityChannelsHub />
 
               <CommunityChat
