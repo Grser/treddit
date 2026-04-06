@@ -4,11 +4,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
-import { IconPhone, IconVideo } from "@/components/icons";
+import { IconMic } from "@/components/icons";
 import { validateUploadSize } from "@/lib/upload";
 import { uploadFile } from "@/lib/clientUpload";
 import EmojiPicker from "@/components/EmojiPicker";
 import AudioBubblePlayer from "@/components/messages/AudioBubblePlayer";
+import LocalCallControls from "@/components/messages/LocalCallControls";
 import MentionUserLink from "@/components/MentionUserLink";
 
 import type { GroupMessageEntry } from "@/lib/messages";
@@ -193,15 +194,17 @@ export default function GroupConversation({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaChunksRef = useRef<Blob[]>([]);
   const mediaStreamRef = useRef<MediaStream | null>(null);
+  const [pendingVoiceNote, setPendingVoiceNote] = useState<{
+    file: File;
+    previewUrl: string;
+    durationSeconds: number;
+  } | null>(null);
   const [manageView, setManageView] = useState<"general" | "members" | "roles">("general");
   const [mentionQuery, setMentionQuery] = useState("");
   const [groupMentionResults, setGroupMentionResults] = useState<GroupMember[]>([]);
   const shouldAutoScrollRef = useRef(true);
   const initialScrollDoneRef = useRef(false);
   const groupAvatar = avatarUrl || "/demo-reddit.png";
-  const groupRoomSlug = `treddit-group-${groupId}`;
-  const groupCallUrl = `https://meet.jit.si/${groupRoomSlug}#config.startWithVideoMuted=true`;
-  const groupVideoUrl = `https://meet.jit.si/${groupRoomSlug}`;
 
   const myMember = members.find((member) => member.id === viewerId);
   const canSendMessages = myRole === "owner" || myRole === "admin" || Boolean(myMember?.can_send_messages ?? true);
@@ -233,6 +236,12 @@ export default function GroupConversation({
     mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
     mediaStreamRef.current = null;
   }, []);
+
+  useEffect(() => () => {
+    if (pendingVoiceNote?.previewUrl) {
+      URL.revokeObjectURL(pendingVoiceNote.previewUrl);
+    }
+  }, [pendingVoiceNote]);
 
   useEffect(() => {
     const match = text.match(/(?:^|\s)@([\p{L}\p{N}_]{0,32})$/u);
@@ -333,7 +342,12 @@ export default function GroupConversation({
         if (blob.size === 0) return;
         const extension = blob.type.includes("ogg") ? "ogg" : "webm";
         const voiceFile = new File([blob], `nota-voz-${Date.now()}.${extension}`, { type: blob.type || "audio/webm" });
-        void handleAttachmentUpload(voiceFile, voiceSecondsRef.current || undefined);
+        if (pendingVoiceNote?.previewUrl) URL.revokeObjectURL(pendingVoiceNote.previewUrl);
+        setPendingVoiceNote({
+          file: voiceFile,
+          previewUrl: URL.createObjectURL(blob),
+          durationSeconds: voiceSecondsRef.current || 0,
+        });
       };
       recorder.start();
       setVoiceSeconds(0);
@@ -363,6 +377,22 @@ export default function GroupConversation({
       return;
     }
     void startVoiceRecording();
+  }
+
+  async function attachPendingVoiceNote() {
+    if (!pendingVoiceNote) return;
+    await handleAttachmentUpload(
+      pendingVoiceNote.file,
+      pendingVoiceNote.durationSeconds > 0 ? pendingVoiceNote.durationSeconds : undefined,
+    );
+    URL.revokeObjectURL(pendingVoiceNote.previewUrl);
+    setPendingVoiceNote(null);
+  }
+
+  function discardPendingVoiceNote() {
+    if (!pendingVoiceNote) return;
+    URL.revokeObjectURL(pendingVoiceNote.previewUrl);
+    setPendingVoiceNote(null);
   }
 
   useEffect(() => {
@@ -601,22 +631,9 @@ export default function GroupConversation({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => window.open(groupCallUrl, "_blank", "noopener,noreferrer")}
-            className="hidden items-center gap-1.5 rounded-full border border-border bg-input px-3 py-1 text-xs hover:bg-muted sm:inline-flex"
-          >
-            <IconPhone className="size-3.5" aria-hidden />
-            Llamar
-          </button>
-          <button
-            type="button"
-            onClick={() => window.open(groupVideoUrl, "_blank", "noopener,noreferrer")}
-            className="hidden items-center gap-1.5 rounded-full border border-border bg-input px-3 py-1 text-xs hover:bg-muted sm:inline-flex"
-          >
-            <IconVideo className="size-3.5" aria-hidden />
-            Video
-          </button>
+          <div className="hidden sm:block">
+            <LocalCallControls />
+          </div>
           <button
             type="button"
             onClick={() => {
@@ -1454,7 +1471,7 @@ export default function GroupConversation({
                 disabled={!canSendMessages || sendingRef.current || uploadingAttachment}
                 aria-label={isRecordingVoice ? "Detener nota de voz" : "Iniciar nota de voz"}
               >
-                Mic
+                <IconMic className="size-5" aria-hidden />
               </button>
               <button
                 type="button"
@@ -1472,8 +1489,22 @@ export default function GroupConversation({
         </div>
         {isRecordingVoice ? (
           <p className="px-2 text-xs text-rose-200">
-            Grabando nota de voz… {String(Math.floor(voiceSeconds / 60)).padStart(2, "0")}:{String(voiceSeconds % 60).padStart(2, "0")} · toca Mic para adjuntarla
+            Grabando nota de voz… {String(Math.floor(voiceSeconds / 60)).padStart(2, "0")}:{String(voiceSeconds % 60).padStart(2, "0")} · toca el micrófono para detener y previsualizar
           </p>
+        ) : null}
+        {pendingVoiceNote ? (
+          <div className="mx-2 mt-1 rounded-xl border border-border bg-input/40 px-2 py-2 text-xs">
+            <p className="mb-1 font-medium">Vista previa de nota de voz</p>
+            <audio src={pendingVoiceNote.previewUrl} controls className="w-full" />
+            <div className="mt-2 flex items-center gap-2">
+              <button type="button" onClick={() => void attachPendingVoiceNote()} className="rounded-full border border-border px-3 py-1 hover:bg-muted">
+                Adjuntar audio
+              </button>
+              <button type="button" onClick={discardPendingVoiceNote} className="rounded-full border border-border px-3 py-1 hover:bg-muted">
+                Descartar
+              </button>
+            </div>
+          </div>
         ) : null}
       </form>
       {sendError && <p className="text-xs text-rose-400">{sendError}</p>}
