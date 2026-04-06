@@ -97,8 +97,9 @@ export default async function AdminRolesPage() {
               <form key={role.id} action="/api/admin/roles" method="post" className="rounded-2xl border border-border/70 p-4">
                 <input type="hidden" name="op" value="update_role" />
                 <input type="hidden" name="role_id" value={role.id} />
-                <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+                <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto_auto] md:items-center">
                   <input name="name" defaultValue={role.name} className="rounded-xl border border-border bg-input px-3 py-2 text-sm" />
+                  <button formAction="/api/admin/roles" name="op" value="assign_self_role" className="rounded-full border border-emerald-300/60 px-3 py-1.5 text-xs text-emerald-300">Asignarme</button>
                   <button formAction="/api/admin/roles" name="op" value="delete_role" className="rounded-full border border-rose-300/60 px-3 py-1.5 text-xs text-rose-300">Eliminar rol</button>
                 </div>
                 <textarea name="description" defaultValue={role.description ?? ""} className="mt-2 w-full rounded-xl border border-border bg-input px-3 py-2 text-sm" rows={2} />
