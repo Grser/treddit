@@ -198,6 +198,9 @@ export default function GroupConversation({
   const shouldAutoScrollRef = useRef(true);
   const initialScrollDoneRef = useRef(false);
   const groupAvatar = avatarUrl || "/demo-reddit.png";
+  const groupRoomSlug = `treddit-group-${groupId}`;
+  const groupCallUrl = `https://meet.jit.si/${groupRoomSlug}#config.startWithVideoMuted=true`;
+  const groupVideoUrl = `https://meet.jit.si/${groupRoomSlug}`;
 
   const myMember = members.find((member) => member.id === viewerId);
   const canSendMessages = myRole === "owner" || myRole === "admin" || Boolean(myMember?.can_send_messages ?? true);
@@ -597,8 +600,20 @@ export default function GroupConversation({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button type="button" className="hidden rounded-full border border-border bg-input px-3 py-1 text-xs hover:bg-muted sm:inline-flex">📞 Llamar</button>
-          <button type="button" className="hidden rounded-full border border-border bg-input px-3 py-1 text-xs hover:bg-muted sm:inline-flex">🎥 Video</button>
+          <button
+            type="button"
+            onClick={() => window.open(groupCallUrl, "_blank", "noopener,noreferrer")}
+            className="hidden rounded-full border border-border bg-input px-3 py-1 text-xs hover:bg-muted sm:inline-flex"
+          >
+            📞 Llamar
+          </button>
+          <button
+            type="button"
+            onClick={() => window.open(groupVideoUrl, "_blank", "noopener,noreferrer")}
+            className="hidden rounded-full border border-border bg-input px-3 py-1 text-xs hover:bg-muted sm:inline-flex"
+          >
+            🎥 Video
+          </button>
           <button
             type="button"
             onClick={() => {

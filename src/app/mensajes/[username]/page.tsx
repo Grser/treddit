@@ -61,6 +61,10 @@ function ConversationLayout({
 }) {
   const avatar = participant.avatar_url?.trim() || "/demo-reddit.png";
   const displayName = participant.nickname || participant.username;
+  const directRoomSlug = `treddit-dm-${[viewerId, participant.id].sort((a, b) => a - b).join("-")}`;
+  const callUrl = `https://meet.jit.si/${directRoomSlug}#config.startWithVideoMuted=true`;
+  const videoUrl = `https://meet.jit.si/${directRoomSlug}`;
+  const searchProfileUrl = `/buscar?q=${encodeURIComponent(participant.username)}`;
 
   return (
     <div className="min-h-dvh wa-wallpaper text-foreground">
@@ -105,9 +109,15 @@ function ConversationLayout({
                 {helperText && <p className="text-xs text-cyan-200">{helperText}</p>}
               </Link>
               <div className="hidden items-center gap-2 sm:flex">
-                <button type="button" className="rounded-full border border-border bg-input px-3 py-1 text-xs hover:bg-muted">📞 Llamar</button>
-                <button type="button" className="rounded-full border border-border bg-input px-3 py-1 text-xs hover:bg-muted">🎥 Video</button>
-                <button type="button" className="rounded-full border border-border bg-input px-3 py-1 text-xs hover:bg-muted">🔍 Buscar</button>
+                <Link href={callUrl} target="_blank" rel="noreferrer" className="rounded-full border border-border bg-input px-3 py-1 text-xs hover:bg-muted">
+                  📞 Llamar
+                </Link>
+                <Link href={videoUrl} target="_blank" rel="noreferrer" className="rounded-full border border-border bg-input px-3 py-1 text-xs hover:bg-muted">
+                  🎥 Video
+                </Link>
+                <Link href={searchProfileUrl} className="rounded-full border border-border bg-input px-3 py-1 text-xs hover:bg-muted">
+                  🔍 Buscar
+                </Link>
               </div>
             </header>
 
