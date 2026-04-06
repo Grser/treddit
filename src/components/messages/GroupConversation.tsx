@@ -181,6 +181,8 @@ export default function GroupConversation({
   const [showStickerTray, setShowStickerTray] = useState(false);
   const [replyingTo, setReplyingTo] = useState<GroupMessageEntry | null>(null);
   const [attachments, setAttachments] = useState<GroupMessageEntry["attachments"]>([]);
+  const attachmentInputRef = useRef<HTMLInputElement | null>(null);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
   const [oneTimeImageMode, setOneTimeImageMode] = useState(false);
   const [manageView, setManageView] = useState<"general" | "members" | "roles">("general");
   const [mentionQuery, setMentionQuery] = useState("");
@@ -190,7 +192,7 @@ export default function GroupConversation({
   const groupAvatar = avatarUrl || "/demo-reddit.png";
 
   const myMember = members.find((member) => member.id === viewerId);
-  const canSendMessages = Boolean(myMember?.can_send_messages ?? true);
+  const canSendMessages = myRole === "owner" || myRole === "admin" || Boolean(myMember?.can_send_messages ?? true);
 
   useEffect(() => {
     const match = text.match(/(?:^|\s)@([\p{L}\p{N}_]{0,32})$/u);
@@ -222,6 +224,42 @@ export default function GroupConversation({
 
   function addEmoji(emoji: string) {
     setText((prev) => `${prev}${emoji}`);
+  }
+
+  async function handleAttachmentUpload(file: File | null) {
+    if (!file || !canSendMessages || sendingRef.current || uploadingAttachment) return;
+    setSendError(null);
+    setUploadingAttachment(true);
+    try {
+      validateUploadSize(file);
+      const payload = await uploadFile(file, { scope: "chat" });
+      if (typeof payload.url !== "string") {
+        throw new Error(typeof payload.error === "string" ? payload.error : "No se pudo subir el archivo");
+      }
+      const fileType = file.type || "";
+      const normalizedType = fileType.startsWith("image/")
+        ? "image"
+        : fileType.startsWith("video/")
+          ? "video"
+          : fileType.startsWith("audio/")
+            ? "audio"
+            : "file";
+      setAttachments((prev) => [
+        ...(prev || []),
+        {
+          url: payload.url,
+          type: normalizedType,
+          name: file.name || null,
+          viewOnce: normalizedType === "image" ? oneTimeImageMode : false,
+          viewedByRecipientAt: null,
+        },
+      ]);
+    } catch (error) {
+      setSendError(error instanceof Error ? error.message : "No se pudo subir el archivo");
+    } finally {
+      setUploadingAttachment(false);
+      if (attachmentInputRef.current) attachmentInputRef.current.value = "";
+    }
   }
 
   useEffect(() => {
@@ -309,7 +347,12 @@ export default function GroupConversation({
     };
   }, []);
 
-  const canSendMessage = Boolean(canSendMessages && !sendingRef.current && (text.trim().length > 0 || (attachments?.length ?? 0) > 0));
+  const canSendMessage = Boolean(
+    canSendMessages
+    && !sendingRef.current
+    && !uploadingAttachment
+    && (text.trim().length > 0 || (attachments?.length ?? 0) > 0),
+  );
 
   async function handleReaction(messageId: number, emoji: string) {
     try {
@@ -890,14 +933,14 @@ export default function GroupConversation({
                 )}
                 <div
                   className={`relative max-w-[92%] rounded-2xl px-3 py-2 text-sm shadow-lg shadow-black/20 sm:px-4 ${
-                    mine ? "border border-brand/45 bg-brand/15 text-foreground" : "border border-border bg-background/75 text-foreground"
+                    mine ? "border border-brand/35 bg-brand/10 text-foreground" : "border border-border bg-background/75 text-foreground"
                   }`}
                 >
                   <div data-message-menu-root="true">
                     <button
                       type="button"
                       onClick={() => setMessageMenuId((prev) => (prev === msg.id ? null : msg.id))}
-                      className={`absolute right-2 top-2 inline-flex size-6 items-center justify-center rounded-full text-xs transition ${mine ? "bg-brand/20 text-foreground/90 hover:bg-brand/30" : "bg-background/80 text-foreground/80 hover:bg-muted"}`}
+                      className={`absolute right-2 top-2 inline-flex size-6 items-center justify-center rounded-full text-xs transition ${mine ? "bg-brand/15 text-foreground/90 hover:bg-brand/25" : "bg-background/80 text-foreground/80 hover:bg-muted"}`}
                       aria-label="Abrir menú"
                     >
                       ▾
@@ -1231,8 +1274,29 @@ export default function GroupConversation({
               type="button"
               onClick={() => setOneTimeImageMode((prev) => !prev)}
               className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide transition sm:px-3 ${oneTimeImageMode ? "border-amber-300 bg-amber-300/15 text-amber-200" : "border-border bg-input text-foreground hover:bg-muted"}`}
+              disabled={!canSendMessages || sendingRef.current || uploadingAttachment}
             >
               1 vez
+            </button>
+            <input
+              ref={attachmentInputRef}
+              type="file"
+              className="hidden"
+              accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar"
+              onChange={(event) => {
+                void handleAttachmentUpload(event.target.files?.[0] || null);
+              }}
+              disabled={!canSendMessages || sendingRef.current || uploadingAttachment}
+            />
+            <button
+              type="button"
+              onClick={() => attachmentInputRef.current?.click()}
+              className="inline-flex size-9 items-center justify-center rounded-full border border-border bg-input text-base transition hover:bg-muted disabled:opacity-50"
+              disabled={!canSendMessages || sendingRef.current || uploadingAttachment}
+              aria-label="Adjuntar archivo"
+              title="Adjuntar archivo"
+            >
+              📎
             </button>
             <div className="flex min-w-0 flex-1 items-end gap-1.5 rounded-[24px] bg-background/70 px-2 py-2 ring-1 ring-border/80 focus-within:ring-2 focus-within:ring-brand/45 sm:gap-2 sm:rounded-[26px] sm:px-3 sm:py-2.5">
               <textarea
@@ -1247,13 +1311,13 @@ export default function GroupConversation({
                 className="max-h-28 min-h-6 flex-1 resize-none bg-transparent px-1 py-1 text-sm outline-none placeholder:text-foreground/45"
                 rows={1}
                 placeholder={canSendMessages ? "Escribe un mensaje" : "Solo lectura"}
-                disabled={!canSendMessages || sendingRef.current}
+                disabled={!canSendMessages || sendingRef.current || uploadingAttachment}
               />
               <button
                 type="button"
                 onClick={() => setShowStickerTray((prev) => !prev)}
                 className="pb-1 pr-0.5 text-lg opacity-80 transition hover:opacity-100 sm:text-xl"
-                disabled={!canSendMessages || sendingRef.current}
+                disabled={!canSendMessages || sendingRef.current || uploadingAttachment}
                 aria-label="Abrir emojis y stickers"
               >
                 🙂
@@ -1262,7 +1326,7 @@ export default function GroupConversation({
                 type="button"
                 onClick={() => setText((prev) => `${prev}${prev.endsWith(" ") || !prev ? "" : " "}@`)}
                 className="pb-1 text-xs font-semibold opacity-75 transition hover:opacity-100"
-                disabled={!canSendMessages || sendingRef.current}
+                disabled={!canSendMessages || sendingRef.current || uploadingAttachment}
               >
                 @
               </button>
