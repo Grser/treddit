@@ -80,6 +80,21 @@ export async function POST(req: Request) {
     return NextResponse.redirect(new URL("/admin/roles?ok=deleted", baseUrl));
   }
 
+
+  if (op === "assign_self_role") {
+    const roleId = Number(form.get("role_id") || 0);
+    if (!roleId) {
+      return NextResponse.redirect(new URL("/admin/roles?error=invalid_assignment", baseUrl));
+    }
+    await db.execute(
+      `INSERT INTO Admin_User_Roles (user_id, role_id, assigned_by)
+       VALUES (?, ?, ?)
+       ON DUPLICATE KEY UPDATE assigned_by = VALUES(assigned_by), assigned_at = CURRENT_TIMESTAMP`,
+      [me.id, roleId, me.id],
+    );
+    return NextResponse.redirect(new URL("/admin/roles?ok=self_assigned", baseUrl));
+  }
+
   if (op === "assign_role") {
     const userId = Number(form.get("user_id") || 0);
     const roleId = Number(form.get("role_id") || 0);
