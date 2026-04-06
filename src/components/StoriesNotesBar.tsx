@@ -18,11 +18,11 @@ function isVideoUrl(url: string | null | undefined) {
   }
 }
 
-function storyAgeLabel(createdAt?: string) {
-  if (!createdAt) return "ahora";
+function storyAgeLabel(createdAt: string | undefined, nowMs: number | null) {
+  if (!createdAt || nowMs === null) return "ahora";
   const value = new Date(createdAt).getTime();
   if (!Number.isFinite(value)) return "ahora";
-  const diffHours = Math.max(1, Math.round((Date.now() - value) / (1000 * 60 * 60)));
+  const diffHours = Math.max(1, Math.round((nowMs - value) / (1000 * 60 * 60)));
   return `${diffHours} h`;
 }
 
@@ -67,6 +67,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
   const [viewerIndex, setViewerIndex] = useState(0);
   const [viewerProgress, setViewerProgress] = useState(0);
   const [isStoryMenuOpen, setIsStoryMenuOpen] = useState(false);
+  const [nowMs, setNowMs] = useState<number | null>(null);
 
   const sortedStories = useMemo(
     () => [...users].sort((a, b) => {
@@ -169,6 +170,12 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
     }
     return { background: `conic-gradient(${stops.join(", ")})` };
   }
+
+  useEffect(() => {
+    setNowMs(Date.now());
+    const interval = window.setInterval(() => setNowMs(Date.now()), 60_000);
+    return () => window.clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (!activeStory) {
@@ -501,7 +508,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
                   />
                 </div>
                 <p className="text-sm font-medium">{activeStory.username}</p>
-                <span className="text-xs text-white/70">{storyAgeLabel(activeStory.created_at)}</span>
+                <span className="text-xs text-white/70">{storyAgeLabel(activeStory.created_at, nowMs)}</span>
                 {me?.id === activeStory.id && (
                   <div className="relative ml-auto">
                     <button
