@@ -2,7 +2,13 @@ import type { RowDataPacket } from "mysql2";
 
 import Navbar from "@/components/Navbar";
 import { AdminSection, AdminShell } from "@/components/admin/AdminShell";
-import { ADMIN_PERMISSION_KEYS, ensureAdminRolesTables } from "@/lib/adminPermissions";
+import {
+  ADMIN_PERMISSION_KEYS,
+  ADMIN_ROLE_ICON_OPTIONS,
+  DEFAULT_ADMIN_ROLE_ICON,
+  type AdminRoleIconKey,
+  ensureAdminRolesTables,
+} from "@/lib/adminPermissions";
 import { requireAdminPermission } from "@/lib/auth";
 import { db } from "@/lib/db";
 
@@ -12,6 +18,7 @@ type RoleRow = RowDataPacket & {
   id: number;
   name: string;
   description: string | null;
+  icon_key: string | null;
   access_dashboard: number;
   manage_users: number;
   manage_posts: number;
@@ -27,6 +34,7 @@ type AssignmentRow = RowDataPacket & {
   username: string;
   role_id: number;
   role_name: string;
+  role_icon_key: string | null;
 };
 
 type UserRow = RowDataPacket & {
@@ -45,12 +53,19 @@ const labels: Record<(typeof ADMIN_PERMISSION_KEYS)[number], string> = {
   manage_roles: "Gestionar roles admin",
 };
 
+const iconOptionsByKey = new Map(ADMIN_ROLE_ICON_OPTIONS.map((option) => [option.key, option]));
+
+function getRoleIcon(iconKey: string | null): (typeof ADMIN_ROLE_ICON_OPTIONS)[number] {
+  const key = iconKey as AdminRoleIconKey;
+  return iconOptionsByKey.get(key) ?? iconOptionsByKey.get(DEFAULT_ADMIN_ROLE_ICON)!;
+}
+
 export default async function AdminRolesPage() {
   await requireAdminPermission("manage_roles");
   await ensureAdminRolesTables();
 
   const [roles] = await db.query<RoleRow[]>(
-    `SELECT id, name, description,
+    `SELECT id, name, description, icon_key,
             access_dashboard, manage_users, manage_posts, manage_communities,
             manage_groups, manage_reports, manage_announcements, manage_roles
      FROM Admin_Roles
@@ -62,7 +77,7 @@ export default async function AdminRolesPage() {
   );
 
   const [assignments] = await db.query<AssignmentRow[]>(
-    `SELECT aur.user_id, u.username, aur.role_id, r.name AS role_name
+    `SELECT aur.user_id, u.username, aur.role_id, r.name AS role_name, r.icon_key AS role_icon_key
      FROM Admin_User_Roles aur
      JOIN Users u ON u.id = aur.user_id
      JOIN Admin_Roles r ON r.id = aur.role_id
@@ -74,29 +89,78 @@ export default async function AdminRolesPage() {
     <>
       <Navbar />
       <AdminShell title="Roles del dashboard admin" subtitle="Crea roles de administración personalizados y asigna permisos granulares por módulo.">
-        <AdminSection title="Crear rol" description="Define permisos para cada sección del dashboard.">
-          <form action="/api/admin/roles" method="post" className="grid gap-3 rounded-2xl border border-border/70 p-4">
+        <AdminSection title="Diseño de roles" description="Configura identidad visual, permisos y asignaciones en una sola vista.">
+          <form action="/api/admin/roles" method="post" className="grid gap-4 rounded-2xl border border-border/70 bg-background/40 p-4 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
             <input type="hidden" name="op" value="create_role" />
-            <input name="name" required placeholder="Nombre del rol" className="rounded-xl border border-border bg-input px-3 py-2 text-sm" />
-            <textarea name="description" placeholder="Descripción opcional" className="rounded-xl border border-border bg-input px-3 py-2 text-sm" rows={2} />
-            <div className="grid gap-2 sm:grid-cols-2">
-              {ADMIN_PERMISSION_KEYS.map((key) => (
-                <label key={key} className="flex items-center gap-2 rounded-xl border border-border/70 px-3 py-2 text-sm">
-                  <input type="checkbox" name={key} defaultChecked={key === "access_dashboard"} />
-                  {labels[key]}
-                </label>
-              ))}
+            <div className="space-y-3">
+              <div className="grid gap-3">
+                <input name="name" required placeholder="Nombre del rol" className="rounded-xl border border-border bg-input px-3 py-2 text-sm" />
+                <textarea name="description" placeholder="Descripción opcional" className="rounded-xl border border-border bg-input px-3 py-2 text-sm" rows={3} />
+              </div>
+
+              <div className="rounded-2xl border border-border/70 p-3">
+                <p className="mb-2 text-xs uppercase tracking-wide text-foreground/60">Permisos del rol</p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {ADMIN_PERMISSION_KEYS.map((key) => (
+                    <label key={key} className="flex items-center gap-2 rounded-xl border border-border/70 px-3 py-2 text-sm">
+                      <input type="checkbox" name={key} defaultChecked={key === "access_dashboard"} />
+                      {labels[key]}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <button className="w-full rounded-full border border-border px-4 py-2 text-sm font-semibold">Crear rol</button>
             </div>
-            <button className="rounded-full border border-border px-4 py-2 text-sm">Crear rol</button>
+
+            <div className="rounded-2xl border border-border/70 p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-xs uppercase tracking-wide text-foreground/60">Elige icono (20 opciones)</p>
+                <span className="text-xs text-foreground/60">Referencia administrador: 👑</span>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {ADMIN_ROLE_ICON_OPTIONS.map((option, index) => (
+                  <label key={option.key} className={`relative flex cursor-pointer items-center gap-2 rounded-xl border bg-gradient-to-r px-3 py-2 text-sm ${option.accentClass}`}>
+                    <input
+                      type="radio"
+                      name="icon_key"
+                      value={option.key}
+                      defaultChecked={index === 0}
+                      className="h-4 w-4 accent-white"
+                    />
+                    <span aria-hidden className="text-base">{option.emoji}</span>
+                    <span>{option.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
           </form>
         </AdminSection>
 
         <AdminSection title="Roles existentes" description="Edita permisos o elimina roles que ya no necesites.">
           <div className="space-y-3">
             {roles.map((role) => (
-              <form key={role.id} action="/api/admin/roles" method="post" className="rounded-2xl border border-border/70 p-4">
+              <form key={role.id} action="/api/admin/roles" method="post" className="rounded-2xl border border-border/70 bg-background/30 p-4">
                 <input type="hidden" name="op" value="update_role" />
                 <input type="hidden" name="role_id" value={role.id} />
+                <div className="mb-3 rounded-xl border border-border/70 p-3">
+                  <p className="mb-2 text-xs uppercase tracking-wide text-foreground/60">Icono del rol</p>
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                    {ADMIN_ROLE_ICON_OPTIONS.map((option) => (
+                      <label key={`${role.id}-${option.key}`} className={`flex cursor-pointer items-center gap-2 rounded-xl border bg-gradient-to-r px-2.5 py-2 text-xs ${option.accentClass}`}>
+                        <input
+                          type="radio"
+                          name="icon_key"
+                          value={option.key}
+                          defaultChecked={(role.icon_key ?? DEFAULT_ADMIN_ROLE_ICON) === option.key}
+                          className="h-3.5 w-3.5 accent-white"
+                        />
+                        <span aria-hidden>{option.emoji}</span>
+                        <span>{option.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
                 <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto_auto] md:items-center">
                   <input name="name" defaultValue={role.name} className="rounded-xl border border-border bg-input px-3 py-2 text-sm" />
                   <button formAction="/api/admin/roles" name="op" value="assign_self_role" className="rounded-full border border-emerald-300/60 px-3 py-1.5 text-xs text-emerald-300">Asignarme</button>
@@ -141,7 +205,12 @@ export default async function AdminRolesPage() {
                 <input type="hidden" name="op" value="remove_assignment" />
                 <input type="hidden" name="user_id" value={row.user_id} />
                 <input type="hidden" name="role_id" value={row.role_id} />
-                <p>@{row.username} · <span className="opacity-75">{row.role_name}</span></p>
+                <p>
+                  @{row.username} ·{" "}
+                  <span className="opacity-75">
+                    {getRoleIcon(row.role_icon_key).emoji} {row.role_name}
+                  </span>
+                </p>
                 <button className="rounded-full border border-border px-3 py-1 text-xs">Quitar</button>
               </form>
             ))}

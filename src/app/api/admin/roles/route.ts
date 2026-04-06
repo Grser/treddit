@@ -3,12 +3,23 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 
 import { requireAdminPermission } from "@/lib/auth";
-import { ADMIN_PERMISSION_KEYS, ensureAdminRolesTables } from "@/lib/adminPermissions";
+import {
+  ADMIN_PERMISSION_KEYS,
+  ADMIN_ROLE_ICON_OPTIONS,
+  DEFAULT_ADMIN_ROLE_ICON,
+  ensureAdminRolesTables,
+} from "@/lib/adminPermissions";
 import { db } from "@/lib/db";
 import { getRequestBaseUrl } from "@/lib/requestBaseUrl";
 
 function toFlag(value: FormDataEntryValue | null) {
   return value === "on" || value === "1" || value === "true" ? 1 : 0;
+}
+
+function toIconKey(value: FormDataEntryValue | null) {
+  const raw = String(value || "").trim();
+  const isAllowed = ADMIN_ROLE_ICON_OPTIONS.some((option) => option.key === raw);
+  return isAllowed ? raw : DEFAULT_ADMIN_ROLE_ICON;
 }
 
 export async function POST(req: Request) {
@@ -22,6 +33,7 @@ export async function POST(req: Request) {
   if (op === "create_role") {
     const name = String(form.get("name") || "").trim();
     const description = String(form.get("description") || "").trim() || null;
+    const iconKey = toIconKey(form.get("icon_key"));
     if (!name) {
       return NextResponse.redirect(new URL("/admin/roles?error=missing_name", baseUrl));
     }
@@ -31,6 +43,7 @@ export async function POST(req: Request) {
       `INSERT INTO Admin_Roles (
         name,
         description,
+        icon_key,
         access_dashboard,
         manage_users,
         manage_posts,
@@ -39,8 +52,8 @@ export async function POST(req: Request) {
         manage_reports,
         manage_announcements,
         manage_roles
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [name, description, ...flags],
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [name, description, iconKey, ...flags],
     );
     return NextResponse.redirect(new URL("/admin/roles?ok=created", baseUrl));
   }
@@ -49,6 +62,7 @@ export async function POST(req: Request) {
     const roleId = Number(form.get("role_id") || 0);
     const name = String(form.get("name") || "").trim();
     const description = String(form.get("description") || "").trim() || null;
+    const iconKey = toIconKey(form.get("icon_key"));
     if (!roleId || !name) {
       return NextResponse.redirect(new URL("/admin/roles?error=invalid_role", baseUrl));
     }
@@ -57,6 +71,7 @@ export async function POST(req: Request) {
       `UPDATE Admin_Roles
        SET name=?,
            description=?,
+           icon_key=?,
            access_dashboard=?,
            manage_users=?,
            manage_posts=?,
@@ -67,7 +82,7 @@ export async function POST(req: Request) {
            manage_roles=?
        WHERE id=?
        LIMIT 1`,
-      [name, description, ...flags, roleId],
+      [name, description, iconKey, ...flags, roleId],
     );
     return NextResponse.redirect(new URL("/admin/roles?ok=updated", baseUrl));
   }
