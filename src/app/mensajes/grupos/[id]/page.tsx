@@ -44,15 +44,15 @@ export default async function GroupConversationPage({ params }: { params: Promis
   }
 
   return (
-    <div className="min-h-dvh bg-[radial-gradient(circle_at_top,#1c3247_0%,#121c27_45%,#0b1219_100%)] text-foreground">
+    <div className="min-h-dvh wa-wallpaper text-foreground">
       <Navbar session={me} />
       <main className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-6xl flex-col px-0 py-2 sm:px-4 sm:py-6">
-        <div className="grid min-h-0 flex-1 overflow-hidden border-y border-white/10 bg-[#101c29]/95 shadow-2xl shadow-black/35 sm:rounded-3xl sm:border sm:bg-[#122130]/90 lg:grid-cols-[360px_minmax(0,1fr)]">
+        <div className="grid min-h-0 flex-1 overflow-hidden border-y shadow-2xl shadow-black/35 sm:rounded-3xl sm:border lg:grid-cols-[360px_minmax(0,1fr)] wa-panel">
           <aside className="hidden border-r border-white/10 lg:block">
             <InboxList entries={inbox} currentUserId={me.id} activeUsername={`grupo-${group.id}`} className="hide-scrollbar h-[calc(100dvh-18rem)] min-h-[360px] overflow-y-auto" />
           </aside>
           <section className="flex h-full min-h-0 flex-col">
-            <div className="mb-2 border-b border-white/10 bg-[#0e1925]/95 px-3 py-2 md:px-4">
+            <div className="mb-2 border-b border-[#2a3942] bg-[#202c33] px-3 py-2 md:px-4">
               <Link href="/mensajes" className="text-sm text-brand hover:underline lg:hidden">← Volver</Link>
             </div>
             <div className="min-h-0 flex-1 px-2 pb-2 md:px-4 md:pb-4">

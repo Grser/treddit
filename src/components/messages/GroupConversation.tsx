@@ -483,7 +483,7 @@ export default function GroupConversation({
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3">
-      <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background/40 px-3 py-2">
+      <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#2a3942] bg-[#202c33] px-3 py-2">
         <div className="flex min-w-0 items-center gap-3">
           <Image
             src={groupAvatar}
@@ -898,7 +898,7 @@ export default function GroupConversation({
           </div>
         </div>
       )}
-      <ul ref={messagesListRef} className="hide-scrollbar mt-2 min-h-0 flex-1 space-y-1 overflow-x-hidden overflow-y-auto rounded-2xl bg-background/50 px-2 pr-0.5 pb-6 [overflow-anchor:none] sm:pr-1 sm:pb-8">
+      <ul ref={messagesListRef} className="hide-scrollbar mt-2 min-h-0 flex-1 space-y-1 overflow-x-hidden overflow-y-auto rounded-2xl wa-wallpaper px-2 pr-0.5 pb-6 [overflow-anchor:none] sm:pr-1 sm:pb-8">
         {messages.map((msg, index) => {
           const mine = msg.senderId === viewerId;
           const previous = messages[index - 1];
@@ -934,7 +934,7 @@ export default function GroupConversation({
                 )}
                 <div
                   className={`relative max-w-[92%] rounded-2xl px-3 py-2 text-sm shadow-lg shadow-black/20 sm:px-4 ${
-                    mine ? "border border-brand/35 bg-brand/10 text-foreground" : "border border-border bg-background/75 text-foreground"
+                    mine ? "border border-[#005c4b] bg-[#005c4b] text-[#e9edef]" : "border border-[#202c33] bg-[#202c33] text-[#e9edef]"
                   }`}
                 >
                   <div data-message-menu-root="true">
@@ -1133,7 +1133,7 @@ export default function GroupConversation({
         </div>
       )}
       <form
-        className="z-10 shrink-0 space-y-3 rounded-2xl border border-border/80 bg-surface/95 p-2.5 shadow-2xl shadow-black/25 backdrop-blur sm:p-3.5 md:rounded-3xl md:p-4"
+        className="z-10 shrink-0 space-y-3 rounded-2xl border p-2.5 shadow-2xl shadow-black/25 backdrop-blur sm:p-3.5 md:rounded-3xl md:p-4 wa-panel"
         onSubmit={async (event) => {
           event.preventDefault();
           const trimmed = text.trim();
@@ -1299,7 +1299,7 @@ export default function GroupConversation({
             >
               📎
             </button>
-            <div className="flex min-w-0 flex-1 items-end gap-1.5 rounded-[24px] bg-background/70 px-2 py-2 ring-1 ring-border/80 focus-within:ring-2 focus-within:ring-brand/45 sm:gap-2 sm:rounded-[26px] sm:px-3 sm:py-2.5">
+            <div className="flex min-w-0 flex-1 items-end gap-1.5 rounded-[24px] wa-input px-2 py-2 ring-1 focus-within:ring-2 focus-within:ring-[#00a884]/45 sm:gap-2 sm:rounded-[26px] sm:px-3 sm:py-2.5">
               <textarea
                 value={text}
                 onChange={(event) => setText(event.target.value)}
@@ -1309,7 +1309,7 @@ export default function GroupConversation({
                     event.currentTarget.form?.requestSubmit();
                   }
                 }}
-                className="max-h-28 min-h-6 flex-1 resize-none bg-transparent px-1 py-1 text-sm outline-none placeholder:text-foreground/45"
+                className="max-h-28 min-h-6 flex-1 resize-none bg-transparent px-1 py-1 text-sm text-[#e9edef] outline-none placeholder:text-[#8696a0]"
                 rows={1}
                 placeholder={canSendMessages ? "Escribe un mensaje" : "Solo lectura"}
                 disabled={!canSendMessages || sendingRef.current || uploadingAttachment}
@@ -1332,7 +1332,7 @@ export default function GroupConversation({
                 @
               </button>
             </div>
-            <button type="submit" disabled={!canSendMessage} className="inline-flex size-10 items-center justify-center rounded-full bg-brand text-base font-medium text-white shadow-sm transition hover:opacity-90 disabled:opacity-50 sm:size-11">
+            <button type="submit" disabled={!canSendMessage} className="inline-flex size-10 items-center justify-center rounded-full bg-[#00a884] text-base font-medium text-white shadow-sm transition hover:opacity-90 disabled:opacity-50 sm:size-11">
               ➤
             </button>
           </div>

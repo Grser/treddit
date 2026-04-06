@@ -521,11 +521,11 @@ export default function DirectConversation({
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 md:gap-3">
-      <div className="flex min-h-0 flex-1 flex-col rounded-3xl border border-border/80 bg-surface/90 p-3 shadow-2xl shadow-black/15 md:p-4">
+      <div className="flex min-h-0 flex-1 flex-col rounded-3xl border p-3 shadow-2xl shadow-black/15 md:p-4 wa-panel">
         {messages.length === 0 && (
           <p className="text-sm opacity-70">{strings.comments.none || "Aún no hay mensajes. Inicia la conversación."}</p>
         )}
-        <ul ref={scrollRef} className="hide-scrollbar mt-2 min-h-0 flex-1 space-y-1 overflow-x-hidden overflow-y-auto rounded-2xl bg-background/50 px-2 pr-0.5 pb-6 [overflow-anchor:none] sm:pr-1 sm:pb-8">
+        <ul ref={scrollRef} className="hide-scrollbar mt-2 min-h-0 flex-1 space-y-1 overflow-x-hidden overflow-y-auto rounded-2xl wa-wallpaper px-2 pr-0.5 pb-6 [overflow-anchor:none] sm:pr-1 sm:pb-8">
           {messages.map((msg, index) => {
             const isMine = msg.senderId === viewerId;
             const previous = messages[index - 1];
@@ -535,8 +535,8 @@ export default function DirectConversation({
             const showAvatar = !isMine && !prevSameSender;
             const showHeader = !isMine && !prevSameSender;
             const bubbleClasses = isMine
-              ? "border border-brand/45 bg-brand/15 text-foreground"
-              : "border border-border bg-background/75 text-foreground";
+              ? "border border-[#005c4b] bg-[#005c4b] text-[#e9edef]"
+              : "border border-[#202c33] bg-[#202c33] text-[#e9edef]";
             const timeLabel = new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
             const avatar = !isMine ? msg.sender.avatar_url?.trim() || "/demo-reddit.png" : null;
             return (
@@ -780,7 +780,7 @@ export default function DirectConversation({
         </ul>
       </div>
 
-      <form onSubmit={sendMessage} className="z-10 shrink-0 space-y-3 rounded-2xl border border-border/80 bg-surface/95 p-2.5 shadow-2xl shadow-black/25 backdrop-blur sm:p-3.5 md:rounded-3xl md:p-4">
+      <form onSubmit={sendMessage} className="z-10 shrink-0 space-y-3 rounded-2xl border p-2.5 shadow-2xl shadow-black/25 backdrop-blur sm:p-3.5 md:rounded-3xl md:p-4 wa-panel">
         {replyingTo && (
           <div className="flex items-start justify-between rounded-xl border border-border bg-muted/40 px-3 py-2 text-xs">
             <div>
@@ -897,7 +897,7 @@ export default function DirectConversation({
               1 vez
             </button>
           </div>
-          <div className="flex min-w-0 flex-1 items-end gap-1.5 rounded-[24px] bg-background/70 px-2 py-2 ring-1 ring-border/80 focus-within:ring-2 focus-within:ring-brand/45 sm:gap-2 sm:rounded-[26px] sm:px-3 sm:py-2.5">
+          <div className="flex min-w-0 flex-1 items-end gap-1.5 rounded-[24px] wa-input px-2 py-2 ring-1 focus-within:ring-2 focus-within:ring-[#00a884]/45 sm:gap-2 sm:rounded-[26px] sm:px-3 sm:py-2.5">
             <textarea
               ref={textareaRef}
               id="dm-textarea"
@@ -916,7 +916,7 @@ export default function DirectConversation({
                 }
               }}
               rows={1}
-              className="max-h-28 min-h-6 flex-1 resize-none bg-transparent px-1 py-1 text-sm outline-none placeholder:text-foreground/45"
+              className="max-h-28 min-h-6 flex-1 resize-none bg-transparent px-1 py-1 text-sm text-[#e9edef] outline-none placeholder:text-[#8696a0]"
               placeholder={strings.comments.replyPlaceholder || "Escribe tu mensaje"}
               disabled={sending}
             />
@@ -932,7 +932,7 @@ export default function DirectConversation({
           {canSend ? (
             <button
               type="submit"
-              className="inline-flex size-10 items-center justify-center rounded-full bg-brand text-base font-medium text-white shadow-sm transition hover:opacity-90 sm:size-11"
+              className="inline-flex size-10 items-center justify-center rounded-full bg-[#00a884] text-base font-medium text-white shadow-sm transition hover:opacity-90 sm:size-11"
               aria-label={strings.comments.send}
             >
               ➤
@@ -941,7 +941,7 @@ export default function DirectConversation({
             <button
               type="button"
               disabled
-              className="inline-flex size-10 items-center justify-center rounded-full bg-brand/70 text-base font-medium text-white shadow-sm transition disabled:opacity-60 sm:size-11"
+              className="inline-flex size-10 items-center justify-center rounded-full bg-[#00a884]/70 text-base font-medium text-white shadow-sm transition disabled:opacity-60 sm:size-11"
               aria-label="Enviar"
             >
               ➤
