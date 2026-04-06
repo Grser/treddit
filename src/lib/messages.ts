@@ -1275,11 +1275,13 @@ export async function sendGroupMessage(
   const normalized = text.trim();
   if (!normalized && attachments.length === 0) throw new Error("EMPTY_MESSAGE");
   const [membership] = await db.query<RowDataPacket[]>(
-    "SELECT group_id, can_send_messages FROM Direct_Message_Group_Members WHERE group_id=? AND user_id=? LIMIT 1",
+    "SELECT group_id, role, can_send_messages FROM Direct_Message_Group_Members WHERE group_id=? AND user_id=? LIMIT 1",
     [groupId, userId],
   );
   if (!membership[0]?.group_id) throw new Error("NOT_IN_GROUP");
-  if (!Number(membership[0].can_send_messages ?? 1)) {
+  const memberRole = String(membership[0].role || "member");
+  const canBypassSilence = memberRole === "owner" || memberRole === "admin";
+  if (!canBypassSilence && !Number(membership[0].can_send_messages ?? 1)) {
     throw new Error("CANNOT_SEND_MESSAGES");
   }
 
