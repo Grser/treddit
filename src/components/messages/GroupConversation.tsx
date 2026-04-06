@@ -187,6 +187,10 @@ export default function GroupConversation({
   const [oneTimeImageMode, setOneTimeImageMode] = useState(false);
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
   const [voiceSeconds, setVoiceSeconds] = useState(0);
+  const voiceSecondsRef = useRef(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaChunksRef = useRef<Blob[]>([]);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
   const [manageView, setManageView] = useState<"general" | "members" | "roles">("general");
   const [mentionQuery, setMentionQuery] = useState("");
   const [groupMentionResults, setGroupMentionResults] = useState<GroupMember[]>([]);
@@ -206,12 +210,24 @@ export default function GroupConversation({
   }, [text]);
 
   useEffect(() => {
+    voiceSecondsRef.current = voiceSeconds;
+  }, [voiceSeconds]);
+
+  useEffect(() => {
     if (!isRecordingVoice) return undefined;
     const timer = window.setInterval(() => {
       setVoiceSeconds((current) => current + 1);
     }, 1000);
     return () => window.clearInterval(timer);
   }, [isRecordingVoice]);
+
+  useEffect(() => () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+    }
+    mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+    mediaStreamRef.current = null;
+  }, []);
 
   useEffect(() => {
     const match = text.match(/(?:^|\s)@([\p{L}\p{N}_]{0,32})$/u);
@@ -252,23 +268,7 @@ export default function GroupConversation({
     node.style.height = `${Math.min(node.scrollHeight, 140)}px`;
   }
 
-  function toggleVoiceRecorder() {
-    if (sendingRef.current || !canSendMessages || uploadingAttachment) return;
-    if (isRecordingVoice) {
-      const minutes = String(Math.floor(voiceSeconds / 60)).padStart(2, "0");
-      const seconds = String(voiceSeconds % 60).padStart(2, "0");
-      const note = `🎤 Nota de voz (${minutes}:${seconds})`;
-      setText((prev) => (prev.trim() ? `${prev.trim()}\n${note}` : note));
-      setIsRecordingVoice(false);
-      setVoiceSeconds(0);
-      requestAnimationFrame(() => textareaRef.current?.focus());
-      return;
-    }
-    setVoiceSeconds(0);
-    setIsRecordingVoice(true);
-  }
-
-  async function handleAttachmentUpload(file: File | null) {
+  async function handleAttachmentUpload(file: File | null, durationSeconds?: number) {
     if (!file || !canSendMessages || sendingRef.current || uploadingAttachment) return;
     setSendError(null);
     setUploadingAttachment(true);
@@ -293,6 +293,7 @@ export default function GroupConversation({
           url: uploadedUrl,
           type: normalizedType,
           name: file.name || null,
+          durationSeconds,
           viewOnce: normalizedType === "image" ? oneTimeImageMode : false,
           viewedByRecipientAt: null,
         },
@@ -303,6 +304,60 @@ export default function GroupConversation({
       setUploadingAttachment(false);
       if (attachmentInputRef.current) attachmentInputRef.current.value = "";
     }
+  }
+
+  async function startVoiceRecording() {
+    if (typeof window === "undefined" || !navigator?.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      setSendError("Tu navegador no soporta notas de voz.");
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      mediaStreamRef.current = stream;
+      mediaChunksRef.current = [];
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) mediaChunksRef.current.push(event.data);
+      };
+      recorder.onstop = () => {
+        const blob = new Blob(mediaChunksRef.current, { type: recorder.mimeType || "audio/webm" });
+        mediaChunksRef.current = [];
+        stream.getTracks().forEach((track) => track.stop());
+        mediaStreamRef.current = null;
+        if (blob.size === 0) return;
+        const extension = blob.type.includes("ogg") ? "ogg" : "webm";
+        const voiceFile = new File([blob], `nota-voz-${Date.now()}.${extension}`, { type: blob.type || "audio/webm" });
+        void handleAttachmentUpload(voiceFile, voiceSecondsRef.current || undefined);
+      };
+      recorder.start();
+      setVoiceSeconds(0);
+      setIsRecordingVoice(true);
+      setSendError(null);
+    } catch {
+      setSendError("No se pudo iniciar la nota de voz.");
+    }
+  }
+
+  function stopVoiceRecording() {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+    } else {
+      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
+    }
+    setIsRecordingVoice(false);
+    setVoiceSeconds(0);
+    requestAnimationFrame(() => textareaRef.current?.focus());
+  }
+
+  function toggleVoiceRecorder() {
+    if (sendingRef.current || !canSendMessages || uploadingAttachment) return;
+    if (isRecordingVoice) {
+      stopVoiceRecording();
+      return;
+    }
+    void startVoiceRecording();
   }
 
   useEffect(() => {
@@ -525,7 +580,7 @@ export default function GroupConversation({
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3">
-      <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-surface px-3 py-2">
+      <div className="sticky top-0 z-20 flex items-center justify-between gap-3 rounded-2xl border border-border bg-surface/95 px-3 py-2 backdrop-blur">
         <div className="flex min-w-0 items-center gap-3">
           <Image
             src={groupAvatar}
