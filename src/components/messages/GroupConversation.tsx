@@ -233,7 +233,8 @@ export default function GroupConversation({
     try {
       validateUploadSize(file);
       const payload = await uploadFile(file, { scope: "chat" });
-      if (typeof payload.url !== "string") {
+      const uploadedUrl = payload.url;
+      if (typeof uploadedUrl !== "string") {
         throw new Error(typeof payload.error === "string" ? payload.error : "No se pudo subir el archivo");
       }
       const fileType = file.type || "";
@@ -247,7 +248,7 @@ export default function GroupConversation({
       setAttachments((prev) => [
         ...(prev || []),
         {
-          url: payload.url,
+          url: uploadedUrl,
           type: normalizedType,
           name: file.name || null,
           viewOnce: normalizedType === "image" ? oneTimeImageMode : false,
