@@ -1299,7 +1299,7 @@ export default function GroupConversation({
             >
               📎
             </button>
-            <div className="flex min-w-0 flex-1 items-end gap-1.5 rounded-[24px] wa-input px-2 py-2 ring-1 focus-within:ring-2 focus-within:ring-[#00a884]/45 sm:gap-2 sm:rounded-[26px] sm:px-3 sm:py-2.5">
+            <div className="flex min-w-0 flex-1 items-end gap-1.5 rounded-[24px] wa-input px-2 py-2 ring-1 ring-brand/20 focus-within:ring-2 focus-within:ring-brand/45 sm:gap-2 sm:rounded-[26px] sm:px-3 sm:py-2.5">
               <textarea
                 value={text}
                 onChange={(event) => setText(event.target.value)}
