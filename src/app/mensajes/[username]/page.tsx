@@ -85,7 +85,7 @@ function ConversationLayout({
             <div className="border-b border-border bg-surface px-3 py-2 sm:px-4 lg:hidden">
               <Link href="/mensajes" className="text-sm font-medium text-brand hover:underline">← Chats</Link>
             </div>
-            <header className="mx-2 mt-2 flex items-center gap-3 rounded-2xl border border-border bg-surface px-3 py-3 sm:mx-3 sm:px-4">
+            <header className="sticky top-0 z-20 mx-2 mt-2 flex items-center gap-3 rounded-2xl border border-border bg-surface/95 px-3 py-3 backdrop-blur sm:mx-3 sm:px-4">
               <Link href={`/u/${participant.username}`} className="inline-flex rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/70">
                 <Image
                   src={avatar}

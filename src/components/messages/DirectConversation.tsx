@@ -9,6 +9,8 @@ import UserBadges from "@/components/UserBadges";
 import UserHoverPreview from "@/components/UserHoverPreview";
 import { useLocale } from "@/contexts/LocaleContext";
 import EmojiPicker from "@/components/EmojiPicker";
+import { uploadFile } from "@/lib/clientUpload";
+import { validateUploadSize } from "@/lib/upload";
 
 import type { DirectMessageAttachment, DirectMessageEntry } from "@/lib/messages";
 
@@ -151,6 +153,12 @@ export default function DirectConversation({
   const [oneTimeImageMode, setOneTimeImageMode] = useState(false);
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
   const [voiceSeconds, setVoiceSeconds] = useState(0);
+  const voiceSecondsRef = useRef(0);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  const attachmentInputRef = useRef<HTMLInputElement | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaChunksRef = useRef<Blob[]>([]);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
   const [imageModal, setImageModal] = useState<{
     src: string;
     alt: string;
@@ -183,12 +191,24 @@ export default function DirectConversation({
   }, [text]);
 
   useEffect(() => {
+    voiceSecondsRef.current = voiceSeconds;
+  }, [voiceSeconds]);
+
+  useEffect(() => {
     if (!isRecordingVoice) return undefined;
     const timer = window.setInterval(() => {
       setVoiceSeconds((current) => current + 1);
     }, 1000);
     return () => window.clearInterval(timer);
   }, [isRecordingVoice]);
+
+  useEffect(() => () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+    }
+    mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+    mediaStreamRef.current = null;
+  }, []);
 
 
   useEffect(() => {
@@ -382,8 +402,8 @@ export default function DirectConversation({
   }
 
   const canSend = useMemo(
-    () => !sending && (text.trim().length > 0 || attachments.length > 0),
-    [sending, text, attachments.length],
+    () => !sending && !uploadingAttachment && (text.trim().length > 0 || attachments.length > 0),
+    [sending, uploadingAttachment, text, attachments.length],
   );
 
   function selectLatestMessageFromSender(message: DirectMessageEntry) {
@@ -411,20 +431,98 @@ export default function DirectConversation({
     setAttachments((prev) => [...prev, { url: item.url, type: "image", name: item.label, viewOnce: oneTimeImageMode }]);
   }
 
-  function toggleVoiceRecorder() {
-    if (sending) return;
-    if (isRecordingVoice) {
-      const minutes = String(Math.floor(voiceSeconds / 60)).padStart(2, "0");
-      const seconds = String(voiceSeconds % 60).padStart(2, "0");
-      const note = `🎤 Nota de voz (${minutes}:${seconds})`;
-      setText((prev) => (prev.trim() ? `${prev.trim()}\n${note}` : note));
-      setIsRecordingVoice(false);
-      setVoiceSeconds(0);
-      requestAnimationFrame(() => textareaRef.current?.focus());
+  async function uploadAttachmentFile(file: File, durationSeconds?: number) {
+    setError(null);
+    setUploadingAttachment(true);
+    try {
+      validateUploadSize(file);
+      const payload = await uploadFile(file, { scope: "chat" });
+      const uploadedUrl = payload.url;
+      if (typeof uploadedUrl !== "string") {
+        throw new Error(typeof payload.error === "string" ? payload.error : "No se pudo subir el archivo");
+      }
+
+      const type = file.type || "";
+      const normalizedType = type.startsWith("image/")
+        ? "image"
+        : type.startsWith("video/")
+          ? "video"
+          : type.startsWith("audio/")
+            ? "audio"
+            : "file";
+      setAttachments((prev) => [
+        ...prev,
+        {
+          url: uploadedUrl,
+          type: normalizedType,
+          name: file.name || null,
+          durationSeconds: normalizedType === "audio" ? durationSeconds : undefined,
+          viewOnce: normalizedType === "image" ? oneTimeImageMode : false,
+          viewedByRecipientAt: null,
+        },
+      ]);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "No se pudo subir el archivo";
+      setError(message);
+    } finally {
+      setUploadingAttachment(false);
+      if (attachmentInputRef.current) attachmentInputRef.current.value = "";
+    }
+  }
+
+  async function startVoiceRecording() {
+    if (typeof window === "undefined" || !navigator?.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      setError("Tu navegador no soporta grabación de voz.");
       return;
     }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      mediaStreamRef.current = stream;
+      mediaChunksRef.current = [];
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) mediaChunksRef.current.push(event.data);
+      };
+      recorder.onstop = () => {
+        const blob = new Blob(mediaChunksRef.current, { type: recorder.mimeType || "audio/webm" });
+        mediaChunksRef.current = [];
+        stream.getTracks().forEach((track) => track.stop());
+        mediaStreamRef.current = null;
+        if (blob.size === 0) return;
+        const extension = blob.type.includes("ogg") ? "ogg" : "webm";
+        const voiceFile = new File([blob], `nota-voz-${Date.now()}.${extension}`, { type: blob.type || "audio/webm" });
+        void uploadAttachmentFile(voiceFile, voiceSecondsRef.current || undefined);
+      };
+      recorder.start();
+      setVoiceSeconds(0);
+      setIsRecordingVoice(true);
+      setError(null);
+    } catch {
+      setError("No se pudo iniciar la grabación de voz.");
+    }
+  }
+
+  function stopVoiceRecording() {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+    } else {
+      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
+    }
+    setIsRecordingVoice(false);
     setVoiceSeconds(0);
-    setIsRecordingVoice(true);
+    requestAnimationFrame(() => textareaRef.current?.focus());
+  }
+
+  function toggleVoiceRecorder() {
+    if (sending || uploadingAttachment) return;
+    if (isRecordingVoice) {
+      stopVoiceRecording();
+      return;
+    }
+    void startVoiceRecording();
   }
 
   function addSticker(url: string, label = "Sticker") {
@@ -512,7 +610,7 @@ export default function DirectConversation({
   async function sendMessage(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const trimmed = text.trim();
-    if ((trimmed.length === 0 && attachments.length === 0) || sending) return;
+    if ((trimmed.length === 0 && attachments.length === 0) || sending || uploadingAttachment) return;
     setSending(true);
     setError(null);
     try {
@@ -957,11 +1055,34 @@ export default function DirectConversation({
               placeholder={strings.comments.replyPlaceholder || "Escribe tu mensaje"}
               disabled={sending}
             />
+            <input
+              ref={attachmentInputRef}
+              type="file"
+              className="hidden"
+              accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (!file) return;
+                void uploadAttachmentFile(file);
+              }}
+              disabled={sending || uploadingAttachment}
+            />
+            <button
+              type="button"
+              onClick={() => attachmentInputRef.current?.click()}
+              className="pb-1 pr-0.5 text-lg opacity-80 transition hover:opacity-100 sm:text-xl"
+              disabled={sending || uploadingAttachment}
+              aria-label="Adjuntar archivo"
+              title="Adjuntar archivo"
+            >
+              📎
+            </button>
             <button
               type="button"
               onClick={() => setIsTrayOpen((prev) => !prev)}
               className="pb-1 pr-0.5 text-lg opacity-80 transition hover:opacity-100 sm:text-xl"
               aria-label="Abrir emojis y stickers"
+              disabled={sending || uploadingAttachment}
             >
               🙂
             </button>
@@ -970,6 +1091,7 @@ export default function DirectConversation({
               onClick={toggleVoiceRecorder}
               className={`pb-1 pr-0.5 text-lg transition sm:text-xl ${isRecordingVoice ? "text-rose-300" : "opacity-80 hover:opacity-100"}`}
               aria-label={isRecordingVoice ? "Detener nota de voz" : "Iniciar nota de voz"}
+              disabled={sending || uploadingAttachment}
             >
               🎙️
             </button>
@@ -993,6 +1115,9 @@ export default function DirectConversation({
             </button>
           )}
         </div>
+        {uploadingAttachment ? (
+          <p className="px-2 text-xs text-cyan-200">Subiendo adjunto…</p>
+        ) : null}
         {isRecordingVoice ? (
           <p className="px-2 text-xs text-rose-200">
             Grabando nota de voz… {String(Math.floor(voiceSeconds / 60)).padStart(2, "0")}:{String(voiceSeconds % 60).padStart(2, "0")} · toca 🎙️ para adjuntarla
