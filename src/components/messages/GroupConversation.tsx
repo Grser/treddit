@@ -13,6 +13,14 @@ import LocalCallControls from "@/components/messages/LocalCallControls";
 import MentionUserLink from "@/components/MentionUserLink";
 
 import type { GroupMessageEntry } from "@/lib/messages";
+type CallLogDetail = {
+  key?: string;
+  eventType: "incoming" | "missed" | "started-audio" | "started-video" | "ended";
+  contactName: string;
+  contextLabel: string;
+  createdAt: string;
+  summary: string;
+};
 
 type GroupMember = {
   id: number;
@@ -230,12 +238,41 @@ export default function GroupConversation({
   const shouldAutoScrollRef = useRef(true);
   const initialScrollDoneRef = useRef(false);
   const groupAvatar = avatarUrl || "/demo-reddit.png";
+  const localMessageIdRef = useRef(-1);
 
   const myMember = members.find((member) => member.id === viewerId);
   const canSendMessages = myRole === "owner" || myRole === "admin" || Boolean(myMember?.can_send_messages ?? true);
 
   useEffect(() => {
     textareaRef.current?.focus();
+  }, [groupId]);
+
+  useEffect(() => {
+    function handleCallLog(event: Event) {
+      const customEvent = event as CustomEvent<CallLogDetail>;
+      const detail = customEvent.detail;
+      if (!detail || detail.key !== `group-${groupId}`) return;
+      const nextId = localMessageIdRef.current;
+      localMessageIdRef.current -= 1;
+      const systemMessage: GroupMessageEntry = {
+        id: nextId,
+        groupId,
+        senderId: 0,
+        text: `📞 ${detail.summary}`,
+        createdAt: detail.createdAt || new Date().toISOString(),
+        sender: {
+          id: 0,
+          username: "sistema",
+          nickname: "Sistema de llamadas",
+          avatar_url: null,
+        },
+      };
+      shouldAutoScrollRef.current = true;
+      setMessages((current) => mergeMessagesById(current, [systemMessage]));
+    }
+
+    window.addEventListener("treddit-call-log", handleCallLog as EventListener);
+    return () => window.removeEventListener("treddit-call-log", handleCallLog as EventListener);
   }, [groupId]);
 
   useEffect(() => {
@@ -671,7 +708,7 @@ export default function GroupConversation({
         </div>
         <div className="flex items-center gap-2">
           <div className="hidden sm:block">
-            <LocalCallControls contactName={name} contextLabel="Grupo" />
+            <LocalCallControls contactName={name} contextLabel="Grupo" chatLogKey={`group-${groupId}`} />
           </div>
           <button
             type="button"
@@ -686,7 +723,7 @@ export default function GroupConversation({
         </div>
       </div>
       <div className="sm:hidden">
-        <LocalCallControls contactName={name} contextLabel="Grupo" />
+        <LocalCallControls contactName={name} contextLabel="Grupo" chatLogKey={`group-${groupId}`} />
       </div>
       {showSettings && (
         <div className="fixed inset-0 z-[90] flex items-start justify-center bg-black/50 p-3 backdrop-blur-sm md:items-center md:p-6">
@@ -1079,6 +1116,16 @@ export default function GroupConversation({
       )}
       <ul ref={messagesListRef} className="hide-scrollbar mt-2 min-h-0 flex-1 space-y-1 overflow-x-hidden overflow-y-auto rounded-2xl wa-wallpaper px-2 pr-0.5 pb-6 [overflow-anchor:none] sm:pr-1 sm:pb-8">
         {messages.map((msg, index) => {
+          if (msg.senderId === 0) {
+            return (
+              <li key={msg.id} className="mx-auto w-full max-w-md px-2 py-1.5">
+                <div className="rounded-xl border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-center text-xs text-violet-100">
+                  <p className="font-semibold">{msg.text.replace(/^📞\s*/, "")}</p>
+                  <p className="mt-1 text-[11px] text-violet-200/75">{formatMessageTime(msg.createdAt)}</p>
+                </div>
+              </li>
+            );
+          }
           const mine = msg.senderId === viewerId;
           const previous = messages[index - 1];
           const next = messages[index + 1];

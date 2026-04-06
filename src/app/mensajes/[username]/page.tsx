@@ -64,6 +64,7 @@ function ConversationLayout({
   const avatar = participant.avatar_url?.trim() || "/demo-reddit.png";
   const displayName = participant.nickname || participant.username;
   const searchProfileUrl = `/buscar?q=${encodeURIComponent(participant.username)}`;
+  const callLogKey = `direct-${Math.min(viewerId, participant.id)}-${Math.max(viewerId, participant.id)}`;
 
   return (
     <div className="min-h-dvh wa-wallpaper text-foreground">
@@ -109,7 +110,7 @@ function ConversationLayout({
               </Link>
               <div className="flex items-center gap-2">
                 <div className="hidden sm:block">
-                  <LocalCallControls contactName={displayName} contextLabel="Chat directo" />
+                  <LocalCallControls contactName={displayName} contextLabel="Chat directo" chatLogKey={callLogKey} />
                 </div>
                 <Link href={searchProfileUrl} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-input px-3 py-1 text-xs hover:bg-muted">
                   <IconSearch className="size-3.5" aria-hidden />
@@ -118,11 +119,11 @@ function ConversationLayout({
               </div>
             </header>
             <div className="px-3 pt-2 sm:hidden">
-              <LocalCallControls contactName={displayName} contextLabel="Chat directo" />
+              <LocalCallControls contactName={displayName} contextLabel="Chat directo" chatLogKey={callLogKey} />
             </div>
 
             <div className="min-h-0 flex-1 p-1.5 sm:p-3 md:p-4">
-              <DirectConversation initialMessages={messages} viewerId={viewerId} recipient={participant} />
+              <DirectConversation initialMessages={messages} viewerId={viewerId} recipient={participant} callLogKey={callLogKey} />
             </div>
           </section>
         </div>
