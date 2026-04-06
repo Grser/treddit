@@ -107,11 +107,11 @@ function ConversationLayout({
                 <p className="truncate text-sm opacity-70">@{participant.username}</p>
                 {helperText && <p className="text-xs text-cyan-200">{helperText}</p>}
               </Link>
-              <div className="hidden items-center gap-2 sm:flex">
-                <LocalCallControls />
+              <div className="flex items-center gap-2">
+                <LocalCallControls contactName={displayName} contextLabel="Chat directo" />
                 <Link href={searchProfileUrl} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-input px-3 py-1 text-xs hover:bg-muted">
                   <IconSearch className="size-3.5" aria-hidden />
-                  Buscar
+                  <span className="hidden sm:inline">Buscar</span>
                 </Link>
               </div>
             </header>

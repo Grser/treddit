@@ -62,15 +62,21 @@ const STICKER_PACK = [
 ] as const;
 
 const RECORDER_MIME_CANDIDATES = [
-  "audio/webm;codecs=opus",
-  "audio/webm",
   "audio/mp4",
   "audio/ogg;codecs=opus",
+  "audio/webm;codecs=opus",
+  "audio/webm",
 ] as const;
 
 function getSupportedRecorderMimeType() {
   if (typeof MediaRecorder === "undefined" || typeof MediaRecorder.isTypeSupported !== "function") return undefined;
-  return RECORDER_MIME_CANDIDATES.find((candidate) => MediaRecorder.isTypeSupported(candidate));
+  const audioProbe = typeof Audio !== "undefined" ? new Audio() : null;
+  return RECORDER_MIME_CANDIDATES.find((candidate) => {
+    const canRecord = MediaRecorder.isTypeSupported(candidate);
+    if (!canRecord) return false;
+    if (!audioProbe || typeof audioProbe.canPlayType !== "function") return canRecord;
+    return audioProbe.canPlayType(candidate) !== "";
+  });
 }
 
 function guessAudioExtension(mimeType: string) {

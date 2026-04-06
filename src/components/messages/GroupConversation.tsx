@@ -33,15 +33,21 @@ const MESSAGE_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"] as 
 const QUICK_EMOJIS = ["😀", "😂", "😍", "🔥", "🥳", "😎", "🤝", "🙏"] as const;
 
 const RECORDER_MIME_CANDIDATES = [
-  "audio/webm;codecs=opus",
-  "audio/webm",
   "audio/mp4",
   "audio/ogg;codecs=opus",
+  "audio/webm;codecs=opus",
+  "audio/webm",
 ] as const;
 
 function getSupportedRecorderMimeType() {
   if (typeof MediaRecorder === "undefined" || typeof MediaRecorder.isTypeSupported !== "function") return undefined;
-  return RECORDER_MIME_CANDIDATES.find((candidate) => MediaRecorder.isTypeSupported(candidate));
+  const audioProbe = typeof Audio !== "undefined" ? new Audio() : null;
+  return RECORDER_MIME_CANDIDATES.find((candidate) => {
+    const canRecord = MediaRecorder.isTypeSupported(candidate);
+    if (!canRecord) return false;
+    if (!audioProbe || typeof audioProbe.canPlayType !== "function") return canRecord;
+    return audioProbe.canPlayType(candidate) !== "";
+  });
 }
 
 function guessAudioExtension(mimeType: string) {
@@ -653,9 +659,7 @@ export default function GroupConversation({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <div className="hidden sm:block">
-            <LocalCallControls />
-          </div>
+          <LocalCallControls contactName={name} contextLabel="Grupo" />
           <button
             type="button"
             onClick={() => {
