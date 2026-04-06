@@ -314,14 +314,14 @@ export default function PostCard({
           )}
 
           {hasSensitiveImage && !showSensitive && (
-            <div className="absolute inset-0 flex items-center bg-black/45 p-4 text-left text-white">
-              <div className="max-w-xs rounded-xl bg-black/40 p-4 backdrop-blur-sm">
+            <div className="absolute inset-0 flex items-center justify-center bg-black/45 p-4 text-center text-white">
+              <div className="max-w-md rounded-xl bg-black/40 p-4 backdrop-blur-sm sm:p-6">
                 <p className="text-sm font-semibold sm:text-2xl">Advertencia de contenido: Contenido delicado</p>
                 <p className="mt-2 text-sm opacity-90">
                   El autor del post marcó esta imagen para indicar que puede mostrar contenido delicado.
                 </p>
                 {canViewSensitive ? (
-                  <div className="mt-3 flex justify-end">
+                  <div className="mt-3 flex justify-center">
                     <button
                       type="button"
                       onClick={() => setShowSensitive(true)}
@@ -342,6 +342,18 @@ export default function PostCard({
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {hasSensitiveImage && showSensitive && (
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-end p-3">
+              <button
+                type="button"
+                onClick={() => setShowSensitive(false)}
+                className="pointer-events-auto rounded-full bg-black/75 px-3 py-1 text-xs font-semibold text-white transition hover:bg-black"
+              >
+                Ocultar imagen
+              </button>
             </div>
           )}
         </div>
