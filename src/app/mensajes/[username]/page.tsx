@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 
 import Navbar from "@/components/Navbar";
 import UserBadges from "@/components/UserBadges";
+import { IconPhone, IconSearch, IconVideo } from "@/components/icons";
 import DirectConversation from "@/components/messages/DirectConversation";
 import type { ConversationParticipant } from "@/components/messages/DirectConversation";
 import InboxList from "@/components/messages/InboxList";
@@ -109,13 +110,16 @@ function ConversationLayout({
                 {helperText && <p className="text-xs text-cyan-200">{helperText}</p>}
               </Link>
               <div className="hidden items-center gap-2 sm:flex">
-                <Link href={callUrl} target="_blank" rel="noreferrer" className="rounded-full border border-border bg-input px-3 py-1 text-xs hover:bg-muted">
+                <Link href={callUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-border bg-input px-3 py-1 text-xs hover:bg-muted">
+                  <IconPhone className="size-3.5" aria-hidden />
                   Llamar
                 </Link>
-                <Link href={videoUrl} target="_blank" rel="noreferrer" className="rounded-full border border-border bg-input px-3 py-1 text-xs hover:bg-muted">
+                <Link href={videoUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-border bg-input px-3 py-1 text-xs hover:bg-muted">
+                  <IconVideo className="size-3.5" aria-hidden />
                   Video
                 </Link>
-                <Link href={searchProfileUrl} className="rounded-full border border-border bg-input px-3 py-1 text-xs hover:bg-muted">
+                <Link href={searchProfileUrl} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-input px-3 py-1 text-xs hover:bg-muted">
+                  <IconSearch className="size-3.5" aria-hidden />
                   Buscar
                 </Link>
               </div>
