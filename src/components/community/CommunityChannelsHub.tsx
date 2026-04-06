@@ -42,32 +42,35 @@ export default function CommunityChannelsHub() {
   }
 
   return (
-    <section className="rounded-2xl border border-border bg-surface p-4 sm:p-5">
-      <div className="mb-4">
-        <h2 className="text-xl font-semibold">Canales de la comunidad</h2>
-        <p className="mt-1 text-sm opacity-75">Administra canales de texto y voz de este espacio.</p>
+    <section className="rounded-2xl border border-border bg-surface p-5">
+      <div className="mb-5">
+        <h2 className="text-lg font-semibold">Canales de la comunidad</h2>
+        <p className="mt-1 text-xs text-foreground/70">Todo organizado en un solo panel para texto y voz.</p>
       </div>
-      <div className="grid gap-3 lg:grid-cols-[16rem_minmax(0,1fr)]">
-        <aside className="rounded-2xl border border-border/80 bg-background/45 p-3">
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide opacity-70">Canales de texto</p>
+
+      <div className="space-y-4">
+        <article className="rounded-2xl border border-border/80 bg-background/45 p-3">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-foreground/70">Canales de texto</p>
           <div className="space-y-1.5">
             {channels.filter((channel) => channel.kind === "text").map((channel) => (
               <button
                 key={channel.id}
                 type="button"
                 onClick={() => setSelectedChannelId(channel.id)}
-                className={`flex w-full items-center justify-between rounded-xl border px-3 py-2 text-left text-sm transition ${selectedChannelId === channel.id ? "border-brand/50 bg-brand/15" : "border-border/60 bg-background/60 hover:bg-muted"}`}
+                className={`flex w-full items-center justify-between rounded-xl border px-3 py-2 text-left text-sm transition ${selectedChannelId === channel.id ? "border-brand/50 bg-brand/15 text-foreground" : "border-border/60 bg-background/60 text-foreground/85 hover:bg-muted"}`}
               >
                 <span># {channel.name}</span>
               </button>
             ))}
           </div>
-          <div className="mt-2 flex gap-1">
-            <input value={newTextChannel} onChange={(event) => setNewTextChannel(event.target.value)} placeholder="nuevo-texto" className="w-full rounded-lg border border-border bg-input px-2 py-1 text-xs" />
-            <button onClick={() => addChannel("text")} className="rounded-lg border border-border px-2 text-xs">+</button>
+          <div className="mt-2 flex gap-1.5">
+            <input value={newTextChannel} onChange={(event) => setNewTextChannel(event.target.value)} placeholder="nuevo-texto" className="w-full rounded-lg border border-border bg-input px-2.5 py-1.5 text-xs" />
+            <button onClick={() => addChannel("text")} className="rounded-lg border border-border px-2.5 text-xs">+</button>
           </div>
+        </article>
 
-          <p className="mb-2 mt-4 text-[11px] font-semibold uppercase tracking-wide opacity-70">Canales de voz</p>
+        <article className="rounded-2xl border border-border/80 bg-background/45 p-3">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-foreground/70">Canales de voz</p>
           <div className="space-y-1.5">
             {channels.filter((channel) => channel.kind === "voice").map((channel) => {
               const listeners = channel.listeners || [];
@@ -89,11 +92,11 @@ export default function CommunityChannelsHub() {
               );
             })}
           </div>
-          <div className="mt-2 flex gap-1">
-            <input value={newVoiceChannel} onChange={(event) => setNewVoiceChannel(event.target.value)} placeholder="nueva-sala" className="w-full rounded-lg border border-border bg-input px-2 py-1 text-xs" />
-            <button onClick={() => addChannel("voice")} className="rounded-lg border border-border px-2 text-xs">+</button>
+          <div className="mt-2 flex gap-1.5">
+            <input value={newVoiceChannel} onChange={(event) => setNewVoiceChannel(event.target.value)} placeholder="nueva-sala" className="w-full rounded-lg border border-border bg-input px-2.5 py-1.5 text-xs" />
+            <button onClick={() => addChannel("voice")} className="rounded-lg border border-border px-2.5 text-xs">+</button>
           </div>
-        </aside>
+        </article>
 
         <article className="rounded-2xl border border-border/80 bg-background/40 p-4">
           <p className="text-xs uppercase tracking-wide opacity-70">Canal activo</p>
