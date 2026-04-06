@@ -61,6 +61,25 @@ const STICKER_PACK = [
   "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExZG0yNnN1cWQ5OHQyc3F3NGJ5Y2FmMm5mb2w2bDU2cWhhY2tiNGo0aCZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/Yl5aO3gdVfsQ0/giphy.gif",
 ] as const;
 
+const RECORDER_MIME_CANDIDATES = [
+  "audio/webm;codecs=opus",
+  "audio/webm",
+  "audio/mp4",
+  "audio/ogg;codecs=opus",
+] as const;
+
+function getSupportedRecorderMimeType() {
+  if (typeof MediaRecorder === "undefined" || typeof MediaRecorder.isTypeSupported !== "function") return undefined;
+  return RECORDER_MIME_CANDIDATES.find((candidate) => MediaRecorder.isTypeSupported(candidate));
+}
+
+function guessAudioExtension(mimeType: string) {
+  if (mimeType.includes("mp4")) return "m4a";
+  if (mimeType.includes("ogg")) return "ogg";
+  if (mimeType.includes("mpeg")) return "mp3";
+  return "webm";
+}
+
 function MessageStatusTicks({ status }: { status: "sent" | "delivered" | "read" }) {
   const tone = status === "read" ? "text-emerald-400" : status === "delivered" ? "text-sky-300" : "text-foreground/65";
   const label = status === "read" ? "Leído" : status === "delivered" ? "Entregado" : "Enviado";
@@ -503,7 +522,10 @@ export default function DirectConversation({
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
+      const preferredMimeType = getSupportedRecorderMimeType();
+      const recorder = preferredMimeType
+        ? new MediaRecorder(stream, { mimeType: preferredMimeType })
+        : new MediaRecorder(stream);
       mediaRecorderRef.current = recorder;
       mediaStreamRef.current = stream;
       mediaChunksRef.current = [];
@@ -516,7 +538,7 @@ export default function DirectConversation({
         stream.getTracks().forEach((track) => track.stop());
         mediaStreamRef.current = null;
         if (blob.size === 0) return;
-        const extension = blob.type.includes("ogg") ? "ogg" : "webm";
+        const extension = guessAudioExtension(blob.type);
         const voiceFile = new File([blob], `nota-voz-${Date.now()}.${extension}`, { type: blob.type || "audio/webm" });
         if (pendingVoiceNote?.previewUrl) URL.revokeObjectURL(pendingVoiceNote.previewUrl);
         setPendingVoiceNote({
@@ -525,7 +547,7 @@ export default function DirectConversation({
           durationSeconds: voiceSecondsRef.current || 0,
         });
       };
-      recorder.start(250);
+      recorder.start();
       setVoiceSeconds(0);
       setIsRecordingVoice(true);
       setError(null);
@@ -536,11 +558,6 @@ export default function DirectConversation({
 
   function stopVoiceRecording() {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
-      try {
-        mediaRecorderRef.current.requestData();
-      } catch {
-        // ignore unsupported requestData behavior
-      }
       mediaRecorderRef.current.stop();
     } else {
       mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
