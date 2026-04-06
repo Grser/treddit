@@ -156,6 +156,7 @@ export default function GroupConversation({
 }) {
   const [messages, setMessages] = useState(initialMessages);
   const [text, setText] = useState("");
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const latestIdRef = useRef(initialMessages[initialMessages.length - 1]?.id ?? 0);
   const messagesListRef = useRef<HTMLUListElement | null>(null);
   const sendingRef = useRef(false);
@@ -184,6 +185,8 @@ export default function GroupConversation({
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
   const [oneTimeImageMode, setOneTimeImageMode] = useState(false);
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const [voiceSeconds, setVoiceSeconds] = useState(0);
   const [manageView, setManageView] = useState<"general" | "members" | "roles">("general");
   const [mentionQuery, setMentionQuery] = useState("");
   const [groupMentionResults, setGroupMentionResults] = useState<GroupMember[]>([]);
@@ -193,6 +196,22 @@ export default function GroupConversation({
 
   const myMember = members.find((member) => member.id === viewerId);
   const canSendMessages = myRole === "owner" || myRole === "admin" || Boolean(myMember?.can_send_messages ?? true);
+
+  useEffect(() => {
+    textareaRef.current?.focus();
+  }, [groupId]);
+
+  useEffect(() => {
+    resizeTextarea();
+  }, [text]);
+
+  useEffect(() => {
+    if (!isRecordingVoice) return undefined;
+    const timer = window.setInterval(() => {
+      setVoiceSeconds((current) => current + 1);
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [isRecordingVoice]);
 
   useEffect(() => {
     const match = text.match(/(?:^|\s)@([\p{L}\p{N}_]{0,32})$/u);
@@ -224,6 +243,29 @@ export default function GroupConversation({
 
   function addEmoji(emoji: string) {
     setText((prev) => `${prev}${emoji}`);
+  }
+
+  function resizeTextarea() {
+    const node = textareaRef.current;
+    if (!node) return;
+    node.style.height = "0px";
+    node.style.height = `${Math.min(node.scrollHeight, 140)}px`;
+  }
+
+  function toggleVoiceRecorder() {
+    if (sendingRef.current || !canSendMessages || uploadingAttachment) return;
+    if (isRecordingVoice) {
+      const minutes = String(Math.floor(voiceSeconds / 60)).padStart(2, "0");
+      const seconds = String(voiceSeconds % 60).padStart(2, "0");
+      const note = `🎤 Nota de voz (${minutes}:${seconds})`;
+      setText((prev) => (prev.trim() ? `${prev.trim()}\n${note}` : note));
+      setIsRecordingVoice(false);
+      setVoiceSeconds(0);
+      requestAnimationFrame(() => textareaRef.current?.focus());
+      return;
+    }
+    setVoiceSeconds(0);
+    setIsRecordingVoice(true);
   }
 
   async function handleAttachmentUpload(file: File | null) {
@@ -1305,8 +1347,12 @@ export default function GroupConversation({
             </button>
             <div className="flex min-w-0 flex-1 items-end gap-1.5 rounded-[24px] wa-input px-2 py-2 ring-1 ring-brand/20 focus-within:ring-2 focus-within:ring-brand/45 sm:gap-2 sm:rounded-[26px] sm:px-3 sm:py-2.5">
               <textarea
+                ref={textareaRef}
                 value={text}
-                onChange={(event) => setText(event.target.value)}
+                onChange={(event) => {
+                  setText(event.target.value);
+                  resizeTextarea();
+                }}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" && !event.shiftKey) {
                     event.preventDefault();
@@ -1329,6 +1375,15 @@ export default function GroupConversation({
               </button>
               <button
                 type="button"
+                onClick={toggleVoiceRecorder}
+                className={`pb-1 pr-0.5 text-lg transition sm:text-xl ${isRecordingVoice ? "text-rose-300" : "opacity-80 hover:opacity-100"}`}
+                disabled={!canSendMessages || sendingRef.current || uploadingAttachment}
+                aria-label={isRecordingVoice ? "Detener nota de voz" : "Iniciar nota de voz"}
+              >
+                🎙️
+              </button>
+              <button
+                type="button"
                 onClick={() => setText((prev) => `${prev}${prev.endsWith(" ") || !prev ? "" : " "}@`)}
                 className="pb-1 text-xs font-semibold opacity-75 transition hover:opacity-100"
                 disabled={!canSendMessages || sendingRef.current || uploadingAttachment}
@@ -1341,6 +1396,11 @@ export default function GroupConversation({
             </button>
           </div>
         </div>
+        {isRecordingVoice ? (
+          <p className="px-2 text-xs text-rose-200">
+            Grabando nota de voz… {String(Math.floor(voiceSeconds / 60)).padStart(2, "0")}:{String(voiceSeconds % 60).padStart(2, "0")} · toca 🎙️ para adjuntarla
+          </p>
+        ) : null}
       </form>
       {sendError && <p className="text-xs text-rose-400">{sendError}</p>}
     </div>
