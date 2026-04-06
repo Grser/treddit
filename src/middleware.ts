@@ -16,7 +16,10 @@ export function middleware(request: Request) {
   res.headers.set("X-Content-Type-Options", "nosniff");
   res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   res.headers.set("Permissions-Policy", "camera=(self), microphone=(self), geolocation=()");
-  res.headers.set("Content-Security-Policy", `default-src 'self'; img-src 'self' data: https: http:; style-src 'self' 'unsafe-inline'; ${scriptSrc} connect-src 'self' https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`);
+  res.headers.set(
+    "Content-Security-Policy",
+    `default-src 'self'; img-src 'self' data: https: http:; media-src 'self' blob: https: http:; style-src 'self' 'unsafe-inline'; ${scriptSrc} connect-src 'self' https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`,
+  );
   res.headers.set("x-nonce", nonce);
 
   return res;
