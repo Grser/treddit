@@ -43,8 +43,8 @@ type LinkPreview = {
   domain: string;
 };
 
-const QUICK_EMOJIS = ["•", "◦", "✦", "♥", "✚", "○", "✓", "◆"] as const;
-const MESSAGE_REACTIONS = ["+", "♥", "✦", "○", "-", "✓"] as const;
+const QUICK_EMOJIS = ["😀", "😂", "😍", "🔥", "🥳", "😎", "🤝", "🙏"] as const;
+const MESSAGE_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"] as const;
 
 const gifStorageKey = (userId: number) => `treddit_dm_saved_gifs_${userId}`;
 const stickerStorageKey = (userId: number) => `treddit_dm_saved_stickers_${userId}`;
@@ -525,7 +525,7 @@ export default function DirectConversation({
           durationSeconds: voiceSecondsRef.current || 0,
         });
       };
-      recorder.start();
+      recorder.start(250);
       setVoiceSeconds(0);
       setIsRecordingVoice(true);
       setError(null);
@@ -536,6 +536,11 @@ export default function DirectConversation({
 
   function stopVoiceRecording() {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      try {
+        mediaRecorderRef.current.requestData();
+      } catch {
+        // ignore unsupported requestData behavior
+      }
       mediaRecorderRef.current.stop();
     } else {
       mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
