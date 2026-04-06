@@ -29,8 +29,8 @@ type SearchUser = {
   nickname: string | null;
 };
 
-const MESSAGE_REACTIONS = ["+", "♥", "✦", "○", "-", "✓"] as const;
-const QUICK_EMOJIS = ["•", "◦", "✦", "♥", "✚", "○", "✓", "◆"] as const;
+const MESSAGE_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"] as const;
+const QUICK_EMOJIS = ["😀", "😂", "😍", "🔥", "🥳", "😎", "🤝", "🙏"] as const;
 const GROUP_STICKERS = [
   "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbThwajQ0YXFreXQyb3h2b2N0NWFjYnR5ZzIybDh6OHN5b2N2YWw1NCZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/3oriO0OEd9QIDdllqo/giphy.gif",
   "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMm1ydGVvM2hyZ3l4YWZsM2lmbnBqeHlkam95cnRwNTNqem9iaHV4dCZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/Cmr1OMJ2FN0B2/giphy.gif",
@@ -349,7 +349,7 @@ export default function GroupConversation({
           durationSeconds: voiceSecondsRef.current || 0,
         });
       };
-      recorder.start();
+      recorder.start(250);
       setVoiceSeconds(0);
       setIsRecordingVoice(true);
       setSendError(null);
@@ -360,6 +360,11 @@ export default function GroupConversation({
 
   function stopVoiceRecording() {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      try {
+        mediaRecorderRef.current.requestData();
+      } catch {
+        // ignore unsupported requestData behavior
+      }
       mediaRecorderRef.current.stop();
     } else {
       mediaStreamRef.current?.getTracks().forEach((track) => track.stop());

@@ -11,9 +11,11 @@ export default function LocalCallControls() {
   const [error, setError] = useState<string | null>(null);
   const [micEnabled, setMicEnabled] = useState(true);
   const [cameraEnabled, setCameraEnabled] = useState(true);
+  const [monitorEnabled, setMonitorEnabled] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const streamRef = useRef<MediaStream | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const active = activeMode !== null;
 
@@ -27,6 +29,23 @@ export default function LocalCallControls() {
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
   }, []);
+
+  useEffect(() => {
+    const audioElement = audioRef.current;
+    if (!audioElement) return;
+    if (!streamRef.current || !active) {
+      audioElement.srcObject = null;
+      return;
+    }
+    audioElement.srcObject = streamRef.current;
+    audioElement.muted = !monitorEnabled;
+    const playPromise = audioElement.play();
+    if (playPromise) {
+      playPromise.catch(() => {
+        setError("No se pudo reproducir el monitor de audio local. Toca el botón de monitor para reintentar.");
+      });
+    }
+  }, [active, monitorEnabled]);
 
   const elapsedText = useMemo(
     () => `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`,
@@ -45,10 +64,15 @@ export default function LocalCallControls() {
       setActiveMode(mode);
       setMicEnabled(true);
       setCameraEnabled(mode === "video");
+      setMonitorEnabled(false);
       setSeconds(0);
       setError(null);
       if (videoRef.current && mode === "video") {
         videoRef.current.srcObject = stream;
+      }
+      if (audioRef.current) {
+        audioRef.current.srcObject = stream;
+        audioRef.current.muted = true;
       }
     } catch {
       setError("No pudimos acceder al micrófono o la cámara.");
@@ -59,9 +83,14 @@ export default function LocalCallControls() {
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
+    if (audioRef.current) {
+      audioRef.current.srcObject = null;
+      audioRef.current.muted = true;
+    }
     setActiveMode(null);
     setMicEnabled(true);
     setCameraEnabled(true);
+    setMonitorEnabled(false);
     setSeconds(0);
   }
 
@@ -79,6 +108,10 @@ export default function LocalCallControls() {
       track.enabled = next;
     });
     setCameraEnabled(next);
+  }
+
+  function toggleMonitor() {
+    setMonitorEnabled((prev) => !prev);
   }
 
   return (
@@ -101,31 +134,45 @@ export default function LocalCallControls() {
       </button>
       {active ? (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 p-4 backdrop-blur-md">
-          <div className="w-full max-w-lg rounded-2xl border border-border bg-surface p-4 shadow-2xl">
-            <p className="text-sm font-semibold">Llamada local activa</p>
-            <p className="text-xs opacity-75">Duración {elapsedText}</p>
+          <div className="w-full max-w-xl rounded-3xl border border-violet-300/30 bg-[#0f172de6] p-5 shadow-2xl shadow-violet-950/40">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-semibold text-white">Llamada local activa</p>
+                <p className="text-xs text-slate-300">Duración {elapsedText}</p>
+              </div>
+              <span className="rounded-full border border-violet-300/50 bg-violet-500/20 px-3 py-1 text-[11px] font-medium text-violet-100">
+                Estilo Treddit
+              </span>
+            </div>
             {activeMode === "video" ? (
-              <video ref={videoRef} autoPlay muted playsInline className="mt-3 aspect-video w-full rounded-xl bg-black/70 object-cover" />
+              <video ref={videoRef} autoPlay muted playsInline className="mt-4 aspect-video w-full rounded-2xl border border-violet-200/20 bg-black/70 object-cover" />
             ) : (
-              <div className="mt-3 flex h-36 items-center justify-center rounded-xl border border-border bg-input/60 text-sm opacity-80">
-                Llamada de audio local
+              <div className="mt-4 flex h-40 items-center justify-center rounded-2xl border border-violet-200/20 bg-[#0a1025] text-sm text-slate-300">
+                Llamada de audio local (sin UI de terceros)
               </div>
             )}
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <button type="button" onClick={toggleMic} className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1 text-xs">
+            <audio ref={audioRef} autoPlay playsInline className="hidden" />
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <button type="button" onClick={toggleMic} className="inline-flex items-center gap-1 rounded-full border border-violet-200/25 px-3 py-1 text-xs text-slate-100">
                 <IconMic className="size-3.5" aria-hidden />
                 {micEnabled ? "Silenciar" : "Activar mic"}
               </button>
               {activeMode === "video" ? (
-                <button type="button" onClick={toggleCamera} className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1 text-xs">
+                <button type="button" onClick={toggleCamera} className="inline-flex items-center gap-1 rounded-full border border-violet-200/25 px-3 py-1 text-xs text-slate-100">
                   <IconVideo className="size-3.5" aria-hidden />
                   {cameraEnabled ? "Apagar cámara" : "Encender cámara"}
                 </button>
               ) : null}
+              <button type="button" onClick={toggleMonitor} className="inline-flex items-center gap-1 rounded-full border border-violet-200/25 px-3 py-1 text-xs text-slate-100">
+                {monitorEnabled ? "Desactivar retorno de audio" : "Escuchar mi audio"}
+              </button>
               <button type="button" onClick={endCall} className="inline-flex items-center gap-1 rounded-full border border-rose-300/60 px-3 py-1 text-xs text-rose-200">
                 Colgar
               </button>
             </div>
+            <p className="mt-2 text-[11px] text-slate-400">
+              Consejo: activa “Escuchar mi audio” solo para pruebas rápidas; puede generar eco.
+            </p>
           </div>
         </div>
       ) : null}
