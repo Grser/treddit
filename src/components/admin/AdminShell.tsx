@@ -10,6 +10,7 @@ const adminLinks = [
   { href: "/admin/groups", label: "Grupos", icon: <GroupsIcon /> },
   { href: "/admin/reports", label: "Reportes", icon: <ReportsIcon /> },
   { href: "/admin/anuncios", label: "Anuncios", icon: <AdsIcon /> },
+  { href: "/admin/roles", label: "Roles", icon: <RolesIcon /> },
 ];
 
 export function AdminShell({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
@@ -113,6 +114,18 @@ function AdsIcon() {
     <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
       <rect x="3" y="4" width="18" height="16" rx="2" />
       <path d="M7 8h10M7 12h6M7 16h4" />
+    </svg>
+  );
+}
+
+
+function RolesIcon() {
+  return (
+    <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <circle cx="8" cy="8" r="3" />
+      <circle cx="16" cy="16" r="3" />
+      <path d="M10.5 10.5 13.5 13.5" />
+      <path d="M3 21h8M13 3h8" />
     </svg>
   );
 }

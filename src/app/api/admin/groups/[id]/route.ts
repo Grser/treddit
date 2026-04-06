@@ -2,12 +2,12 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminPermission } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getRequestBaseUrl } from "@/lib/requestBaseUrl";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  await requireAdmin();
+  await requireAdminPermission("manage_groups");
   const { id } = await params;
   const groupId = Number(id);
   if (!Number.isFinite(groupId) || groupId <= 0) {

@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminPermission } from "@/lib/auth";
 import { db } from "@/lib/db";
 
 export async function POST(req: Request) {
-  const admin = await requireAdmin();
+  const admin = await requireAdminPermission("manage_announcements");
   const form = await req.formData();
   const description = String(form.get("description") || "").trim().slice(0, 500);
   const hashtagsRaw = String(form.get("hashtags") || "").trim();

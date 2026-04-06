@@ -2,7 +2,7 @@ import type { RowDataPacket } from "mysql2";
 
 import Navbar from "@/components/Navbar";
 import { AdminSection, AdminShell } from "@/components/admin/AdminShell";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminPermission } from "@/lib/auth";
 import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +31,7 @@ type GroupMessageRow = RowDataPacket & {
 };
 
 export default async function AdminGroupsPage({ searchParams }: PageProps) {
-  await requireAdmin();
+  await requireAdminPermission("manage_groups");
   const params = searchParams ? await searchParams : {};
   const selectedId = Number(params.groupId || 0);
 

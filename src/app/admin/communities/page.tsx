@@ -1,6 +1,6 @@
 import Navbar from "@/components/Navbar";
 import { AdminSection, AdminShell } from "@/components/admin/AdminShell";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminPermission } from "@/lib/auth";
 import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +18,7 @@ type CommunityRow = {
 };
 
 export default async function AdminCommunitiesPage() {
-  await requireAdmin();
+  await requireAdminPermission("manage_communities");
 
   const [verifiedColumnRows] = await db.query("SHOW COLUMNS FROM Communities LIKE 'is_verified'");
   const hasVerifiedColumn = Array.isArray(verifiedColumnRows) && verifiedColumnRows.length > 0;

@@ -3,6 +3,7 @@ import type { RowDataPacket } from "mysql2";
 import Navbar from "@/components/Navbar";
 import { AdminSection, AdminShell } from "@/components/admin/AdminShell";
 import { db } from "@/lib/db";
+import { requireAdminPermission } from "@/lib/auth";
 import { ensurePostReportsSchema } from "@/lib/postReports";
 import { ensureUserReportsSchema } from "@/lib/userReports";
 
@@ -32,6 +33,7 @@ type PostReportRow = RowDataPacket & {
 };
 
 export default async function AdminReportsPage() {
+  await requireAdminPermission("manage_reports");
   await Promise.all([ensureUserReportsSchema(), ensurePostReportsSchema()]);
 
   const [userRows] = await db.query<UserReportRow[]>(`

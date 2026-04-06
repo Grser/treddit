@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminPermission } from "@/lib/auth";
 
 type KitsuImage = {
   original?: string;
@@ -65,7 +65,7 @@ function mapAnime(item: KitsuAnime) {
 }
 
 export async function GET(req: Request) {
-  await requireAdmin();
+  await requireAdminPermission("access_dashboard");
 
   const url = new URL(req.url);
   const slug = url.searchParams.get("slug")?.trim();
