@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
+import { IconPhone, IconVideo } from "@/components/icons";
 import { validateUploadSize } from "@/lib/upload";
 import { uploadFile } from "@/lib/clientUpload";
 import EmojiPicker from "@/components/EmojiPicker";
@@ -603,15 +604,17 @@ export default function GroupConversation({
           <button
             type="button"
             onClick={() => window.open(groupCallUrl, "_blank", "noopener,noreferrer")}
-            className="hidden rounded-full border border-border bg-input px-3 py-1 text-xs hover:bg-muted sm:inline-flex"
+            className="hidden items-center gap-1.5 rounded-full border border-border bg-input px-3 py-1 text-xs hover:bg-muted sm:inline-flex"
           >
+            <IconPhone className="size-3.5" aria-hidden />
             Llamar
           </button>
           <button
             type="button"
             onClick={() => window.open(groupVideoUrl, "_blank", "noopener,noreferrer")}
-            className="hidden rounded-full border border-border bg-input px-3 py-1 text-xs hover:bg-muted sm:inline-flex"
+            className="hidden items-center gap-1.5 rounded-full border border-border bg-input px-3 py-1 text-xs hover:bg-muted sm:inline-flex"
           >
+            <IconVideo className="size-3.5" aria-hidden />
             Video
           </button>
           <button
