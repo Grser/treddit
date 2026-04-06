@@ -7,7 +7,7 @@ export default function AdminError({ error: _error, reset }: { error: Error; res
       <div className="w-full rounded-2xl border border-amber-400/40 bg-amber-500/10 p-6">
         <h1 className="text-xl font-semibold text-amber-200">No eres administrador</h1>
         <p className="mt-2 text-sm text-amber-100/90">
-          Cuidado donde entras 👀. Esta zona es solo para administradores del sistema.
+          Cuidado donde entras. Esta zona es solo para administradores del sistema.
         </p>
         <button
           type="button"

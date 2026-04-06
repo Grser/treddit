@@ -283,7 +283,7 @@ export default function Feed({
           onClick={mergePendingPosts}
           className="sticky top-16 z-20 mx-auto block rounded-full border border-brand/40 bg-brand px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:brightness-110"
         >
-          ✨ Cosas nuevas ({pendingPosts.length > 9 ? "+9" : pendingPosts.length})
+          Novedades ({pendingPosts.length > 9 ? "+9" : pendingPosts.length})
         </button>
       )}
       {posts.map((post, index) => {

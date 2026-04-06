@@ -14,7 +14,7 @@ export const DEMO_POSTS: Post[] = [
     nickname: "Gatitos FTW",
     avatar_url: "/demo-reddit.png",
     description:
-      "¿Ya vieron el último tráiler del juego de gatitos espaciales? 🚀🐱\n¡Se ve increíble!",
+      "¿Ya vieron el último tráiler del juego de gatitos espaciales? \n¡Se ve increíble!",
     created_at: minutesAgo(12),
     mediaUrl: "/demo-x.png",
     likes: 132,

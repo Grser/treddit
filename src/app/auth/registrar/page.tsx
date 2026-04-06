@@ -84,7 +84,7 @@ export default function RegisterPage() {
                 aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                 title={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
               >
-                {showPassword ? "🙈" : "👁️"}
+                {showPassword ? "Ocultar" : "Mostrar"}
               </button>
             </div>
           </label>

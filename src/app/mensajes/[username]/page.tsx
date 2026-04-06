@@ -110,13 +110,13 @@ function ConversationLayout({
               </Link>
               <div className="hidden items-center gap-2 sm:flex">
                 <Link href={callUrl} target="_blank" rel="noreferrer" className="rounded-full border border-border bg-input px-3 py-1 text-xs hover:bg-muted">
-                  📞 Llamar
+                  Llamar
                 </Link>
                 <Link href={videoUrl} target="_blank" rel="noreferrer" className="rounded-full border border-border bg-input px-3 py-1 text-xs hover:bg-muted">
-                  🎥 Video
+                  Video
                 </Link>
                 <Link href={searchProfileUrl} className="rounded-full border border-border bg-input px-3 py-1 text-xs hover:bg-muted">
-                  🔍 Buscar
+                  Buscar
                 </Link>
               </div>
             </header>

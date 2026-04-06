@@ -447,7 +447,7 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
                   {isGroup ? (
                     item.avatar_url ? (
                       <Image src={avatar} alt={displayName} width={52} height={52} className="size-12 rounded-full object-cover ring-1 ring-border" unoptimized />
-                    ) : <div className="flex size-12 items-center justify-center rounded-full bg-emerald-500/15 text-xl ring-1 ring-emerald-500/40">👥</div>
+                    ) : <div className="flex size-12 items-center justify-center rounded-full bg-emerald-500/15 text-xl ring-1 ring-emerald-500/40">GR</div>
                   ) : (
                     <UserHoverPreview username={item.username}>
                       <Image
@@ -464,10 +464,10 @@ export default function InboxList({ entries, currentUserId, activeUsername, clas
                     <div className="flex items-center gap-1.5 text-sm">
                       <span className="line-clamp-1 font-semibold">{displayName}</span>
                       {!isGroup && <UserBadges size="sm" isAdmin={item.is_admin} isVerified={item.is_verified} />}
-                      {item.isPinned && <span className="opacity-80" title="Chat fijado">📌</span>}
+                      {item.isPinned && <span className="opacity-80" title="Chat fijado">PIN</span>}
                       {item.isFavorite && <span className="text-amber-300">★</span>}
-                      {item.isMuted && <span className="opacity-70">🔕</span>}
-                      {item.isBlocked && <span className="opacity-70">🚫</span>}
+                      {item.isMuted && <span className="opacity-70">MUTE</span>}
+                      {item.isBlocked && <span className="opacity-70">BLOCK</span>}
                       <span className="ml-auto rounded-full bg-black/25 px-2 py-0.5 text-[11px] opacity-70">{isStarter ? "Nuevo" : getCompactTime(item.createdAt)}</span>
                     </div>
                     <p className={`line-clamp-1 text-sm ${unread ? "font-semibold" : "opacity-70"}`}>

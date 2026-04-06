@@ -42,8 +42,8 @@ type LinkPreview = {
   domain: string;
 };
 
-const QUICK_EMOJIS = ["😀", "😂", "🔥", "❤️", "👏", "😮", "🙏", "🎉"] as const;
-const MESSAGE_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"] as const;
+const QUICK_EMOJIS = ["•", "◦", "✦", "♥", "✚", "○", "✓", "◆"] as const;
+const MESSAGE_REACTIONS = ["+", "♥", "✦", "○", "-", "✓"] as const;
 
 const gifStorageKey = (userId: number) => `treddit_dm_saved_gifs_${userId}`;
 const stickerStorageKey = (userId: number) => `treddit_dm_saved_stickers_${userId}`;
@@ -968,9 +968,9 @@ export default function DirectConversation({
                 ) : file.type === "video" ? (
                   <video src={file.url} className="size-36 object-cover" muted playsInline />
                 ) : file.type === "audio" ? (
-                  <div className="flex h-20 w-48 items-center px-3 text-xs">🎧 {file.name || "Audio"}</div>
+                  <div className="flex h-20 w-48 items-center px-3 text-xs">Audio · {file.name || "Audio"}</div>
                 ) : (
-                  <div className="flex h-20 w-48 items-center px-3 text-xs">📎 {file.name || file.url}</div>
+                  <div className="flex h-20 w-48 items-center px-3 text-xs">Adjunto · {file.name || file.url}</div>
                 )}
                 <button
                   type="button"
@@ -1096,7 +1096,7 @@ export default function DirectConversation({
               aria-label="Adjuntar archivo"
               title="Adjuntar archivo"
             >
-              📎
+              +
             </button>
             <button
               type="button"
@@ -1105,7 +1105,7 @@ export default function DirectConversation({
               aria-label="Abrir emojis y stickers"
               disabled={sending || uploadingAttachment}
             >
-              🙂
+              ◇
             </button>
             <button
               type="button"
@@ -1114,7 +1114,7 @@ export default function DirectConversation({
               aria-label={isRecordingVoice ? "Detener nota de voz" : "Iniciar nota de voz"}
               disabled={sending || uploadingAttachment}
             >
-              🎙️
+              Mic
             </button>
           </div>
           {canSend ? (
@@ -1141,7 +1141,7 @@ export default function DirectConversation({
         ) : null}
         {isRecordingVoice ? (
           <p className="px-2 text-xs text-rose-200">
-            Grabando nota de voz… {String(Math.floor(voiceSeconds / 60)).padStart(2, "0")}:{String(voiceSeconds % 60).padStart(2, "0")} · toca 🎙️ para adjuntarla
+            Grabando nota de voz… {String(Math.floor(voiceSeconds / 60)).padStart(2, "0")}:{String(voiceSeconds % 60).padStart(2, "0")} · toca Mic para adjuntarla
           </p>
         ) : null}
       </form>

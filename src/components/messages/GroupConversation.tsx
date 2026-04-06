@@ -27,8 +27,8 @@ type SearchUser = {
   nickname: string | null;
 };
 
-const MESSAGE_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"] as const;
-const QUICK_EMOJIS = ["😀", "😂", "🔥", "❤️", "👏", "😮", "🙏", "🎉"] as const;
+const MESSAGE_REACTIONS = ["+", "♥", "✦", "○", "-", "✓"] as const;
+const QUICK_EMOJIS = ["•", "◦", "✦", "♥", "✚", "○", "✓", "◆"] as const;
 const GROUP_STICKERS = [
   "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbThwajQ0YXFreXQyb3h2b2N0NWFjYnR5ZzIybDh6OHN5b2N2YWw1NCZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/3oriO0OEd9QIDdllqo/giphy.gif",
   "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMm1ydGVvM2hyZ3l4YWZsM2lmbnBqeHlkam95cnRwNTNqem9iaHV4dCZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/Cmr1OMJ2FN0B2/giphy.gif",
@@ -605,14 +605,14 @@ export default function GroupConversation({
             onClick={() => window.open(groupCallUrl, "_blank", "noopener,noreferrer")}
             className="hidden rounded-full border border-border bg-input px-3 py-1 text-xs hover:bg-muted sm:inline-flex"
           >
-            📞 Llamar
+            Llamar
           </button>
           <button
             type="button"
             onClick={() => window.open(groupVideoUrl, "_blank", "noopener,noreferrer")}
             className="hidden rounded-full border border-border bg-input px-3 py-1 text-xs hover:bg-muted sm:inline-flex"
           >
-            🎥 Video
+            Video
           </button>
           <button
             type="button"
@@ -1414,7 +1414,7 @@ export default function GroupConversation({
               aria-label="Adjuntar archivo"
               title="Adjuntar archivo"
             >
-              📎
+              +
             </button>
             <div className="flex min-w-0 flex-1 items-end gap-1.5 rounded-[24px] wa-input px-2 py-2 ring-1 ring-brand/20 focus-within:ring-2 focus-within:ring-brand/45 sm:gap-2 sm:rounded-[26px] sm:px-3 sm:py-2.5">
               <textarea
@@ -1442,7 +1442,7 @@ export default function GroupConversation({
                 disabled={!canSendMessages || sendingRef.current || uploadingAttachment}
                 aria-label="Abrir emojis y stickers"
               >
-                🙂
+                ◇
               </button>
               <button
                 type="button"
@@ -1451,7 +1451,7 @@ export default function GroupConversation({
                 disabled={!canSendMessages || sendingRef.current || uploadingAttachment}
                 aria-label={isRecordingVoice ? "Detener nota de voz" : "Iniciar nota de voz"}
               >
-                🎙️
+                Mic
               </button>
               <button
                 type="button"
@@ -1469,7 +1469,7 @@ export default function GroupConversation({
         </div>
         {isRecordingVoice ? (
           <p className="px-2 text-xs text-rose-200">
-            Grabando nota de voz… {String(Math.floor(voiceSeconds / 60)).padStart(2, "0")}:{String(voiceSeconds % 60).padStart(2, "0")} · toca 🎙️ para adjuntarla
+            Grabando nota de voz… {String(Math.floor(voiceSeconds / 60)).padStart(2, "0")}:{String(voiceSeconds % 60).padStart(2, "0")} · toca Mic para adjuntarla
           </p>
         ) : null}
       </form>

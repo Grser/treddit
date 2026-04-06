@@ -173,7 +173,7 @@ export default function CommentsThread({
                   @
                 </button>
                 <button type="button" onClick={() => setShowEmojiPicker((prev) => !prev)} className="rounded-full bg-muted px-2 py-1 text-sm" title="Agregar emoji">
-                  🙂
+                  ◇
                 </button>
                 <button
                   onClick={addRoot}
@@ -383,7 +383,7 @@ function CommentItem({
                 @
               </button>
               <button type="button" onClick={() => setShowEmojiPicker((prev) => !prev)} className="rounded-full bg-muted px-2 py-1 text-sm" title="Agregar emoji">
-                🙂
+                ◇
               </button>
               <button
                 className="h-8 rounded-full bg-brand px-3 text-sm text-white disabled:opacity-50"
