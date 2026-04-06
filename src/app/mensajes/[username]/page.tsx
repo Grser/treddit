@@ -6,10 +6,11 @@ import { redirect } from "next/navigation";
 
 import Navbar from "@/components/Navbar";
 import UserBadges from "@/components/UserBadges";
-import { IconPhone, IconSearch, IconVideo } from "@/components/icons";
+import { IconSearch } from "@/components/icons";
 import DirectConversation from "@/components/messages/DirectConversation";
 import type { ConversationParticipant } from "@/components/messages/DirectConversation";
 import InboxList from "@/components/messages/InboxList";
+import LocalCallControls from "@/components/messages/LocalCallControls";
 import MessagesRealtimeSync from "@/components/messages/MessagesRealtimeSync";
 import NotesBar from "@/components/messages/NotesBar";
 
@@ -62,9 +63,6 @@ function ConversationLayout({
 }) {
   const avatar = participant.avatar_url?.trim() || "/demo-reddit.png";
   const displayName = participant.nickname || participant.username;
-  const directRoomSlug = `treddit-dm-${[viewerId, participant.id].sort((a, b) => a - b).join("-")}`;
-  const callUrl = `https://meet.jit.si/${directRoomSlug}#config.startWithVideoMuted=true`;
-  const videoUrl = `https://meet.jit.si/${directRoomSlug}`;
   const searchProfileUrl = `/buscar?q=${encodeURIComponent(participant.username)}`;
 
   return (
@@ -110,14 +108,7 @@ function ConversationLayout({
                 {helperText && <p className="text-xs text-cyan-200">{helperText}</p>}
               </Link>
               <div className="hidden items-center gap-2 sm:flex">
-                <Link href={callUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-border bg-input px-3 py-1 text-xs hover:bg-muted">
-                  <IconPhone className="size-3.5" aria-hidden />
-                  Llamar
-                </Link>
-                <Link href={videoUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-border bg-input px-3 py-1 text-xs hover:bg-muted">
-                  <IconVideo className="size-3.5" aria-hidden />
-                  Video
-                </Link>
+                <LocalCallControls />
                 <Link href={searchProfileUrl} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-input px-3 py-1 text-xs hover:bg-muted">
                   <IconSearch className="size-3.5" aria-hidden />
                   Buscar
