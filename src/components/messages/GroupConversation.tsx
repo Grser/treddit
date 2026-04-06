@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { validateUploadSize } from "@/lib/upload";
 import { uploadFile } from "@/lib/clientUpload";
 import EmojiPicker from "@/components/EmojiPicker";
+import AudioBubblePlayer from "@/components/messages/AudioBubblePlayer";
 import MentionUserLink from "@/components/MentionUserLink";
 
 import type { GroupMessageEntry } from "@/lib/messages";
@@ -1163,7 +1164,7 @@ export default function GroupConversation({
                           ) : file.type === "video" ? (
                             <video src={file.url} controls className="max-h-60 w-full rounded-lg" />
                           ) : file.type === "audio" ? (
-                            <audio src={file.url} controls className="w-full" />
+                            <AudioBubblePlayer src={file.url} />
                           ) : (
                             <a href={file.url} target="_blank" rel="noreferrer" className="text-xs underline">Descargar {file.name || "archivo"}</a>
                           )}
@@ -1292,7 +1293,7 @@ export default function GroupConversation({
                 ) : file.type === "video" ? (
                   <video src={file.url} controls className="h-24 w-28 rounded-lg" />
                 ) : file.type === "audio" ? (
-                  <audio src={file.url} controls className="w-48" />
+                  <AudioBubblePlayer src={file.url} compact className="w-52" />
                 ) : (
                   <a href={file.url} target="_blank" rel="noreferrer" className="block max-w-36 truncate px-2 py-2 text-xs underline">{file.name || "Archivo"}</a>
                 )}

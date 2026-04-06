@@ -9,6 +9,7 @@ import UserBadges from "@/components/UserBadges";
 import UserHoverPreview from "@/components/UserHoverPreview";
 import { useLocale } from "@/contexts/LocaleContext";
 import EmojiPicker from "@/components/EmojiPicker";
+import AudioBubblePlayer from "@/components/messages/AudioBubblePlayer";
 import { uploadFile } from "@/lib/clientUpload";
 import { validateUploadSize } from "@/lib/upload";
 
@@ -871,7 +872,7 @@ export default function DirectConversation({
                             ) : file.type === "video" ? (
                               <video src={file.url} controls className="h-[220px] w-[320px] max-w-full rounded-lg object-cover" />
                             ) : file.type === "audio" ? (
-                              <audio src={file.url} controls className="w-full" />
+                              <AudioBubblePlayer src={file.url} />
                             ) : (
                               <a
                                 href={file.url}
