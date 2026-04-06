@@ -108,13 +108,18 @@ function ConversationLayout({
                 {helperText && <p className="text-xs text-cyan-200">{helperText}</p>}
               </Link>
               <div className="flex items-center gap-2">
-                <LocalCallControls contactName={displayName} contextLabel="Chat directo" />
+                <div className="hidden sm:block">
+                  <LocalCallControls contactName={displayName} contextLabel="Chat directo" />
+                </div>
                 <Link href={searchProfileUrl} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-input px-3 py-1 text-xs hover:bg-muted">
                   <IconSearch className="size-3.5" aria-hidden />
                   <span className="hidden sm:inline">Buscar</span>
                 </Link>
               </div>
             </header>
+            <div className="px-3 pt-2 sm:hidden">
+              <LocalCallControls contactName={displayName} contextLabel="Chat directo" />
+            </div>
 
             <div className="min-h-0 flex-1 p-1.5 sm:p-3 md:p-4">
               <DirectConversation initialMessages={messages} viewerId={viewerId} recipient={participant} />
