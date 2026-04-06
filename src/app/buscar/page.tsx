@@ -52,7 +52,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
       <main className="mx-auto w-full max-w-4xl px-4 py-6">
         <section className="sticky top-16 z-10 rounded-2xl border border-border bg-surface/95 p-4 backdrop-blur">
           <form action="/buscar" className="relative">
-            <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm opacity-60">🔎</span>
+            <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm opacity-60">⌕</span>
             <input
               name="q"
               defaultValue={query}

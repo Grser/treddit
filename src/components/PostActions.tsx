@@ -415,7 +415,7 @@ export default function PostActions({
                     <Image src={target.avatarUrl} alt={target.title} width={34} height={34} className="size-8 rounded-full object-cover" unoptimized />
                   ) : (
                     <div className="flex size-8 items-center justify-center rounded-full bg-muted text-xs">
-                      {target.type === "group" ? "👥" : "@"}
+                      {target.type === "group" ? "GR" : "@"}
                     </div>
                   )}
                   <div>

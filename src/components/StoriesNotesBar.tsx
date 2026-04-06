@@ -581,7 +581,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
                 {activeStory.content && <p>{activeStory.content}</p>}
                 <div className="mt-3 flex items-center justify-between gap-3 text-xs text-white/70">
                   <div className="flex items-center gap-2">
-                    <span>👁️</span>
+                    <span>Ver</span>
                     <span>{me?.id === activeStory.id ? `Visto por ${activeStoryViewers.length} personas` : "Historia privada"}</span>
                   </div>
                   {me?.id === activeStory.id && activeStoryViewers.length > 0 && (

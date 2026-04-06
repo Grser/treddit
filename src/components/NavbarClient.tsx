@@ -450,16 +450,16 @@ export default function NavbarClient({ session }: { session?: SessionUser | null
                         <li key={item.id} className="rounded-xl border border-border/70 bg-background/70 px-3 py-2 text-xs">
                           <p className="font-medium">
                             {item.type === "ad"
-                              ? "📣 Nuevo anuncio"
+                              ? "Anuncio"
                               : item.type === "follow"
-                                ? "👥 Nuevo seguidor"
+                                ? "Nuevo seguidor"
                                 : item.type === "repost"
-                                  ? "🔁 Repost"
+                                  ? "Repost"
                                   : item.type === "mention"
-                                    ? "🏷️ Te mencionaron"
+                                    ? "Mención"
                                     : item.type === "reply"
-                                      ? "💬 Te respondieron"
-                                      : "❤️ Nuevo like"}
+                                      ? "Respuesta"
+                                      : "Nuevo like"}
                           </p>
                           <p className="mt-0.5 opacity-80">
                             {(item.nickname || item.username || "Treddit")}

@@ -329,10 +329,10 @@ export default function Composer({ enabled }: { enabled: boolean }) {
                 @
               </button>
               <button type="button" disabled={!enabled || communities.length === 0} onClick={() => setText((prev) => `${prev}${prev.endsWith(" ") || !prev ? "" : " "}@comunidad[`)} className="rounded-full bg-muted px-2 py-1 text-sm disabled:opacity-60" title="Etiquetar comunidad">
-                👥
+                #
               </button>
               <button type="button" disabled={!enabled} onClick={() => setShowEmojiPicker((prev) => !prev)} className="rounded-full bg-muted px-2 py-1 text-sm disabled:opacity-60" title="Agregar emoji">
-                🙂
+                ◇
               </button>
             </div>
             {showEmojiPicker && enabled && (
