@@ -15,6 +15,14 @@ import { uploadFile } from "@/lib/clientUpload";
 import { validateUploadSize } from "@/lib/upload";
 
 import type { DirectMessageAttachment, DirectMessageEntry } from "@/lib/messages";
+type CallLogDetail = {
+  key?: string;
+  eventType: "incoming" | "missed" | "started-audio" | "started-video" | "ended";
+  contactName: string;
+  contextLabel: string;
+  createdAt: string;
+  summary: string;
+};
 
 export type ConversationParticipant = {
   id: number;
@@ -155,10 +163,12 @@ export default function DirectConversation({
   initialMessages,
   viewerId,
   recipient,
+  callLogKey,
 }: {
   initialMessages: DirectMessageEntry[];
   viewerId: number;
   recipient: ConversationParticipant;
+  callLogKey?: string;
 }) {
   const { strings } = useLocale();
   const pathname = usePathname();
@@ -202,10 +212,43 @@ export default function DirectConversation({
   const shouldAutoScrollRef = useRef(true);
   const initialScrollDoneRef = useRef(false);
   const [isClient, setIsClient] = useState(false);
+  const localMessageIdRef = useRef(-1);
 
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  useEffect(() => {
+    function handleCallLog(event: Event) {
+      const customEvent = event as CustomEvent<CallLogDetail>;
+      const detail = customEvent.detail;
+      if (!detail) return;
+      if (callLogKey && detail.key && callLogKey !== detail.key) return;
+      const nextId = localMessageIdRef.current;
+      localMessageIdRef.current -= 1;
+      const systemMessage: DirectMessageEntry = {
+        id: nextId,
+        senderId: 0,
+        recipientId: viewerId,
+        text: `📞 ${detail.summary}`,
+        createdAt: detail.createdAt || new Date().toISOString(),
+        sender: {
+          username: "sistema",
+          nickname: "Sistema de llamadas",
+          avatar_url: null,
+          is_admin: false,
+          is_verified: false,
+        },
+      };
+      shouldAutoScrollRef.current = true;
+      setMessages((current) => mergeById(current, [systemMessage]));
+    }
+
+    window.addEventListener("treddit-call-log", handleCallLog as EventListener);
+    return () => {
+      window.removeEventListener("treddit-call-log", handleCallLog as EventListener);
+    };
+  }, [callLogKey, viewerId]);
 
   useEffect(() => {
     setMessages(initialMessages);
@@ -745,6 +788,18 @@ export default function DirectConversation({
         )}
         <ul ref={scrollRef} className="hide-scrollbar mt-2 min-h-0 flex-1 space-y-1 overflow-x-hidden overflow-y-auto rounded-2xl wa-wallpaper px-2 pr-0.5 pb-6 [overflow-anchor:none] sm:pr-1 sm:pb-8">
           {messages.map((msg, index) => {
+            if (msg.senderId === 0) {
+              return (
+                <li key={msg.id} className="mx-auto w-full max-w-md px-2 py-1.5">
+                  <div className="rounded-xl border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-center text-xs text-violet-100">
+                    <p className="font-semibold">{msg.text.replace(/^📞\s*/, "")}</p>
+                    <p className="mt-1 text-[11px] text-violet-200/75">
+                      {isClient ? new Intl.DateTimeFormat("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(msg.createdAt)) : ""}
+                    </p>
+                  </div>
+                </li>
+              );
+            }
             const isMine = msg.senderId === viewerId;
             const previous = messages[index - 1];
             const next = messages[index + 1];
