@@ -29,6 +29,7 @@ const defaultPermissions: AdminPermissionMap = {
 };
 
 type HasTableRow = RowDataPacket & { table_name: string };
+type UserIdColumnRow = RowDataPacket & { column_type: string };
 
 type RolesPermissionRow = RowDataPacket & {
   access_dashboard: number;
@@ -62,11 +63,21 @@ export async function ensureAdminRolesTables() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
   );
 
+  const [userIdRows] = await db.query<UserIdColumnRow[]>(
+    `SELECT COLUMN_TYPE AS column_type
+     FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Users' AND COLUMN_NAME = 'id'
+     LIMIT 1`,
+  );
+  if (!userIdRows.length) return;
+
+  const userIdColumnType = userIdRows[0].column_type.toUpperCase();
+
   await db.execute(
     `CREATE TABLE IF NOT EXISTS Admin_User_Roles (
-      user_id INT NOT NULL,
+      user_id ${userIdColumnType} NOT NULL,
       role_id INT NOT NULL,
-      assigned_by INT NULL,
+      assigned_by ${userIdColumnType} NULL,
       assigned_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY (user_id, role_id),
       CONSTRAINT fk_admin_user_roles_user FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
