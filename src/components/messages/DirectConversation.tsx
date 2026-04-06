@@ -60,10 +60,11 @@ const STICKER_PACK = [
 ] as const;
 
 function MessageStatusTicks({ status }: { status: "sent" | "delivered" | "read" }) {
-  const tone = status === "read" ? "text-brand" : "text-foreground/60";
+  const tone = status === "read" ? "text-emerald-400" : status === "delivered" ? "text-sky-300" : "text-foreground/65";
+  const label = status === "read" ? "Leído" : status === "delivered" ? "Entregado" : "Enviado";
   return (
-    <span className={`inline-flex items-center text-[11px] ${tone}`} aria-label={`Estado ${status}`}>
-      {status === "sent" ? "✓" : "✓✓"}
+    <span className={`inline-flex items-center gap-1 text-[11px] ${tone}`} aria-label={`Estado ${label}`} title={label}>
+      <span aria-hidden>{status === "sent" ? "✓" : "✓✓"}</span>
     </span>
   );
 }
@@ -168,6 +169,11 @@ export default function DirectConversation({
   } | null>(null);
   const shouldAutoScrollRef = useRef(true);
   const initialScrollDoneRef = useRef(false);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     setMessages(initialMessages);
@@ -404,6 +410,12 @@ export default function DirectConversation({
   const canSend = useMemo(
     () => !sending && !uploadingAttachment && (text.trim().length > 0 || attachments.length > 0),
     [sending, uploadingAttachment, text, attachments.length],
+  );
+  const latestIncomingId = useMemo(
+    () => messages.reduce((maxId, current) => (
+      current.senderId !== viewerId ? Math.max(maxId, current.id) : maxId
+    ), 0),
+    [messages, viewerId],
   );
 
   function selectLatestMessageFromSender(message: DirectMessageEntry) {
@@ -670,8 +682,14 @@ export default function DirectConversation({
             const bubbleClasses = isMine
               ? "border border-brand/40 bg-brand/20 text-foreground"
               : "border border-border bg-surface text-foreground";
-            const timeLabel = new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-            const status = msg.id % 5 === 0 ? "read" : msg.id % 2 === 0 ? "delivered" : "sent";
+            const createdAtDate = new Date(msg.createdAt);
+            const timeLabel = createdAtDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+            const isLatestMessage = index === messages.length - 1;
+            const status: "sent" | "delivered" | "read" = msg.id <= latestIncomingId
+              ? "read"
+              : isLatestMessage
+                ? "sent"
+                : "delivered";
             const avatar = !isMine ? msg.sender.avatar_url?.trim() || "/demo-reddit.png" : null;
             return (
               <li key={msg.id} className={`group/message flex ${isMine ? "justify-end" : "justify-start"} ${prevSameSender ? "mt-0.5" : "mt-2.5"}`}>
@@ -809,7 +827,7 @@ export default function DirectConversation({
                     {msg.attachments?.length ? (
                       <ul className="mt-3 space-y-2">
                         {msg.attachments.map((file) => (
-                          <li key={`${msg.id}-${file.url}`} className="overflow-hidden rounded-2xl border border-border/70 bg-background/50">
+                          <li key={`${msg.id}-${file.url}`} className={`overflow-hidden rounded-2xl border backdrop-blur-sm ${isMine ? "border-brand/35 bg-brand/10" : "border-border/70 bg-background/65"}`}>
                             {file.type === "image" ? (
                               <>
                                 {Boolean(file.viewOnce && !isMine && file.viewedByRecipientAt) ? (
@@ -839,7 +857,7 @@ export default function DirectConversation({
                                 )}
                                 <div className="flex justify-end bg-background/40 px-2 py-1">
                                   {Boolean(file.viewOnce && isMine && file.viewedByRecipientAt) ? (
-                                    <span className="mr-auto text-[11px] text-foreground/80">Visto por la otra persona</span>
+                                    <span className="mr-auto text-[11px] text-emerald-300">Visto por la otra persona</span>
                                   ) : null}
                                   <button
                                     type="button"
@@ -880,8 +898,10 @@ export default function DirectConversation({
                         ))}
                       </div>
                     )}
-                    <div className={`relative mt-1 flex flex-wrap items-center gap-2 pr-7 sm:pr-8 transition-opacity ${isMine ? "justify-end" : "justify-start"} ${messageMenuId === msg.id ? "opacity-100" : "opacity-0 group-hover/message:opacity-100"}`}>
-                      <p className={`text-[11px] ${isMine ? "text-foreground/70" : "opacity-70"}`}>{timeLabel}</p>
+                    <div className={`relative mt-2 flex flex-wrap items-center gap-2 pr-7 sm:pr-8 ${isMine ? "justify-end" : "justify-start"}`}>
+                      <p suppressHydrationWarning className={`text-[11px] ${isMine ? "text-foreground/70" : "opacity-70"}`}>
+                        {isClient ? timeLabel : createdAtDate.toISOString().slice(11, 16)}
+                      </p>
                       {isMine ? <MessageStatusTicks status={status} /> : null}
                       {!nextSameSender && (
                         <button
