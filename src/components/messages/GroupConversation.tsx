@@ -31,6 +31,25 @@ type SearchUser = {
 
 const MESSAGE_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"] as const;
 const QUICK_EMOJIS = ["😀", "😂", "😍", "🔥", "🥳", "😎", "🤝", "🙏"] as const;
+
+const RECORDER_MIME_CANDIDATES = [
+  "audio/webm;codecs=opus",
+  "audio/webm",
+  "audio/mp4",
+  "audio/ogg;codecs=opus",
+] as const;
+
+function getSupportedRecorderMimeType() {
+  if (typeof MediaRecorder === "undefined" || typeof MediaRecorder.isTypeSupported !== "function") return undefined;
+  return RECORDER_MIME_CANDIDATES.find((candidate) => MediaRecorder.isTypeSupported(candidate));
+}
+
+function guessAudioExtension(mimeType: string) {
+  if (mimeType.includes("mp4")) return "m4a";
+  if (mimeType.includes("ogg")) return "ogg";
+  if (mimeType.includes("mpeg")) return "mp3";
+  return "webm";
+}
 const GROUP_STICKERS = [
   "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbThwajQ0YXFreXQyb3h2b2N0NWFjYnR5ZzIybDh6OHN5b2N2YWw1NCZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/3oriO0OEd9QIDdllqo/giphy.gif",
   "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMm1ydGVvM2hyZ3l4YWZsM2lmbnBqeHlkam95cnRwNTNqem9iaHV4dCZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/Cmr1OMJ2FN0B2/giphy.gif",
@@ -327,7 +346,10 @@ export default function GroupConversation({
     }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
+      const preferredMimeType = getSupportedRecorderMimeType();
+      const recorder = preferredMimeType
+        ? new MediaRecorder(stream, { mimeType: preferredMimeType })
+        : new MediaRecorder(stream);
       mediaRecorderRef.current = recorder;
       mediaStreamRef.current = stream;
       mediaChunksRef.current = [];
@@ -340,7 +362,7 @@ export default function GroupConversation({
         stream.getTracks().forEach((track) => track.stop());
         mediaStreamRef.current = null;
         if (blob.size === 0) return;
-        const extension = blob.type.includes("ogg") ? "ogg" : "webm";
+        const extension = guessAudioExtension(blob.type);
         const voiceFile = new File([blob], `nota-voz-${Date.now()}.${extension}`, { type: blob.type || "audio/webm" });
         if (pendingVoiceNote?.previewUrl) URL.revokeObjectURL(pendingVoiceNote.previewUrl);
         setPendingVoiceNote({
@@ -349,7 +371,7 @@ export default function GroupConversation({
           durationSeconds: voiceSecondsRef.current || 0,
         });
       };
-      recorder.start(250);
+      recorder.start();
       setVoiceSeconds(0);
       setIsRecordingVoice(true);
       setSendError(null);
@@ -360,11 +382,6 @@ export default function GroupConversation({
 
   function stopVoiceRecording() {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
-      try {
-        mediaRecorderRef.current.requestData();
-      } catch {
-        // ignore unsupported requestData behavior
-      }
       mediaRecorderRef.current.stop();
     } else {
       mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
