@@ -23,6 +23,7 @@ export default function LocalCallControls({
   const streamRef = useRef<MediaStream | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const launcherRef = useRef<HTMLDivElement | null>(null);
 
   const active = activeMode !== null;
 
@@ -36,6 +37,28 @@ export default function LocalCallControls({
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
   }, []);
+
+  useEffect(() => {
+    if (!isLauncherOpen) return undefined;
+
+    function handleClickOutside(event: MouseEvent) {
+      if (!launcherRef.current) return;
+      if (launcherRef.current.contains(event.target as Node)) return;
+      setIsLauncherOpen(false);
+    }
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setIsLauncherOpen(false);
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [isLauncherOpen]);
 
   useEffect(() => {
     const audioElement = audioRef.current;
@@ -123,18 +146,20 @@ export default function LocalCallControls({
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div ref={launcherRef} className="relative flex items-center gap-2">
       <button
         type="button"
-        onClick={() => setIsLauncherOpen(true)}
+        onClick={() => setIsLauncherOpen((current) => !current)}
+        aria-expanded={isLauncherOpen}
+        aria-haspopup="dialog"
         className="inline-flex items-center gap-1.5 rounded-full border border-border bg-input px-3 py-1 text-xs font-medium hover:bg-muted"
       >
         <IconPhone className="size-3.5" aria-hidden />
         Llamadas
       </button>
       {isLauncherOpen ? (
-        <div className="fixed inset-0 z-[108] flex items-end bg-black/65 p-2 backdrop-blur-sm sm:items-center sm:justify-center sm:p-4">
-          <div className="w-full max-w-md rounded-3xl border border-violet-300/30 bg-[#111a34f2] p-4 shadow-2xl shadow-violet-950/40">
+        <div className="absolute right-0 top-[calc(100%+8px)] z-[112] w-[min(92vw,26rem)] rounded-3xl border border-violet-300/30 bg-[#111a34f2] p-4 shadow-2xl shadow-violet-950/40">
+          <div className="max-h-[70vh] overflow-y-auto pr-1">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs uppercase tracking-wide text-violet-200/80">Sección de llamadas</p>
@@ -149,7 +174,7 @@ export default function LocalCallControls({
                 Cerrar
               </button>
             </div>
-            <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <button
                 type="button"
                 onClick={() => startLocalCall("audio")}
