@@ -461,6 +461,17 @@ export default function GroupConversation({
 
   useEffect(() => {
     const container = messagesListRef.current;
+    if (!container || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => {
+      if (!shouldAutoScrollRef.current) return;
+      container.scrollTop = container.scrollHeight;
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [groupId]);
+
+  useEffect(() => {
+    const container = messagesListRef.current;
     shouldAutoScrollRef.current = true;
     initialScrollDoneRef.current = false;
     if (!container) return;
@@ -659,7 +670,9 @@ export default function GroupConversation({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <LocalCallControls contactName={name} contextLabel="Grupo" />
+          <div className="hidden sm:block">
+            <LocalCallControls contactName={name} contextLabel="Grupo" />
+          </div>
           <button
             type="button"
             onClick={() => {
@@ -671,6 +684,9 @@ export default function GroupConversation({
             {canManage ? "Editar grupo" : "Info del grupo"}
           </button>
         </div>
+      </div>
+      <div className="sm:hidden">
+        <LocalCallControls contactName={name} contextLabel="Grupo" />
       </div>
       {showSettings && (
         <div className="fixed inset-0 z-[90] flex items-start justify-center bg-black/50 p-3 backdrop-blur-sm md:items-center md:p-6">

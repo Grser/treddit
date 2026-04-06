@@ -280,6 +280,17 @@ export default function DirectConversation({
   }, [messages]);
 
   useEffect(() => {
+    const container = scrollRef.current;
+    if (!container || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => {
+      if (!shouldAutoScrollRef.current) return;
+      container.scrollTop = container.scrollHeight;
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [recipient.id]);
+
+  useEffect(() => {
     if (!pathname?.startsWith("/mensajes/")) return;
     const container = scrollRef.current;
     if (!container) return;

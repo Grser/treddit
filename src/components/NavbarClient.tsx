@@ -348,7 +348,15 @@ export default function NavbarClient({ session }: { session?: SessionUser | null
         <div className="mx-auto max-w-7xl px-3 sm:px-4">
         <div className="flex items-center gap-3 h-14">
           <Link href="/" className="flex items-center gap-2 shrink-0">
-            <span className="inline-grid place-items-center size-8 rounded-full bg-brand text-white font-black">t</span>
+            <Image
+              src="/icon.svg"
+              alt="Treddit"
+              width={32}
+              height={32}
+              className="size-8 rounded-full object-cover"
+              priority
+              unoptimized
+            />
             <span className="hidden sm:block font-semibold tracking-tight">{strings.navbar.brand}</span>
           </Link>
 
