@@ -6,8 +6,6 @@ import { IconMic, IconPhone, IconVideo } from "@/components/icons";
 
 type CallMode = "audio" | "video";
 type CallEventType =
-  | "incoming"
-  | "missed"
   | "started-audio"
   | "started-video"
   | "ended";
@@ -37,13 +35,11 @@ export default function LocalCallControls({
   const [micEnabled, setMicEnabled] = useState(true);
   const [cameraEnabled, setCameraEnabled] = useState(true);
   const [monitorEnabled, setMonitorEnabled] = useState(false);
-  const [isIncoming, setIsIncoming] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const streamRef = useRef<MediaStream | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const launcherRef = useRef<HTMLDivElement | null>(null);
-  const incomingToneIntervalRef = useRef<number | null>(null);
 
   const active = activeMode !== null;
 
@@ -56,7 +52,6 @@ export default function LocalCallControls({
   useEffect(() => () => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
-    stopIncomingTone();
   }, []);
 
   useEffect(() => {
@@ -143,49 +138,6 @@ export default function LocalCallControls({
     }, frequencies.length * 220);
   }
 
-  function stopIncomingTone() {
-    if (!incomingToneIntervalRef.current) return;
-    window.clearInterval(incomingToneIntervalRef.current);
-    incomingToneIntervalRef.current = null;
-  }
-
-  function maybeSendIncomingNotification() {
-    if (typeof window === "undefined" || !("Notification" in window)) return;
-    if (Notification.permission === "granted") {
-      new Notification("Llamada entrante", { body: `${contactName} te está llamando por voz.` });
-      return;
-    }
-    if (Notification.permission === "default") {
-      void Notification.requestPermission().then((permission) => {
-        if (permission === "granted") {
-          new Notification("Llamada entrante", { body: `${contactName} te está llamando por voz.` });
-        }
-      });
-    }
-  }
-
-  function simulateIncomingCall() {
-    setIsIncoming(true);
-    setNotice(`Llamada entrante de ${contactName}`);
-    setError(null);
-    dispatchCallEvent("incoming", "Llamada de voz entrante");
-    maybeSendIncomingNotification();
-    playQuickTone([440, 554, 440, 554]);
-    stopIncomingTone();
-    incomingToneIntervalRef.current = window.setInterval(() => {
-      playQuickTone([440, 554, 440]);
-    }, 1900);
-    window.setTimeout(() => {
-      setIsIncoming((current) => {
-        if (!current) return current;
-        stopIncomingTone();
-        dispatchCallEvent("missed", "Llamada de voz perdida");
-        setNotice("Llamada perdida");
-        return false;
-      });
-    }, 12000);
-  }
-
   async function startLocalCall(mode: CallMode) {
     if (!navigator?.mediaDevices?.getUserMedia) {
       setError("Tu navegador no soporta llamadas locales.");
@@ -202,8 +154,6 @@ export default function LocalCallControls({
       setSeconds(0);
       setError(null);
       setNotice(mode === "video" ? "Conectando videollamada…" : "Conectando llamada de audio…");
-      setIsIncoming(false);
-      stopIncomingTone();
       playQuickTone([660, 880]);
       dispatchCallEvent(mode === "video" ? "started-video" : "started-audio", mode === "video" ? "Videollamada iniciada" : "Llamada de voz iniciada");
       if (videoRef.current && mode === "video") {
@@ -222,7 +172,6 @@ export default function LocalCallControls({
   function endCall() {
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
-    stopIncomingTone();
     if (videoRef.current) videoRef.current.srcObject = null;
     if (audioRef.current) {
       audioRef.current.srcObject = null;
@@ -233,7 +182,6 @@ export default function LocalCallControls({
     setCameraEnabled(true);
     setMonitorEnabled(false);
     setSeconds(0);
-    setIsIncoming(false);
     setNotice("Llamada finalizada");
     dispatchCallEvent("ended", "Llamada finalizada");
   }
@@ -306,15 +254,6 @@ export default function LocalCallControls({
                 <p className="text-sm font-semibold">Videollamada</p>
                 <p className="text-[11px] text-slate-300">Vista inmersiva con temporizador y atajos.</p>
               </button>
-              <button
-                type="button"
-                onClick={simulateIncomingCall}
-                className="rounded-2xl border border-amber-200/30 bg-amber-400/10 p-3 text-left text-slate-50 transition hover:bg-amber-300/20 sm:col-span-2"
-              >
-                <IconPhone className="mb-2 size-5" aria-hidden />
-                <p className="text-sm font-semibold">Simular llamada entrante</p>
-                <p className="text-[11px] text-slate-300">Activa tono, notificación del navegador y registro en el chat.</p>
-              </button>
             </div>
             {notice ? <p className="mt-3 rounded-xl border border-violet-200/20 bg-black/15 px-3 py-2 text-xs text-violet-100">{notice}</p> : null}
           </div>
@@ -365,34 +304,6 @@ export default function LocalCallControls({
             <p className="mt-2 text-[11px] text-slate-400">
               Consejo: activa “Escuchar mi audio” solo para pruebas rápidas; puede generar eco.
             </p>
-          </div>
-        </div>
-      ) : null}
-      {isIncoming && !active ? (
-        <div className="fixed bottom-4 right-4 z-[114] w-[min(92vw,22rem)] rounded-2xl border border-amber-300/40 bg-[#1e1328f2] p-4 shadow-xl shadow-black/40">
-          <p className="text-xs uppercase tracking-wide text-amber-200/85">Llamada entrante</p>
-          <p className="mt-1 text-base font-semibold text-white">{contactName}</p>
-          <p className="text-xs text-slate-300">{contextLabel}</p>
-          <div className="mt-3 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => void startLocalCall("audio")}
-              className="rounded-full border border-emerald-300/60 bg-emerald-500/20 px-3 py-1 text-xs text-emerald-100"
-            >
-              Contestar
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setIsIncoming(false);
-                stopIncomingTone();
-                dispatchCallEvent("missed", "Llamada de voz perdida");
-                setNotice("Llamada rechazada");
-              }}
-              className="rounded-full border border-rose-300/60 bg-rose-500/15 px-3 py-1 text-xs text-rose-100"
-            >
-              Rechazar
-            </button>
           </div>
         </div>
       ) : null}
