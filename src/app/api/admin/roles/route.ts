@@ -1,6 +1,7 @@
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 
 import { requireAdminPermission } from "@/lib/auth";
 import {
@@ -55,6 +56,7 @@ export async function POST(req: Request) {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [name, description, iconKey, ...flags],
     );
+    revalidatePath("/admin/roles");
     return NextResponse.redirect(new URL("/admin/roles?ok=created", baseUrl));
   }
 
@@ -84,6 +86,7 @@ export async function POST(req: Request) {
        LIMIT 1`,
       [name, description, iconKey, ...flags, roleId],
     );
+    revalidatePath("/admin/roles");
     return NextResponse.redirect(new URL("/admin/roles?ok=updated", baseUrl));
   }
 
@@ -92,6 +95,7 @@ export async function POST(req: Request) {
     if (!roleId) return NextResponse.redirect(new URL("/admin/roles?error=invalid_role", baseUrl));
     await db.execute("DELETE FROM Admin_User_Roles WHERE role_id=?", [roleId]);
     await db.execute("DELETE FROM Admin_Roles WHERE id=? LIMIT 1", [roleId]);
+    revalidatePath("/admin/roles");
     return NextResponse.redirect(new URL("/admin/roles?ok=deleted", baseUrl));
   }
 
@@ -107,6 +111,7 @@ export async function POST(req: Request) {
        ON DUPLICATE KEY UPDATE assigned_by = VALUES(assigned_by), assigned_at = CURRENT_TIMESTAMP`,
       [me.id, roleId, me.id],
     );
+    revalidatePath("/admin/roles");
     return NextResponse.redirect(new URL("/admin/roles?ok=self_assigned", baseUrl));
   }
 
@@ -122,6 +127,7 @@ export async function POST(req: Request) {
        ON DUPLICATE KEY UPDATE assigned_by = VALUES(assigned_by), assigned_at = CURRENT_TIMESTAMP`,
       [userId, roleId, me.id],
     );
+    revalidatePath("/admin/roles");
     return NextResponse.redirect(new URL("/admin/roles?ok=assigned", baseUrl));
   }
 
@@ -132,6 +138,7 @@ export async function POST(req: Request) {
       return NextResponse.redirect(new URL("/admin/roles?error=invalid_assignment", baseUrl));
     }
     await db.execute("DELETE FROM Admin_User_Roles WHERE user_id=? AND role_id=?", [userId, roleId]);
+    revalidatePath("/admin/roles");
     return NextResponse.redirect(new URL("/admin/roles?ok=removed", baseUrl));
   }
 

@@ -118,18 +118,21 @@ export default async function AdminRolesPage() {
                 <p className="text-xs uppercase tracking-wide text-foreground/60">Elige icono (20 opciones)</p>
                 <span className="text-xs text-foreground/60">Referencia administrador: 👑</span>
               </div>
-              <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
                 {ADMIN_ROLE_ICON_OPTIONS.map((option, index) => (
-                  <label key={option.key} className={`relative flex cursor-pointer items-center gap-2 rounded-xl border bg-gradient-to-r px-3 py-2 text-sm ${option.accentClass}`}>
+                  <label
+                    key={option.key}
+                    title={option.label}
+                    className={`relative flex h-12 cursor-pointer items-center justify-center rounded-xl border bg-gradient-to-r px-2 py-2 text-lg ${option.accentClass}`}
+                  >
                     <input
                       type="radio"
                       name="icon_key"
                       value={option.key}
                       defaultChecked={index === 0}
-                      className="h-4 w-4 accent-white"
+                      className="absolute left-1.5 top-1.5 h-3.5 w-3.5 accent-white"
                     />
-                    <span aria-hidden className="text-base">{option.emoji}</span>
-                    <span>{option.label}</span>
+                    <span aria-hidden>{option.emoji}</span>
                   </label>
                 ))}
               </div>
@@ -138,25 +141,33 @@ export default async function AdminRolesPage() {
         </AdminSection>
 
         <AdminSection title="Roles existentes" description="Edita permisos o elimina roles que ya no necesites.">
-          <div className="space-y-3">
+          <div className="grid gap-3 xl:grid-cols-2">
             {roles.map((role) => (
               <form key={role.id} action="/api/admin/roles" method="post" className="rounded-2xl border border-border/70 bg-background/30 p-4">
                 <input type="hidden" name="op" value="update_role" />
                 <input type="hidden" name="role_id" value={role.id} />
                 <div className="mb-3 rounded-xl border border-border/70 p-3">
-                  <p className="mb-2 text-xs uppercase tracking-wide text-foreground/60">Icono del rol</p>
-                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <p className="text-xs uppercase tracking-wide text-foreground/60">Icono del rol</p>
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/60 bg-amber-400/15 px-2.5 py-1 text-[11px] font-medium text-amber-200">
+                      {getRoleIcon(role.icon_key).emoji} {role.name}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-5 gap-2">
                     {ADMIN_ROLE_ICON_OPTIONS.map((option) => (
-                      <label key={`${role.id}-${option.key}`} className={`flex cursor-pointer items-center gap-2 rounded-xl border bg-gradient-to-r px-2.5 py-2 text-xs ${option.accentClass}`}>
+                      <label
+                        key={`${role.id}-${option.key}`}
+                        title={option.label}
+                        className={`relative flex h-11 cursor-pointer items-center justify-center rounded-xl border bg-gradient-to-r px-2 py-2 text-base ${option.accentClass}`}
+                      >
                         <input
                           type="radio"
                           name="icon_key"
                           value={option.key}
                           defaultChecked={(role.icon_key ?? DEFAULT_ADMIN_ROLE_ICON) === option.key}
-                          className="h-3.5 w-3.5 accent-white"
+                          className="absolute left-1 top-1 h-3.5 w-3.5 accent-white"
                         />
                         <span aria-hidden>{option.emoji}</span>
-                        <span>{option.label}</span>
                       </label>
                     ))}
                   </div>
@@ -207,7 +218,7 @@ export default async function AdminRolesPage() {
                 <input type="hidden" name="role_id" value={row.role_id} />
                 <p>
                   @{row.username} ·{" "}
-                  <span className="opacity-75">
+                  <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/60 bg-amber-400/15 px-2 py-0.5 text-xs text-amber-200">
                     {getRoleIcon(row.role_icon_key).emoji} {row.role_name}
                   </span>
                 </p>

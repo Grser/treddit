@@ -1,6 +1,7 @@
 export const runtime = "nodejs";
 import { hash } from "bcryptjs";
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireAdminPermission } from "@/lib/auth";
 import { ensureAgeVerificationRequestsTable, ensureUsersAgeColumns } from "@/lib/ageVerification";
@@ -42,8 +43,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       }
       const passwordHash = await hash(newPassword, 10);
       await db.execute("UPDATE Users SET password=? WHERE id=?", [passwordHash, id]);
+      revalidatePath("/admin/users");
       return NextResponse.redirect(new URL("/admin/users?password=updated", baseUrl));
     }
   }
+  revalidatePath("/admin/users");
   return NextResponse.redirect(new URL("/admin/users", baseUrl));
 }
