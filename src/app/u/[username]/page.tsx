@@ -13,6 +13,7 @@ import { getPostsSensitiveColumn } from "@/lib/postSensitivity";
 import { isUserAgeVerified } from "@/lib/ageVerification";
 import { getBlockRelation } from "@/lib/blocks";
 import { ensureProfilePrivacySchema } from "@/lib/profilePrivacy";
+import { ensureAdminRolesTables } from "@/lib/adminPermissions";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,8 @@ type UserRow = RowDataPacket & {
   country_of_origin: string | null;
   is_age_verified: number;
   is_private: number;
+  admin_role_name: string | null;
+  admin_role_icon_key: string | null;
 };
 
 type CountRow = RowDataPacket & { posts?: number; followers?: number; following?: number };
@@ -47,6 +50,8 @@ type PinnedPostRow = RowDataPacket & {
   avatar_url: string | null;
   is_admin: number;
   is_verified: number;
+  admin_role_name: string | null;
+  admin_role_icon_key: string | null;
   description: string | null;
   created_at: Date | string;
   reply_scope: number | null;
@@ -120,14 +125,32 @@ export default async function UserPage({
   }
 
   await ensureProfilePrivacySchema();
+  const adminRolesReady = await ensureAdminRolesTables()
+    .then(() => true)
+    .catch(() => false);
 
   const [rows] = await db.query<UserRow[]>(
-    `SELECT id, username, nickname, avatar_url, banner_url, description, location, website,
-            show_likes, show_bookmarks, created_at, is_admin, is_verified, pinned_post_id, country_of_origin, is_age_verified,
-            COALESCE(is_private, 0) AS is_private
-     FROM Users WHERE username=? AND visible=1 LIMIT 1`,
-    [username]
-  );
+    `SELECT u.id, u.username, u.nickname, u.avatar_url, u.banner_url, u.description, u.location, u.website,
+            u.show_likes, u.show_bookmarks, u.created_at, u.is_admin, u.is_verified, u.pinned_post_id, u.country_of_origin, u.is_age_verified,
+            COALESCE(u.is_private, 0) AS is_private,
+            ${adminRolesReady ? "ar.name" : "NULL"} AS admin_role_name,
+            ${adminRolesReady ? "ar.icon_key" : "NULL"} AS admin_role_icon_key
+     FROM Users u
+     ${adminRolesReady
+       ? `LEFT JOIN Admin_User_Roles aur ON aur.user_id = u.id
+       AND aur.role_id = (
+         SELECT aur2.role_id
+         FROM Admin_User_Roles aur2
+         WHERE aur2.user_id = u.id
+         ORDER BY aur2.assigned_at DESC, aur2.role_id ASC
+         LIMIT 1
+       )
+     LEFT JOIN Admin_Roles ar ON ar.id = aur.role_id`
+       : ""}
+     WHERE u.username=? AND u.visible=1
+     LIMIT 1`,
+     [username]
+   );
   const userRow = rows[0];
   if (!userRow) return <div className="p-6">Usuario no encontrado</div>;
 
@@ -149,6 +172,8 @@ export default async function UserPage({
     country_of_origin: userRow.country_of_origin ? String(userRow.country_of_origin) : null,
     is_age_verified: Boolean(userRow.is_age_verified),
     is_private: Boolean(userRow.is_private),
+    admin_role_name: userRow.admin_role_name ? String(userRow.admin_role_name) : null,
+    admin_role_icon_key: userRow.admin_role_icon_key ? String(userRow.admin_role_icon_key) : null,
   };
 
   const [postCountResult, followingResult, followerResult, followStatusResult, canMessageResult, blockRelation] = await Promise.all([
@@ -211,6 +236,8 @@ export default async function UserPage({
         u.avatar_url,
         u.is_admin,
         u.is_verified,
+        ${adminRolesReady ? "ar.name" : "NULL"} AS admin_role_name,
+        ${adminRolesReady ? "ar.icon_key" : "NULL"} AS admin_role_icon_key,
         p.description,
         p.created_at,
         p.reply_scope,
@@ -233,6 +260,17 @@ export default async function UserPage({
         CASE WHEN ? IS NULL THEN 0 ELSE EXISTS(SELECT 1 FROM CloseFriends cf WHERE cf.user_id = p.user AND cf.friend_user_id = ?) END AS isCloseFriendAuthor
       FROM Posts p
       JOIN Users u ON u.id = p.user
+      ${adminRolesReady
+        ? `LEFT JOIN Admin_User_Roles aur ON aur.user_id = u.id
+        AND aur.role_id = (
+          SELECT aur2.role_id
+          FROM Admin_User_Roles aur2
+          WHERE aur2.user_id = u.id
+          ORDER BY aur2.assigned_at DESC, aur2.role_id ASC
+          LIMIT 1
+        )
+      LEFT JOIN Admin_Roles ar ON ar.id = aur.role_id`
+        : ""}
       ${communityJoin}
       WHERE p.id = ?
       LIMIT 1
@@ -250,6 +288,8 @@ export default async function UserPage({
         avatar_url: row.avatar_url ? String(row.avatar_url) : null,
         is_admin: Boolean(row.is_admin),
         is_verified: Boolean(row.is_verified),
+        admin_role_name: row.admin_role_name ? String(row.admin_role_name) : null,
+        admin_role_emoji: row.admin_role_icon_key ? iconKeyToEmoji(String(row.admin_role_icon_key)) : null,
         description: row.description ? String(row.description) : null,
         created_at: new Date(row.created_at).toISOString(),
         reply_scope: ([0, 1, 2].includes(Number(row.reply_scope ?? 0)) ? Number(row.reply_scope ?? 0) : 0) as 0 | 1 | 2,
@@ -297,6 +337,8 @@ export default async function UserPage({
           is_age_verified: user.is_age_verified,
           is_admin: user.is_admin,
           is_verified: user.is_verified,
+          admin_role_name: user.admin_role_name,
+          admin_role_emoji: user.admin_role_icon_key ? iconKeyToEmoji(user.admin_role_icon_key) : null,
         }}
         stats={{ posts, followers, following }}
         initiallyFollowing={isFollowing}
@@ -313,4 +355,31 @@ export default async function UserPage({
       />
     </div>
   );
+}
+
+function iconKeyToEmoji(iconKey: string): string {
+  const normalized = iconKey.trim().toLowerCase();
+  const iconMap: Record<string, string> = {
+    "shield-crown": "👑",
+    "shield-bolt": "⚡",
+    "shield-star": "🌟",
+    rocket: "🚀",
+    target: "🎯",
+    compass: "🧭",
+    lock: "🔒",
+    megaphone: "📣",
+    fire: "🔥",
+    gem: "💎",
+    satellite: "🛰️",
+    brain: "🧠",
+    hammer: "🔨",
+    leaf: "🍃",
+    palette: "🎨",
+    books: "📚",
+    lifebuoy: "🛟",
+    planet: "🪐",
+    sparkles: "✨",
+    robot: "🤖",
+  };
+  return iconMap[normalized] ?? "👑";
 }
