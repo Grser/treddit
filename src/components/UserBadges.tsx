@@ -6,6 +6,7 @@ export type UserBadgesProps = {
   adminRoleName?: string | null;
   adminRoleEmoji?: string | null;
   size?: "sm" | "md";
+  showRoleName?: boolean;
   className?: string;
   labels?: {
     verified?: string;
@@ -19,6 +20,7 @@ export default function UserBadges({
   adminRoleName,
   adminRoleEmoji,
   size = "md",
+  showRoleName = true,
   className = "",
   labels,
 }: UserBadgesProps) {
@@ -42,7 +44,7 @@ export default function UserBadges({
           aria-label={adminRoleName || labels?.admin || "Administrator"}
         >
           <span aria-hidden>{adminRoleEmoji || "👑"}</span>
-          <span>{adminRoleName}</span>
+          {showRoleName ? <span>{adminRoleName}</span> : null}
         </span>
       )}
       {isVerified && (
