@@ -193,6 +193,7 @@ export default function PostCard({
                   isVerified={post.is_verified}
                   adminRoleName={post.admin_role_name}
                   adminRoleEmoji={post.admin_role_emoji}
+                  showRoleName={false}
                   labels={strings.badges}
                 />
                 <MentionUserLink username={post.username} text={`@${post.username}`} className="hidden opacity-60 hover:underline sm:inline" />
