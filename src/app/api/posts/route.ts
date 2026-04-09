@@ -14,6 +14,7 @@ import { isImageMediaUrl } from "@/lib/sensitiveMedia";
 import { ensureBlockTables } from "@/lib/blocks";
 import { ensureCloseFriendsTable } from "@/lib/closeFriends";
 import { ensureProfilePrivacySchema } from "@/lib/profilePrivacy";
+import { ensureAdminRolesTables } from "@/lib/adminPermissions";
 
 type PostRow = {
   id: number;
@@ -23,6 +24,8 @@ type PostRow = {
   avatar_url: string | null;
   is_admin: number | boolean;
   is_verified: number | boolean;
+  admin_role_name: string | null;
+  admin_role_icon_key: string | null;
   description: string | null;
   created_at: string | Date;
   reply_scope: number | null;
@@ -277,11 +280,18 @@ export async function GET(req: Request) {
     }
   }
   let closeFriendsReady = false;
+  let adminRolesReady = false;
   try {
     await ensureCloseFriendsTable();
     closeFriendsReady = true;
   } catch (error) {
     console.warn("Close friends table unavailable, skipping close-friend relationship in feed", error);
+  }
+  try {
+    await ensureAdminRolesTables();
+    adminRolesReady = true;
+  } catch (error) {
+    console.warn("Admin roles tables unavailable, skipping admin role badges in feed", error);
   }
 
   if (privacyFilterEnabled) {
@@ -387,6 +397,8 @@ export async function GET(req: Request) {
         u.avatar_url,
         u.is_admin,
         u.is_verified,
+        ${adminRolesReady ? "ar.name" : "NULL"} AS admin_role_name,
+        ${adminRolesReady ? "ar.icon_key" : "NULL"} AS admin_role_icon_key,
         p.description,
         p.created_at,
         p.reply_scope,
@@ -414,6 +426,17 @@ export async function GET(req: Request) {
         ${closeFriendAuthorSelect}
       FROM Posts p
       JOIN Users u ON u.id = p.user
+      ${adminRolesReady
+        ? `LEFT JOIN Admin_User_Roles aur ON aur.user_id = u.id
+      AND aur.role_id = (
+        SELECT aur2.role_id
+        FROM Admin_User_Roles aur2
+        WHERE aur2.user_id = u.id
+        ORDER BY aur2.assigned_at DESC, aur2.role_id ASC
+        LIMIT 1
+      )
+      LEFT JOIN Admin_Roles ar ON ar.id = aur.role_id`
+        : ""}
       ${communityJoin}
       LEFT JOIN (
         SELECT f.postid, MIN(f.id) AS first_file_id
@@ -482,6 +505,8 @@ export async function GET(req: Request) {
       hasPoll: Boolean(row.hasPoll),
       reply_scope: Number(row.reply_scope ?? 0),
       is_sensitive: Boolean(row.is_sensitive),
+      admin_role_name: row.admin_role_name ? String(row.admin_role_name) : null,
+      admin_role_emoji: row.admin_role_icon_key ? iconKeyToEmoji(String(row.admin_role_icon_key)) : null,
       isFollowedAuthor: Boolean(row.isFollowedAuthor),
       isCloseFriendAuthor: Boolean(row.isCloseFriendAuthor),
       can_view_sensitive: viewerAgeVerified,
@@ -538,6 +563,33 @@ export async function GET(req: Request) {
 
 function escapeLike(value: string) {
   return value.replace(/[\\%_]/g, (char) => `\\${char}`);
+}
+
+function iconKeyToEmoji(iconKey: string): string {
+  const normalized = iconKey.trim().toLowerCase();
+  const iconMap: Record<string, string> = {
+    "shield-crown": "👑",
+    "shield-bolt": "⚡",
+    "shield-star": "🌟",
+    rocket: "🚀",
+    target: "🎯",
+    compass: "🧭",
+    lock: "🔒",
+    megaphone: "📣",
+    fire: "🔥",
+    gem: "💎",
+    satellite: "🛰️",
+    brain: "🧠",
+    hammer: "🔨",
+    leaf: "🍃",
+    palette: "🎨",
+    books: "📚",
+    lifebuoy: "🛟",
+    planet: "🪐",
+    sparkles: "✨",
+    robot: "🤖",
+  };
+  return iconMap[normalized] ?? "👑";
 }
 
 function parseFeedCursor(cursor: string | null): ParsedCursor {

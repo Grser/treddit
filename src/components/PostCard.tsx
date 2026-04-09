@@ -42,6 +42,8 @@ export type Post = {
   isAdminViewer?: boolean;
   is_admin?: boolean;
   is_verified?: boolean;
+  admin_role_name?: string | null;
+  admin_role_emoji?: string | null;
   community?: { id: number; slug: string; name: string } | null;
   is_sensitive?: boolean;
   can_view_sensitive?: boolean;
@@ -189,6 +191,8 @@ export default function PostCard({
                   size="sm"
                   isAdmin={post.is_admin}
                   isVerified={post.is_verified}
+                  adminRoleName={post.admin_role_name}
+                  adminRoleEmoji={post.admin_role_emoji}
                   labels={strings.badges}
                 />
                 <MentionUserLink username={post.username} text={`@${post.username}`} className="hidden opacity-60 hover:underline sm:inline" />

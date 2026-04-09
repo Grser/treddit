@@ -21,6 +21,8 @@ type ProfileUser = {
   created_at: string | Date;
   is_admin?: boolean;
   is_verified?: boolean;
+  admin_role_name?: string | null;
+  admin_role_emoji?: string | null;
   country_of_origin?: string | null;
   is_age_verified?: boolean;
 };
@@ -212,7 +214,12 @@ export default function ProfileHeader({
 
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="text-xl font-bold">{displayName}</h1>
-          <UserBadges isAdmin={user.is_admin} isVerified={user.is_verified} />
+          <UserBadges
+            isAdmin={user.is_admin}
+            isVerified={user.is_verified}
+            adminRoleName={user.admin_role_name}
+            adminRoleEmoji={user.admin_role_emoji}
+          />
         </div>
         <p className="opacity-70">@{user.username}</p>
         {user.description && <p className="mt-2 whitespace-pre-wrap">{user.description}</p>}
