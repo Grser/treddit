@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdminPermission } from "@/lib/auth";
 import { getRequestBaseUrl } from "@/lib/requestBaseUrl";
+import { COMMUNITY_ICON_OPTIONS } from "@/lib/communityIcons";
 
 async function hasVerifiedColumn() {
   const [rows] = await db.query("SHOW COLUMNS FROM Communities LIKE 'is_verified'");
@@ -25,6 +26,40 @@ async function ensureVerifiedColumn() {
   }
 }
 
+async function hasIconColumn() {
+  const [rows] = await db.query("SHOW COLUMNS FROM Communities LIKE 'icon_key'");
+  return Array.isArray(rows) && rows.length > 0;
+}
+
+async function hasAdultColumn() {
+  const [rows] = await db.query("SHOW COLUMNS FROM Communities LIKE 'is_adult'");
+  return Array.isArray(rows) && rows.length > 0;
+}
+
+async function ensureIconColumn() {
+  if (await hasIconColumn()) return;
+  try {
+    await db.execute("ALTER TABLE Communities ADD COLUMN icon_key VARCHAR(40) NULL");
+  } catch (error) {
+    const code = typeof error === "object" && error && "code" in error
+      ? String((error as { code?: unknown }).code || "")
+      : "";
+    if (code !== "ER_DUP_FIELDNAME") throw error;
+  }
+}
+
+async function ensureAdultColumn() {
+  if (await hasAdultColumn()) return;
+  try {
+    await db.execute("ALTER TABLE Communities ADD COLUMN is_adult TINYINT(1) NOT NULL DEFAULT 0");
+  } catch (error) {
+    const code = typeof error === "object" && error && "code" in error
+      ? String((error as { code?: unknown }).code || "")
+      : "";
+    if (code !== "ER_DUP_FIELDNAME") throw error;
+  }
+}
+
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   await requireAdminPermission("manage_communities");
   const { id } = await params;
@@ -35,6 +70,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const form = await req.formData();
   const op = String(form.get("op") || "");
+  const rawIconKey = String(form.get("iconKey") || "").trim().toLowerCase();
+  const iconKey = COMMUNITY_ICON_OPTIONS.some((option) => option.key === rawIconKey && option.key !== "none")
+    ? rawIconKey
+    : null;
 
   switch (op) {
     case "hide":
@@ -54,6 +93,22 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     case "unverify":
       await ensureVerifiedColumn();
       await db.execute("UPDATE Communities SET is_verified=0 WHERE id=?", [communityId]);
+      break;
+    case "set_icon":
+      await ensureIconColumn();
+      await db.execute("UPDATE Communities SET icon_key=? WHERE id=?", [iconKey, communityId]);
+      break;
+    case "clear_icon":
+      await ensureIconColumn();
+      await db.execute("UPDATE Communities SET icon_key=NULL WHERE id=?", [communityId]);
+      break;
+    case "mark_adult":
+      await ensureAdultColumn();
+      await db.execute("UPDATE Communities SET is_adult=1 WHERE id=?", [communityId]);
+      break;
+    case "unmark_adult":
+      await ensureAdultColumn();
+      await db.execute("UPDATE Communities SET is_adult=0 WHERE id=?", [communityId]);
       break;
     default:
       return NextResponse.json({ error: "Operación no soportada" }, { status: 400 });

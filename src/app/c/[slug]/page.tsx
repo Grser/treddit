@@ -12,6 +12,7 @@ import { db, isDatabaseConfigured } from "@/lib/db";
 import { getRequestBaseUrl } from "@/lib/requestBaseUrl";
 import type { Post as PostCardType } from "@/components/PostCard";
 import { getCommunityAccessControl } from "@/lib/communityPermissions";
+import { getCommunityIconMeta } from "@/lib/communityIcons";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,8 @@ type Community = {
   myRole: string | null;
   visible: boolean;
   isVerified: boolean;
+  isAdult: boolean;
+  iconKey: string | null;
 };
 
 type Moderator = {
@@ -66,6 +69,8 @@ type CommunityRow = RowDataPacket & {
   created_at: Date | string;
   visible: number;
   is_verified?: number;
+  is_adult?: number;
+  icon_key?: string | null;
   members: number;
   isMember: number;
   myRole: string | null;
@@ -127,6 +132,7 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
   const canEditCommunity = Boolean(me?.is_admin || community.accessControl?.canEditCommunity || isCommunityManager);
   const canWriteInChat = Boolean(me?.is_admin || (community.accessControl?.canChat && !community.accessControl?.isMuted));
   const canManageVoiceChannels = Boolean(me?.is_admin || community.accessControl?.canManageVoiceChannels || isCommunityManager);
+  const iconMeta = getCommunityIconMeta(community.iconKey);
   const initials = community.name
     .split(" ")
     .filter(Boolean)
@@ -159,11 +165,23 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
                     <p className="mt-1 text-sm text-white/75">c/{community.slug}</p>
                   </div>
                 </div>
-                {community.isVerified && (
-                  <span className="inline-flex w-fit items-center rounded-full border border-emerald-300/50 bg-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-100 backdrop-blur">
-                    ✓ Comunidad verificada
-                  </span>
-                )}
+                <div className="flex flex-wrap justify-end gap-2">
+                  {iconMeta && (
+                    <span className="inline-flex w-fit items-center rounded-full border border-fuchsia-300/50 bg-fuchsia-500/20 px-3 py-1 text-xs font-semibold text-fuchsia-100 backdrop-blur">
+                      {iconMeta.emoji} {iconMeta.label}
+                    </span>
+                  )}
+                  {community.isAdult && (
+                    <span className="inline-flex w-fit items-center rounded-full border border-rose-300/50 bg-rose-500/20 px-3 py-1 text-xs font-semibold text-rose-100 backdrop-blur">
+                      🔞 Comunidad +18
+                    </span>
+                  )}
+                  {community.isVerified && (
+                    <span className="inline-flex w-fit items-center rounded-full border border-emerald-300/50 bg-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-100 backdrop-blur">
+                      ✓ Comunidad verificada
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -302,9 +320,13 @@ async function loadCommunity(slug: string, viewerId: number | null, baseUrl: str
   const [verifiedColumnRows] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM Communities LIKE 'is_verified'");
   const [iconColumnRows] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM Communities LIKE 'icon_url'");
   const [bannerColumnRows] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM Communities LIKE 'banner_url'");
+  const [adultColumnRows] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM Communities LIKE 'is_adult'");
+  const [iconKeyColumnRows] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM Communities LIKE 'icon_key'");
   const hasVerifiedColumn = verifiedColumnRows.length > 0;
   const hasIconColumn = iconColumnRows.length > 0;
   const hasBannerColumn = bannerColumnRows.length > 0;
+  const hasAdultColumn = adultColumnRows.length > 0;
+  const hasIconKeyColumn = iconKeyColumnRows.length > 0;
   const [rows] = await db.query<CommunityRow[]>(
     `
     SELECT
@@ -317,6 +339,8 @@ async function loadCommunity(slug: string, viewerId: number | null, baseUrl: str
       c.created_at,
       c.visible,
       ${hasVerifiedColumn ? "c.is_verified" : "0 AS is_verified"},
+      ${hasAdultColumn ? "c.is_adult" : "0 AS is_adult"},
+      ${hasIconKeyColumn ? "c.icon_key" : "NULL AS icon_key"},
       (SELECT COUNT(*) FROM Community_Members cm WHERE cm.community_id = c.id) AS members,
       CASE WHEN ? IS NULL THEN 0 ELSE EXISTS(
         SELECT 1 FROM Community_Members cm WHERE cm.community_id = c.id AND cm.user_id = ?
@@ -347,6 +371,8 @@ async function loadCommunity(slug: string, viewerId: number | null, baseUrl: str
     members: Number(row.members) || 0,
     visible: Boolean(row.visible),
     isVerified: Boolean(row.is_verified),
+    isAdult: Boolean(row.is_adult),
+    iconKey: row.icon_key ? String(row.icon_key) : null,
     isMember: Boolean(row.isMember),
     myRole: row.myRole ? String(row.myRole) : null,
   };
