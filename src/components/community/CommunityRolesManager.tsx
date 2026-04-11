@@ -11,6 +11,7 @@ type CommunityRole = {
   can_ban_members: boolean;
   can_mute_members: boolean;
   can_manage_chat: boolean;
+  can_manage_voice_channels: boolean;
   can_chat: boolean;
 };
 
@@ -35,6 +36,7 @@ const PERMISSION_FIELDS = [
   { key: "can_ban_members", label: "Banear miembros" },
   { key: "can_mute_members", label: "Silenciar chat" },
   { key: "can_manage_chat", label: "Gestionar chat" },
+  { key: "can_manage_voice_channels", label: "Crear/gestionar salas de voz" },
   { key: "can_chat", label: "Puede escribir" },
 ] as const;
 
@@ -46,6 +48,7 @@ type RoleFormState = {
   can_ban_members: boolean;
   can_mute_members: boolean;
   can_manage_chat: boolean;
+  can_manage_voice_channels: boolean;
   can_chat: boolean;
 };
 
@@ -57,6 +60,7 @@ const defaultForm: RoleFormState = {
   can_ban_members: false,
   can_mute_members: false,
   can_manage_chat: false,
+  can_manage_voice_channels: false,
   can_chat: true,
 };
 
@@ -228,6 +232,7 @@ export default function CommunityRolesManager({ communityId }: { communityId: nu
                           can_ban_members: role.can_ban_members,
                           can_mute_members: role.can_mute_members,
                           can_manage_chat: role.can_manage_chat,
+                          can_manage_voice_channels: role.can_manage_voice_channels,
                           can_chat: role.can_chat,
                         });
                       }}

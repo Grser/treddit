@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { ChangeEvent, useState } from "react";
+import { ChangeEvent, useEffect, useMemo, useState } from "react";
 
 import { useLocale } from "@/contexts/LocaleContext";
 import { validateUploadSize } from "@/lib/upload";
@@ -32,11 +32,14 @@ export default function ImagePickerField({
   const t = strings.profileEditor;
   const [mode, setMode] = useState<Mode>(initialUrl ? "url" : "upload");
   const [value, setValue] = useState<string>(initialUrl?.toString() || "");
+  const [urlInput, setUrlInput] = useState<string>(initialUrl?.toString() || "");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fileKey, setFileKey] = useState(0);
+  const [resolvingUrl, setResolvingUrl] = useState(false);
 
   const hasValue = Boolean(value.trim());
+  const shouldResolveUrl = useMemo(() => mode === "url" && Boolean(urlInput.trim()), [mode, urlInput]);
 
   function switchMode(next: Mode) {
     setMode(next);
@@ -53,20 +56,20 @@ export default function ImagePickerField({
     if (minWidth || minHeight) {
       const dimensions = await getImageDimensions(file);
       if (!dimensions) {
-        setError("No se pudo leer el tamaño de la imagen.");
-        setFileKey((k) => k + 1);
-        return;
+        setError("No se pudo leer el tamaño de la imagen. Se subirá igual sin validar dimensiones.");
       }
-      const widthTooSmall = minWidth ? dimensions.width < minWidth : false;
-      const heightTooSmall = minHeight ? dimensions.height < minHeight : false;
+      if (dimensions) {
+        const widthTooSmall = minWidth ? dimensions.width < minWidth : false;
+        const heightTooSmall = minHeight ? dimensions.height < minHeight : false;
 
-      if (widthTooSmall || heightTooSmall) {
-        const widthText = minWidth ? `${minWidth}px de ancho` : null;
-        const heightText = minHeight ? `${minHeight}px de alto` : null;
-        const requirement = [widthText, heightText].filter(Boolean).join(" y ");
-        setError(`Esta imagen es demasiado pequeña. Usa al menos ${requirement}.`);
-        setFileKey((k) => k + 1);
-        return;
+        if (widthTooSmall || heightTooSmall) {
+          const widthText = minWidth ? `${minWidth}px de ancho` : null;
+          const heightText = minHeight ? `${minHeight}px de alto` : null;
+          const requirement = [widthText, heightText].filter(Boolean).join(" y ");
+          setError(`Esta imagen es demasiado pequeña. Usa al menos ${requirement}.`);
+          setFileKey((k) => k + 1);
+          return;
+        }
       }
     }
 
@@ -100,9 +103,40 @@ export default function ImagePickerField({
 
   function clearValue() {
     setValue("");
+    setUrlInput("");
     setError(null);
     setFileKey((k) => k + 1);
   }
+
+  useEffect(() => {
+    if (!shouldResolveUrl) return;
+    let cancelled = false;
+    const timerId = setTimeout(() => {
+      setResolvingUrl(true);
+      void fetch(`/api/url/image?url=${encodeURIComponent(urlInput.trim())}`, { cache: "no-store" })
+        .then(async (res) => {
+          const payload = (await res.json().catch(() => null)) as { imageUrl?: string; error?: string } | null;
+          if (!res.ok) throw new Error(payload?.error || "No se pudo validar la URL");
+          if (!cancelled) {
+            setValue(payload?.imageUrl?.trim() || urlInput.trim());
+            setError(null);
+          }
+        })
+        .catch((err) => {
+          if (!cancelled) {
+            setValue(urlInput.trim());
+            setError(err instanceof Error ? err.message : "No se pudo validar la URL");
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setResolvingUrl(false);
+        });
+    }, 350);
+    return () => {
+      cancelled = true;
+      clearTimeout(timerId);
+    };
+  }, [shouldResolveUrl, urlInput]);
 
   return (
     <div className="space-y-2">
@@ -134,9 +168,11 @@ export default function ImagePickerField({
         <input
           type="text"
           inputMode="url"
-          value={value}
+          value={urlInput}
           onChange={(event) => {
-            setValue(event.target.value);
+            const next = event.target.value;
+            setUrlInput(next);
+            setValue(next);
             setError(null);
           }}
           placeholder="https://example.com/imagen.jpg"
@@ -160,7 +196,7 @@ export default function ImagePickerField({
       {helpText && <p className="text-xs text-foreground/70">{helpText}</p>}
 
       <div className="flex items-center gap-3 text-xs">
-        {uploading && <span className="text-foreground/70">{t.uploading}</span>}
+        {(uploading || resolvingUrl) && <span className="text-foreground/70">{uploading ? t.uploading : "Validando URL..."}</span>}
         {hasValue && (
           <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-emerald-300">Imagen cargada</span>
         )}

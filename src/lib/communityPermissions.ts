@@ -9,6 +9,7 @@ export type CommunityPermissionKey =
   | "can_ban_members"
   | "can_mute_members"
   | "can_manage_chat"
+  | "can_manage_voice_channels"
   | "can_chat";
 
 export type CommunityPermissions = Record<CommunityPermissionKey, boolean>;
@@ -33,6 +34,7 @@ type AssignedRoleRow = RowDataPacket & {
   can_ban_members: number;
   can_mute_members: number;
   can_manage_chat: number;
+  can_manage_voice_channels: number;
   can_chat: number;
 };
 type BanRow = RowDataPacket & { id: number };
@@ -57,6 +59,7 @@ function basePermissionsForRole(baseRole: string): CommunityPermissions {
       can_ban_members: true,
       can_mute_members: true,
       can_manage_chat: true,
+      can_manage_voice_channels: true,
       can_chat: true,
     };
   }
@@ -69,6 +72,7 @@ function basePermissionsForRole(baseRole: string): CommunityPermissions {
       can_ban_members: true,
       can_mute_members: true,
       can_manage_chat: true,
+      can_manage_voice_channels: true,
       can_chat: true,
     };
   }
@@ -81,6 +85,7 @@ function basePermissionsForRole(baseRole: string): CommunityPermissions {
       can_ban_members: true,
       can_mute_members: true,
       can_manage_chat: true,
+      can_manage_voice_channels: true,
       can_chat: true,
     };
   }
@@ -92,6 +97,7 @@ function basePermissionsForRole(baseRole: string): CommunityPermissions {
     can_ban_members: false,
     can_mute_members: false,
     can_manage_chat: false,
+    can_manage_voice_channels: false,
     can_chat: true,
   };
 }
@@ -105,6 +111,7 @@ function parseRolePermissions(row: AssignedRoleRow | null): Partial<CommunityPer
     can_ban_members: Boolean(row.can_ban_members),
     can_mute_members: Boolean(row.can_mute_members),
     can_manage_chat: Boolean(row.can_manage_chat),
+    can_manage_voice_channels: Boolean(row.can_manage_voice_channels),
     can_chat: Boolean(row.can_chat),
   };
 }
@@ -120,6 +127,7 @@ export function mergeCommunityPermissions(
     can_ban_members: base.can_ban_members || Boolean(custom.can_ban_members),
     can_mute_members: base.can_mute_members || Boolean(custom.can_mute_members),
     can_manage_chat: base.can_manage_chat || Boolean(custom.can_manage_chat),
+    can_manage_voice_channels: base.can_manage_voice_channels || Boolean(custom.can_manage_voice_channels),
     can_chat: base.can_chat || Boolean(custom.can_chat),
   };
 }
@@ -138,6 +146,7 @@ export async function ensureCommunityAclTables() {
           can_ban_members TINYINT(1) NOT NULL DEFAULT 0,
           can_mute_members TINYINT(1) NOT NULL DEFAULT 0,
           can_manage_chat TINYINT(1) NOT NULL DEFAULT 0,
+          can_manage_voice_channels TINYINT(1) NOT NULL DEFAULT 0,
           can_chat TINYINT(1) NOT NULL DEFAULT 1,
           created_by BIGINT UNSIGNED NULL,
           created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -146,6 +155,15 @@ export async function ensureCommunityAclTables() {
           KEY idx_community_roles_community (community_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
       );
+
+      const [voiceManagePermissionColumn] = await db.query<RowDataPacket[]>(
+        "SHOW COLUMNS FROM Community_Roles LIKE 'can_manage_voice_channels'",
+      );
+      if (!voiceManagePermissionColumn.length) {
+        await db.execute(
+          "ALTER TABLE Community_Roles ADD COLUMN can_manage_voice_channels TINYINT(1) NOT NULL DEFAULT 0 AFTER can_manage_chat",
+        );
+      }
 
       await db.execute(
         `CREATE TABLE IF NOT EXISTS Community_Role_Members (
@@ -220,6 +238,7 @@ export async function getCommunityAccessControl(
             r.can_ban_members,
             r.can_mute_members,
             r.can_manage_chat,
+            r.can_manage_voice_channels,
             r.can_chat
      FROM Community_Role_Members rm
      JOIN Community_Roles r ON r.id = rm.role_id

@@ -17,6 +17,7 @@ type RoleRow = RowDataPacket & {
   can_ban_members: number;
   can_mute_members: number;
   can_manage_chat: number;
+  can_manage_voice_channels: number;
   can_chat: number;
 };
 
@@ -59,6 +60,7 @@ async function getCommunityRolesPayload(communityId: number) {
             can_ban_members,
             can_mute_members,
             can_manage_chat,
+            can_manage_voice_channels,
             can_chat
      FROM Community_Roles
      WHERE community_id = ?
@@ -93,6 +95,7 @@ async function getCommunityRolesPayload(communityId: number) {
       can_ban_members: Boolean(row.can_ban_members),
       can_mute_members: Boolean(row.can_mute_members),
       can_manage_chat: Boolean(row.can_manage_chat),
+      can_manage_voice_channels: Boolean(row.can_manage_voice_channels),
       can_chat: Boolean(row.can_chat),
     })),
     members: membersRows.map((row) => ({
@@ -164,9 +167,10 @@ export async function POST(req: Request, { params }: Params) {
          can_ban_members,
          can_mute_members,
          can_manage_chat,
+         can_manage_voice_channels,
          can_chat,
          created_by
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         communityId,
         name,
@@ -176,6 +180,7 @@ export async function POST(req: Request, { params }: Params) {
         toBool(body?.can_ban_members) ? 1 : 0,
         toBool(body?.can_mute_members) ? 1 : 0,
         toBool(body?.can_manage_chat) ? 1 : 0,
+        toBool(body?.can_manage_voice_channels) ? 1 : 0,
         toBool(body?.can_chat) ? 1 : 0,
         me.id,
       ],
@@ -201,6 +206,7 @@ export async function POST(req: Request, { params }: Params) {
            can_ban_members = ?,
            can_mute_members = ?,
            can_manage_chat = ?,
+           can_manage_voice_channels = ?,
            can_chat = ?
        WHERE id = ? AND community_id = ?
        LIMIT 1`,
@@ -212,6 +218,7 @@ export async function POST(req: Request, { params }: Params) {
         toBool(body?.can_ban_members) ? 1 : 0,
         toBool(body?.can_mute_members) ? 1 : 0,
         toBool(body?.can_manage_chat) ? 1 : 0,
+        toBool(body?.can_manage_voice_channels) ? 1 : 0,
         toBool(body?.can_chat) ? 1 : 0,
         roleId,
         communityId,

@@ -50,6 +50,7 @@ type CommunityViewModel = Community & {
   accessControl: {
     canEditCommunity: boolean;
     canManageRoles: boolean;
+    canManageVoiceChannels: boolean;
     canChat: boolean;
     isMuted: boolean;
   } | null;
@@ -125,6 +126,7 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
   const isCommunityManager = Boolean(community.myRole) && community.myRole !== "member";
   const canEditCommunity = Boolean(me?.is_admin || community.accessControl?.canEditCommunity || isCommunityManager);
   const canWriteInChat = Boolean(me?.is_admin || (community.accessControl?.canChat && !community.accessControl?.isMuted));
+  const canManageVoiceChannels = Boolean(me?.is_admin || community.accessControl?.canManageVoiceChannels || isCommunityManager);
   const initials = community.name
     .split(" ")
     .filter(Boolean)
@@ -254,7 +256,11 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
             </div>
 
             <aside className="space-y-4 xl:sticky xl:top-24 xl:self-start">
-              <CommunityChannelsHub />
+              <CommunityChannelsHub
+                communityId={community.id}
+                canCreate={canManageVoiceChannels}
+                canInteract={Boolean(canInteract && community.isMember)}
+              />
 
               <CommunityChat
                 communityId={community.id}
@@ -377,6 +383,7 @@ async function loadCommunity(slug: string, viewerId: number | null, baseUrl: str
       ? {
         canEditCommunity: accessControl.permissions.can_edit_community,
         canManageRoles: accessControl.permissions.can_manage_roles,
+        canManageVoiceChannels: accessControl.permissions.can_manage_voice_channels,
         canChat: accessControl.permissions.can_chat,
         isMuted: accessControl.isMuted,
       }

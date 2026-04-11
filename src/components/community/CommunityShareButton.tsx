@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useMemo, useState } from "react";
 
 type ShareTarget = {
@@ -7,6 +8,7 @@ type ShareTarget = {
   id: number;
   title: string;
   subtitle: string;
+  avatarUrl: string | null;
 };
 
 export default function CommunityShareButton({
@@ -137,9 +139,25 @@ export default function CommunityShareButton({
                       onClick={() => toggleTarget(target)}
                       className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm ${active ? "bg-brand/15" : "hover:bg-muted/60"}`}
                     >
-                      <span>
-                        <strong>{target.title}</strong>
-                        <span className="ml-2 opacity-70">{target.subtitle}</span>
+                      <span className="flex items-center gap-2">
+                        {target.avatarUrl ? (
+                          <Image
+                            src={target.avatarUrl}
+                            alt={target.title}
+                            width={28}
+                            height={28}
+                            className="size-7 rounded-full object-cover"
+                            unoptimized
+                          />
+                        ) : (
+                          <span className="inline-flex size-7 items-center justify-center rounded-full bg-muted text-[11px] font-semibold">
+                            {target.title.slice(0, 1).toUpperCase()}
+                          </span>
+                        )}
+                        <span>
+                          <strong>{target.title}</strong>
+                          <span className="ml-2 opacity-70">{target.subtitle}</span>
+                        </span>
                       </span>
                       {active ? "✓" : "+"}
                     </button>
