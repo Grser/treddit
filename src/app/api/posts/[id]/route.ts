@@ -6,6 +6,7 @@ import { db, isDatabaseConfigured } from "@/lib/db";
 import { getSessionUser, requireUser } from "@/lib/auth";
 import { isUserAgeVerified } from "@/lib/ageVerification";
 import { getDemoFeed } from "@/lib/demoStore";
+import { getPostsAdultColumn } from "@/lib/postAdultContent";
 import { estimatePostViews } from "@/lib/postStats";
 import { getPostsSensitiveColumn } from "@/lib/postSensitivity";
 
@@ -31,6 +32,7 @@ type PostDetailsRow = RowDataPacket & {
   likedByMe: number;
   repostedByMe: number;
   is_sensitive: number | boolean | null;
+  is_adult: number | boolean | null;
   reply_scope: number | null;
 };
 
@@ -58,8 +60,9 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     return NextResponse.json({ item });
   }
 
-  const sensitiveColumn = await getPostsSensitiveColumn();
+  const [sensitiveColumn, adultColumn] = await Promise.all([getPostsSensitiveColumn(), getPostsAdultColumn()]);
   const sensitiveSelect = sensitiveColumn ? `p.${sensitiveColumn}` : "0";
+  const adultSelect = adultColumn ? `p.${adultColumn}` : "0";
 
   const [rows] = await db.query<PostDetailsRow[]>(
     `
@@ -81,7 +84,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       (SELECT COUNT(*) FROM Polls po WHERE po.post_id = p.id) AS hasPoll,
       (SELECT COUNT(*) FROM Like_Posts lp2 WHERE lp2.post = p.id AND lp2.user = ?) AS likedByMe,
       (SELECT COUNT(*) FROM Reposts rp2 WHERE rp2.post_id = p.id AND rp2.user_id = ?) AS repostedByMe,
-      ${sensitiveSelect} AS is_sensitive
+      ${sensitiveSelect} AS is_sensitive,
+      ${adultSelect} AS is_adult
     FROM Posts p
     JOIN Users u ON u.id = p.user
     WHERE p.id = ?
@@ -96,7 +100,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   }
 
   const isSensitive = Boolean(row.is_sensitive);
-  const canViewSensitive = me?.id && isSensitive ? await isUserAgeVerified(me.id) : false;
+  const isAdult = Boolean(row.is_adult);
+  const canViewSensitive = me?.id && isAdult ? await isUserAgeVerified(me.id) : false;
 
   return NextResponse.json({
     item: {
@@ -119,6 +124,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       repostedByMe: Number(row.repostedByMe) > 0,
       reply_scope: ([0, 1, 2].includes(Number(row.reply_scope ?? 0)) ? Number(row.reply_scope ?? 0) : 0) as 0 | 1 | 2,
       is_sensitive: isSensitive,
+      is_adult: isAdult,
       can_view_sensitive: canViewSensitive,
       isOwner: me?.id ? Number(row.user) === me.id : false,
       isAdminViewer: Boolean(me?.is_admin),

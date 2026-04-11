@@ -230,6 +230,7 @@ export function createDemoPost(user: SessionUser, payload: {
   poll: null;
   communityId: number | null;
   isSensitive?: boolean;
+  isAdult?: boolean;
 }): { id: number } {
   const store = ensureStore();
   const author = normalizeSessionUser(user);
@@ -257,6 +258,7 @@ export function createDemoPost(user: SessionUser, payload: {
     is_verified: author.is_verified,
     community: null,
     is_sensitive: Boolean(payload.isSensitive),
+    is_adult: Boolean(payload.isAdult),
   };
 
   if (tags.length) {

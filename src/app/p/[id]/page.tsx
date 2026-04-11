@@ -7,6 +7,7 @@ import { isUserAgeVerified } from "@/lib/ageVerification";
 import { getSessionUser } from "@/lib/auth";
 import { db, isDatabaseConfigured } from "@/lib/db";
 import { getDemoFeed } from "@/lib/demoStore";
+import { getPostsAdultColumn } from "@/lib/postAdultContent";
 import { estimatePostViews } from "@/lib/postStats";
 import { getPostsSensitiveColumn } from "@/lib/postSensitivity";
 import { ensureProfilePrivacySchema } from "@/lib/profilePrivacy";
@@ -29,6 +30,7 @@ type PostDetailsRow = RowDataPacket & {
   likedByMe: number;
   repostedByMe: number;
   is_sensitive: number | boolean | null;
+  is_adult: number | boolean | null;
   reply_scope: number | null;
   isFollowedAuthor: number;
   isCloseFriendAuthor: number;
@@ -52,8 +54,9 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
     post = items.find((item) => Number(item.id) === postId) ?? null;
   } else {
     await ensureProfilePrivacySchema();
-    const sensitiveColumn = await getPostsSensitiveColumn();
+    const [sensitiveColumn, adultColumn] = await Promise.all([getPostsSensitiveColumn(), getPostsAdultColumn()]);
     const sensitiveSelect = sensitiveColumn ? `p.${sensitiveColumn}` : "0";
+    const adultSelect = adultColumn ? `p.${adultColumn}` : "0";
     const [rows] = await db.query<PostDetailsRow[]>(
       `
       SELECT
@@ -75,6 +78,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
         (SELECT COUNT(*) FROM Like_Posts lp2 WHERE lp2.post = p.id AND lp2.user = ?) AS likedByMe,
         (SELECT COUNT(*) FROM Reposts rp2 WHERE rp2.post_id = p.id AND rp2.user_id = ?) AS repostedByMe,
         ${sensitiveSelect} AS is_sensitive,
+        ${adultSelect} AS is_adult,
         COALESCE(u.is_private, 0) AS is_private,
         CASE WHEN ? IS NULL THEN 0 ELSE EXISTS(SELECT 1 FROM Follows f WHERE f.follower = ? AND f.followed = p.user) END AS isFollowedAuthor,
         CASE WHEN ? IS NULL THEN 0 ELSE EXISTS(SELECT 1 FROM CloseFriends cf WHERE cf.user_id = p.user AND cf.friend_user_id = ?) END AS isCloseFriendAuthor
@@ -94,7 +98,8 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
         notFound();
       }
       const isSensitive = Boolean(row.is_sensitive);
-      const canViewSensitive = session?.id && isSensitive ? await isUserAgeVerified(session.id) : false;
+      const isAdult = Boolean(row.is_adult);
+      const canViewSensitive = session?.id && isAdult ? await isUserAgeVerified(session.id) : false;
       post = {
         id: Number(row.id),
         user: Number(row.user),
@@ -115,6 +120,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
         repostedByMe: Number(row.repostedByMe) > 0,
         reply_scope: ([0, 1, 2].includes(Number(row.reply_scope ?? 0)) ? Number(row.reply_scope ?? 0) : 0) as 0 | 1 | 2,
         is_sensitive: isSensitive,
+        is_adult: isAdult,
         can_view_sensitive: canViewSensitive,
         isFollowedAuthor: Boolean(row.isFollowedAuthor),
         isCloseFriendAuthor: Boolean(row.isCloseFriendAuthor),

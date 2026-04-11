@@ -7,6 +7,7 @@ import { db, isDatabaseConfigured } from "@/lib/db";
 import { getSessionUser, requireUser } from "@/lib/auth";
 import { createDemoPost, getDemoFeed } from "@/lib/demoStore";
 import { ensurePostsCommunityColumn, getPostsCommunityColumn } from "@/lib/communityColumns";
+import { ensurePostsAdultColumn, getPostsAdultColumn } from "@/lib/postAdultContent";
 import { ensurePostsSensitiveColumn, getPostsSensitiveColumn } from "@/lib/postSensitivity";
 import { isUserAgeVerified } from "@/lib/ageVerification";
 import { estimatePostViews } from "@/lib/postStats";
@@ -40,6 +41,7 @@ type PostRow = {
   community_slug: string | null;
   community_name: string | null;
   is_sensitive: number | boolean | null;
+  is_adult: number | boolean | null;
   isFollowedAuthor: number;
   isCloseFriendAuthor: number;
 };
@@ -248,9 +250,10 @@ export async function GET(req: Request) {
   }
 
   let blockFilterEnabled = false;
-  const [communityColumn, sensitiveColumn] = await Promise.all([
+  const [communityColumn, sensitiveColumn, adultColumn] = await Promise.all([
     getPostsCommunityColumn(),
     getPostsSensitiveColumn(),
+    getPostsAdultColumn(),
     ensureBlockTables().then(() => {
       blockFilterEnabled = true;
     }).catch((error) => {
@@ -259,6 +262,7 @@ export async function GET(req: Request) {
   ]);
   const hasCommunityColumn = Boolean(communityColumn);
   const hasSensitiveColumn = Boolean(sensitiveColumn);
+  const hasAdultColumn = Boolean(adultColumn);
 
   if (feedPriorityMode === "followed-communities") {
     if (hasCommunityColumn && communityColumn) {
@@ -343,6 +347,7 @@ export async function GET(req: Request) {
   const communitySlugSelect = hasCommunityColumn ? "c.slug" : "NULL";
   const communityNameSelect = hasCommunityColumn ? "c.name" : "NULL";
   const sensitiveSelect = hasSensitiveColumn ? "p.is_sensitive" : "0";
+  const adultSelect = hasAdultColumn ? "p.is_adult" : "0";
   const closeFriendAuthorSelect = closeFriendsReady
     ? `
         CASE
@@ -412,7 +417,8 @@ export async function GET(req: Request) {
         ${communityIdSelect} AS community_id,
         ${communitySlugSelect} AS community_slug,
         ${communityNameSelect} AS community_name,
-        ${sensitiveSelect} AS is_sensitive
+        ${sensitiveSelect} AS is_sensitive,
+        ${adultSelect} AS is_adult
         ,
         CASE
           WHEN ? IS NULL THEN 0
@@ -492,8 +498,8 @@ export async function GET(req: Request) {
     );
 
     const list = rows;
-    const hasSensitiveItems = hasSensitiveColumn && list.some((row) => Boolean(row.is_sensitive));
-    const viewerAgeVerified = meId && hasSensitiveItems ? await isUserAgeVerified(meId) : false;
+    const hasAdultItems = hasAdultColumn && list.some((row) => Boolean(row.is_adult));
+    const viewerAgeVerified = meId && hasAdultItems ? await isUserAgeVerified(meId) : false;
     const items = list.slice(0, limit).map((row) => ({
       ...row,
       likes: Number(row.likes) || 0,
@@ -505,6 +511,7 @@ export async function GET(req: Request) {
       hasPoll: Boolean(row.hasPoll),
       reply_scope: Number(row.reply_scope ?? 0),
       is_sensitive: Boolean(row.is_sensitive),
+      is_adult: Boolean(row.is_adult),
       admin_role_name: row.admin_role_name ? String(row.admin_role_name) : null,
       admin_role_emoji: row.admin_role_icon_key ? iconKeyToEmoji(String(row.admin_role_icon_key)) : null,
       isFollowedAuthor: Boolean(row.isFollowedAuthor),
@@ -638,11 +645,15 @@ export async function POST(req: Request) {
   const communityValue = body["communityId"];
   const sensitiveValue = body["isSensitive"];
   const isSensitiveRequested = sensitiveValue === true || sensitiveValue === 1 || sensitiveValue === "1";
+  const sensitivityLevelValue = body["sensitivityLevel"];
+  const sensitivityLevel = sensitivityLevelValue === "adult" ? "adult" : "sensitive";
+  const isAdultRequested = isSensitiveRequested && sensitivityLevel === "adult";
   const communityIdRaw = typeof communityValue === "number" ? communityValue : Number(communityValue);
   const normalizedCommunityId = Number.isFinite(communityIdRaw) && communityIdRaw > 0 ? communityIdRaw : null;
 
   let communityColumn = databaseReady ? await getPostsCommunityColumn() : "community_id";
   let sensitiveColumn = databaseReady ? await getPostsSensitiveColumn() : "is_sensitive";
+  let adultColumn = databaseReady ? await getPostsAdultColumn() : "is_adult";
 
   description = description.slice(0, 2000);
 
@@ -726,6 +737,7 @@ export async function POST(req: Request) {
       poll: null,
       communityId: normalizedCommunityId,
       isSensitive: Boolean(mediaUrl && isImageMediaUrl(mediaUrl) && isSensitiveRequested),
+      isAdult: Boolean(mediaUrl && isImageMediaUrl(mediaUrl) && isAdultRequested),
     });
     return NextResponse.json({ ok: true, id }, { status: 201 });
   }
@@ -748,6 +760,14 @@ export async function POST(req: Request) {
       columns.push(sensitiveColumn);
       placeholders.push("?");
       params.push(mediaUrl && isImageMediaUrl(mediaUrl) && isSensitiveRequested ? 1 : 0);
+    }
+    if (!adultColumn) {
+      adultColumn = await ensurePostsAdultColumn();
+    }
+    if (adultColumn) {
+      columns.push(adultColumn);
+      placeholders.push("?");
+      params.push(mediaUrl && isImageMediaUrl(mediaUrl) && isAdultRequested ? 1 : 0);
     }
 
     const insertSql = `INSERT INTO Posts (${columns.join(", ")}) VALUES (${placeholders.join(", ")})`;

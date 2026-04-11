@@ -46,6 +46,7 @@ export type Post = {
   admin_role_emoji?: string | null;
   community?: { id: number; slug: string; name: string } | null;
   is_sensitive?: boolean;
+  is_adult?: boolean;
   can_view_sensitive?: boolean;
   isFollowedAuthor?: boolean;
   isCloseFriendAuthor?: boolean;
@@ -69,6 +70,7 @@ export default function PostCard({
   const [canViewSensitive, setCanViewSensitive] = useState(Boolean(post.can_view_sensitive));
   const mediaUrl = normalizeMediaUrl(post.mediaUrl || null);
   const hasSensitiveImage = Boolean(post.is_sensitive && mediaUrl && !isVideoUrl(mediaUrl));
+  const requiresAgeVerification = Boolean(hasSensitiveImage && post.is_adult);
   const [showSensitive, setShowSensitive] = useState(!hasSensitiveImage);
   const shouldBlurSensitiveImage = hasSensitiveImage && !showSensitive;
   const [linkPreview, setLinkPreview] = useState<LinkPreview | null>(null);
@@ -325,7 +327,7 @@ export default function PostCard({
                 <p className="mt-2 text-sm opacity-90">
                   El autor del post marcó esta imagen para indicar que puede mostrar contenido delicado.
                 </p>
-                {canViewSensitive ? (
+                {!requiresAgeVerification || canViewSensitive ? (
                   <div className="mt-3 flex justify-center">
                     <button
                       type="button"
@@ -337,7 +339,7 @@ export default function PostCard({
                   </div>
                 ) : (
                   <div className="mt-3 space-y-2">
-                    <p className="text-xs font-semibold text-amber-300">Debes verificar tu edad para revelar la imagen.</p>
+                    <p className="text-xs font-semibold text-amber-300">Este contenido está marcado como +18. Debes verificar tu edad para revelarlo.</p>
                     <Link
                       href="/u/me/edit#age-verification"
                       className="inline-flex rounded-full border border-amber-300/60 bg-black/60 px-3 py-1 text-xs font-semibold text-amber-200 transition hover:bg-black/80"
