@@ -17,9 +17,15 @@ type Channel = {
   allowedRoleIds: number[];
   listeners: VoiceListener[];
 };
+
 type CommunityRole = {
   id: number;
   name: string;
+};
+
+const buttonTone = {
+  idle: "border-white/10 bg-white/5 text-white/80 hover:bg-white/10",
+  active: "border-emerald-400/50 bg-emerald-500/15 text-emerald-100",
 };
 
 export default function CommunityChannelsHub({
@@ -38,7 +44,9 @@ export default function CommunityChannelsHub({
   const [roles, setRoles] = useState<CommunityRole[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeMedia, setActiveMedia] = useState<"audio" | "camera" | "screen" | null>(null);
+  const [micEnabled, setMicEnabled] = useState(false);
+  const [cameraEnabled, setCameraEnabled] = useState(false);
+  const [screenEnabled, setScreenEnabled] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editingChannelId, setEditingChannelId] = useState<number | null>(null);
@@ -47,6 +55,15 @@ export default function CommunityChannelsHub({
   const [micStream, setMicStream] = useState<MediaStream | null>(null);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
+
+  const clearAllMedia = useCallback(() => {
+    micStream?.getTracks().forEach((track) => track.stop());
+    cameraStream?.getTracks().forEach((track) => track.stop());
+    screenStream?.getTracks().forEach((track) => track.stop());
+    setMicEnabled(false);
+    setCameraEnabled(false);
+    setScreenEnabled(false);
+  }, [cameraStream, micStream, screenStream]);
 
   const refreshChannels = useCallback(async () => {
     if (!canInteract) return;
@@ -60,14 +77,11 @@ export default function CommunityChannelsHub({
     setRoles(Array.isArray(payload?.roles) ? payload.roles : []);
     if (joinedVoiceId && !nextChannels.some((channel) => channel.id === joinedVoiceId)) {
       setJoinedVoiceId(null);
+      clearAllMedia();
     }
-  }, [canInteract, communityId, joinedVoiceId]);
+  }, [canInteract, clearAllMedia, communityId, joinedVoiceId]);
 
-  useEffect(() => () => {
-    micStream?.getTracks().forEach((track) => track.stop());
-    cameraStream?.getTracks().forEach((track) => track.stop());
-    screenStream?.getTracks().forEach((track) => track.stop());
-  }, [cameraStream, micStream, screenStream]);
+  useEffect(() => () => clearAllMedia(), [clearAllMedia]);
 
   useEffect(() => {
     let mounted = true;
@@ -177,10 +191,7 @@ export default function CommunityChannelsHub({
       setJoinedVoiceId((prev) => {
         const leaving = prev === channelId;
         if (leaving) {
-          micStream?.getTracks().forEach((track) => track.stop());
-          cameraStream?.getTracks().forEach((track) => track.stop());
-          screenStream?.getTracks().forEach((track) => track.stop());
-          setActiveMedia(null);
+          clearAllMedia();
         }
         return leaving ? null : channelId;
       });
@@ -201,55 +212,102 @@ export default function CommunityChannelsHub({
     setter(source.includes(roleId) ? source.filter((id) => id !== roleId) : [...source, roleId]);
   }
 
-  async function toggleMedia(mode: "audio" | "camera" | "screen") {
+  async function toggleMic() {
     if (!joinedVoiceId) return;
-    if (activeMedia === mode) {
-      if (mode === "audio") micStream?.getTracks().forEach((track) => track.stop());
-      if (mode === "camera") cameraStream?.getTracks().forEach((track) => track.stop());
-      if (mode === "screen") screenStream?.getTracks().forEach((track) => track.stop());
-      setActiveMedia(null);
+    if (micEnabled) {
+      micStream?.getTracks().forEach((track) => track.stop());
+      setMicEnabled(false);
       setMediaError(null);
       return;
     }
-    setMediaError(null);
     try {
-      if (mode === "audio") {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-        micStream?.getTracks().forEach((track) => track.stop());
-        setMicStream(stream);
-      }
-      if (mode === "camera") {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-        cameraStream?.getTracks().forEach((track) => track.stop());
-        setCameraStream(stream);
-      }
-      if (mode === "screen") {
-        const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-        screenStream?.getTracks().forEach((track) => track.stop());
-        setScreenStream(stream);
-      }
-      setActiveMedia(mode);
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      micStream?.getTracks().forEach((track) => track.stop());
+      setMicStream(stream);
+      setMicEnabled(true);
+      setMediaError(null);
+    } catch {
+      setMediaError("No se pudo activar el micrófono/cámara/pantalla. Revisa permisos del navegador.");
+    }
+  }
+
+  async function toggleCamera() {
+    if (!joinedVoiceId) return;
+    if (cameraEnabled) {
+      cameraStream?.getTracks().forEach((track) => track.stop());
+      setCameraEnabled(false);
+      setMediaError(null);
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: true });
+      cameraStream?.getTracks().forEach((track) => track.stop());
+      setCameraStream(stream);
+      setCameraEnabled(true);
+      setMediaError(null);
+    } catch {
+      setMediaError("No se pudo activar el micrófono/cámara/pantalla. Revisa permisos del navegador.");
+    }
+  }
+
+  async function toggleScreen() {
+    if (!joinedVoiceId) return;
+    if (screenEnabled) {
+      screenStream?.getTracks().forEach((track) => track.stop());
+      setScreenEnabled(false);
+      setMediaError(null);
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+      screenStream?.getTracks().forEach((track) => track.stop());
+      setScreenStream(stream);
+      setScreenEnabled(true);
+      setMediaError(null);
     } catch {
       setMediaError("No se pudo activar el micrófono/cámara/pantalla. Revisa permisos del navegador.");
     }
   }
 
   return (
-    <section className="rounded-2xl border border-border bg-surface p-5">
+    <section className="rounded-2xl border border-[#2b3150] bg-[#0b1020] p-5 text-[#e7ebff] shadow-[0_0_0_1px_rgba(255,255,255,0.02)]">
       <div className="mb-4">
-        <h2 className="text-lg font-semibold">Canales de voz</h2>
-        <p className="mt-1 text-xs text-foreground/70">Conexión en vivo para llamadas, cámara y pantalla compartida.</p>
+        <h2 className="text-xl font-semibold">Canales de voz</h2>
+        <p className="mt-1 text-sm text-[#b4bddf]">Conexión en vivo para llamadas, cámara y pantalla compartida.</p>
       </div>
 
-      <article className="rounded-2xl border border-border/80 bg-background/45 p-3">
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-foreground/70">Salas activas</p>
-        <div className="space-y-1.5">
+      {joinedVoiceId ? (
+        <article className="mb-3 rounded-xl border border-white/10 bg-[#2d3140] p-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xl font-semibold text-emerald-400">Voice Connected</p>
+              <p className="text-sm text-white/80">{joinedUsers[0]?.nickname || joinedUsers[0]?.username || "En llamada"} / {joinedChannel?.name}</p>
+            </div>
+            <p className="text-lg tracking-[0.2em] text-white/70">⎯⎯⎯</p>
+          </div>
+          <div className="mt-3 grid grid-cols-4 gap-2">
+            <button type="button" onClick={() => void toggleMic()} className={`rounded-lg border px-3 py-2 text-sm ${micEnabled ? buttonTone.active : buttonTone.idle}`}>🎙️</button>
+            <button type="button" onClick={() => void toggleScreen()} className={`rounded-lg border px-3 py-2 text-sm ${screenEnabled ? buttonTone.active : buttonTone.idle}`}>🖥️</button>
+            <button type="button" onClick={() => void toggleCamera()} className={`rounded-lg border px-3 py-2 text-sm ${cameraEnabled ? buttonTone.active : buttonTone.idle}`}>📹</button>
+            <button type="button" onClick={() => void toggleVoice(joinedVoiceId)} className="rounded-lg border border-rose-300/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200 hover:bg-rose-500/20">📞</button>
+          </div>
+        </article>
+      ) : null}
+
+      <article className="rounded-2xl border border-white/10 bg-[#0f162b] p-3">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#a9b2d3]">Salas activas</p>
+        <div className="space-y-2">
           {channels.map((channel) => {
             const active = joinedVoiceId === channel.id;
             return (
-              <div key={channel.id} className={`rounded-xl border px-3 py-2 text-sm ${active ? "border-emerald-300/50 bg-emerald-500/10" : "border-border/60 bg-background/60"}`}>
+              <div
+                key={channel.id}
+                className={`rounded-xl border px-3 py-2 text-sm transition ${
+                  active ? "border-emerald-300/50 bg-emerald-500/15" : "border-white/10 bg-[#171f35]"
+                }`}
+              >
                 <div className="flex items-center justify-between gap-2">
-                  <p>🔊 {channel.name}</p>
+                  <p className="font-medium">🔊 {channel.name}</p>
                   <button
                     type="button"
                     onClick={() => void toggleVoice(channel.id)}
@@ -259,12 +317,12 @@ export default function CommunityChannelsHub({
                     {active ? "Salir de sala" : "Unirme"}
                   </button>
                 </div>
-                <p className="mt-1 text-[11px] opacity-70">{channel.listeners.length} conectados</p>
+                <p className="mt-1 text-[11px] text-white/70">{channel.listeners.length} conectados</p>
                 {channel.allowedRoleIds.length > 0 ? <p className="text-[11px] text-amber-200/80">Sala restringida por roles</p> : null}
                 {canCreate ? (
                   <button
                     type="button"
-                    className="mt-2 rounded-full border border-border/70 px-2.5 py-0.5 text-[11px]"
+                    className="mt-2 rounded-full border border-white/20 px-2.5 py-0.5 text-[11px] text-white/80"
                     onClick={() => {
                       setIsEditing(true);
                       setEditingChannelId(channel.id);
@@ -278,25 +336,25 @@ export default function CommunityChannelsHub({
               </div>
             );
           })}
-          {channels.length === 0 && <p className="text-xs opacity-70">No hay salas creadas todavía.</p>}
+          {channels.length === 0 && <p className="text-xs text-white/70">No hay salas creadas todavía.</p>}
         </div>
         <div className="mt-2 flex gap-1.5">
           <input
             value={newVoiceChannel}
             onChange={(event) => setNewVoiceChannel(event.target.value)}
             placeholder={canCreate ? "nueva-sala" : "Solo admins/roles con permiso pueden crear"}
-            className="w-full rounded-lg border border-border bg-input px-2.5 py-1.5 text-xs"
+            className="w-full rounded-lg border border-white/10 bg-[#1b2238] px-2.5 py-1.5 text-xs"
             disabled={!canCreate || busy}
           />
-          <button onClick={() => void createVoiceChannel()} className="rounded-lg border border-border px-2.5 text-xs" disabled={!canCreate || busy}>+</button>
+          <button onClick={() => void createVoiceChannel()} className="rounded-lg border border-white/20 px-2.5 text-xs" disabled={!canCreate || busy}>+</button>
         </div>
         {canCreate && roles.length > 0 ? (
           <div className="mt-2 flex flex-wrap gap-1.5">
-            <span className="text-[11px] opacity-70">Acceso:</span>
+            <span className="text-[11px] text-white/70">Acceso:</span>
             <button
               type="button"
               onClick={() => setNewAllowedRoleIds([])}
-              className={`rounded-full border px-2 py-0.5 text-[11px] ${newAllowedRoleIds.length === 0 ? "border-emerald-300/60 text-emerald-200" : "border-border/70"}`}
+              className={`rounded-full border px-2 py-0.5 text-[11px] ${newAllowedRoleIds.length === 0 ? "border-emerald-300/60 text-emerald-200" : "border-white/20 text-white/80"}`}
             >
               Todos
             </button>
@@ -305,7 +363,7 @@ export default function CommunityChannelsHub({
                 key={role.id}
                 type="button"
                 onClick={() => toggleArrayRole(role.id, setNewAllowedRoleIds, newAllowedRoleIds)}
-                className={`rounded-full border px-2 py-0.5 text-[11px] ${newAllowedRoleIds.includes(role.id) ? "border-emerald-300/60 text-emerald-200" : "border-border/70"}`}
+                className={`rounded-full border px-2 py-0.5 text-[11px] ${newAllowedRoleIds.includes(role.id) ? "border-emerald-300/60 text-emerald-200" : "border-white/20 text-white/80"}`}
               >
                 {role.name}
               </button>
@@ -314,25 +372,14 @@ export default function CommunityChannelsHub({
         ) : null}
       </article>
 
-      {joinedVoiceId && (
-        <article className="mt-3 rounded-2xl border border-border/80 bg-background/40 p-3">
-          <p className="text-xs uppercase tracking-wide opacity-70">En tu sala</p>
-          <p className="mt-1 text-[11px] opacity-70">{joinedChannel?.name}</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <button type="button" onClick={() => void toggleMedia("audio")} className="rounded-full border border-border/70 px-3 py-1 text-xs">
-              {activeMedia === "audio" ? "Detener micro" : "Entrar llamada"}
-            </button>
-            <button type="button" onClick={() => void toggleMedia("camera")} className="rounded-full border border-border/70 px-3 py-1 text-xs">
-              {activeMedia === "camera" ? "Detener cámara" : "Compartir cámara"}
-            </button>
-            <button type="button" onClick={() => void toggleMedia("screen")} className="rounded-full border border-border/70 px-3 py-1 text-xs">
-              {activeMedia === "screen" ? "Detener pantalla" : "Compartir pantalla"}
-            </button>
-          </div>
+      {joinedVoiceId ? (
+        <article className="mt-3 rounded-2xl border border-white/10 bg-[#0f162b] p-3">
+          <p className="text-xs uppercase tracking-wide text-white/60">En tu sala</p>
+          <p className="mt-1 text-sm text-white/80">{joinedChannel?.name}</p>
           {mediaError ? <p className="mt-2 text-xs text-rose-300">{mediaError}</p> : null}
           <div className="mt-2 flex flex-wrap gap-2">
             {joinedUsers.map((user) => (
-              <div key={user.id} className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/70 px-2 py-1 text-xs">
+              <div key={user.id} className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#1b2238] px-2 py-1 text-xs">
                 {user.avatarUrl ? (
                   <Image src={user.avatarUrl} alt={user.nickname || user.username} width={20} height={20} className="size-5 rounded-full object-cover" unoptimized />
                 ) : (
@@ -345,7 +392,7 @@ export default function CommunityChannelsHub({
             ))}
           </div>
         </article>
-      )}
+      ) : null}
 
       {isEditing ? (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-4">
@@ -373,7 +420,7 @@ export default function CommunityChannelsHub({
         </div>
       ) : null}
 
-      {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
+      {error ? <p className="mt-2 text-xs text-red-400">{error}</p> : null}
     </section>
   );
 }
