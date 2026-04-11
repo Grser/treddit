@@ -140,3 +140,41 @@ export async function sendPasswordResetEmail(to: string, code: string) {
     throw error;
   }
 }
+
+
+export async function sendLoginTwoFactorEmail(to: string, code: string) {
+  const transporter = await getTransporter();
+  if (!transporter) {
+    console.info(
+      `Correo 2FA omitido. Código para ${to}: ${code} (esto solo se registra porque falta configuración SMTP).`,
+    );
+    return;
+  }
+
+  const appName = process.env.APP_NAME || "Treddit";
+  const from =
+    process.env.MAIL_FROM ||
+    process.env.SMTP_FROM ||
+    process.env.SMTP_USER ||
+    `no-reply@${(process.env.NEXT_PUBLIC_BASE_URL || "treddit.local").replace(/^https?:\/\//, "")}`;
+
+  const subject = `${appName} - Código de verificación en 2 pasos`;
+  const text = `Tu código de verificación para iniciar sesión es ${code}. Caduca en 10 minutos.`;
+  const html = `
+    <p>Hola,</p>
+    <p>Se intentó iniciar sesión en tu cuenta de <strong>${appName}</strong>.</p>
+    <p>Tu código de verificación en 2 pasos es:</p>
+    <p style="font-size: 24px; font-weight: bold; letter-spacing: 4px;">${code}</p>
+    <p>Este código caduca en 10 minutos. Si no fuiste tú, cambia tu contraseña.</p>
+  `;
+
+  try {
+    await transporter.sendMail({ to, from, subject, text, html });
+  } catch (error) {
+    if (isMissingShellError(error)) {
+      console.warn("No se pudo enviar el correo de 2FA porque /bin/sh no existe en este entorno.");
+      return;
+    }
+    throw error;
+  }
+}

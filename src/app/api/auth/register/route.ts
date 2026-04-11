@@ -6,12 +6,16 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { hash } from "bcryptjs";
 import { isStrongPassword, PASSWORD_POLICY_MESSAGE } from "@/lib/passwordPolicy";
+import { verifyCaptchaToken } from "@/lib/captcha";
+import { ensureUserTwoFactorSettings } from "@/lib/two-factor";
 
 type RegisterRequestBody = {
   username?: unknown;
   nickname?: unknown;
   email?: unknown;
   password?: unknown;
+  captchaToken?: unknown;
+  captchaAnswer?: unknown;
 };
 
 export async function POST(req: Request) {
@@ -26,9 +30,15 @@ export async function POST(req: Request) {
       : "";
   const password =
     typeof rawBody?.password === "string" ? rawBody.password.trim() : "";
+  const captchaToken = typeof rawBody?.captchaToken === "string" ? rawBody.captchaToken : "";
+  const captchaAnswer = typeof rawBody?.captchaAnswer === "string" ? rawBody.captchaAnswer : "";
 
-  if (!username || !nickname || !email || !password) {
+  if (!username || !nickname || !email || !password || !captchaToken || !captchaAnswer) {
     return NextResponse.json({ error: "Faltan campos" }, { status: 400 });
+  }
+
+  if (!verifyCaptchaToken(captchaToken, captchaAnswer)) {
+    return NextResponse.json({ error: "Captcha inválido o vencido" }, { status: 400 });
   }
 
   if (!isStrongPassword(password)) {
@@ -48,6 +58,8 @@ export async function POST(req: Request) {
     "INSERT INTO Users (username, nickname, email, password, created_at, visible) VALUES (?, ?, ?, ?, NOW(), 1)",
     [username, nickname, email, passwordHash]
   );
+
+  await ensureUserTwoFactorSettings(Number(result.insertId));
 
   return NextResponse.json({ ok: true, id: Number(result.insertId) });
 }

@@ -6,10 +6,20 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { compare } from "bcryptjs";
 import { signSession } from "@/lib/auth";
+import { verifyCaptchaToken } from "@/lib/captcha";
+import {
+  generateTwoFactorCode,
+  invalidateTwoFactorCodes,
+  isTwoFactorEnabled,
+  storeTwoFactorCode,
+} from "@/lib/two-factor";
+import { sendLoginTwoFactorEmail } from "@/lib/mail";
 
 type LoginRequestBody = {
   email?: unknown;
   password?: unknown;
+  captchaToken?: unknown;
+  captchaAnswer?: unknown;
 };
 
 type LoginUserRow = RowDataPacket & {
@@ -22,6 +32,13 @@ type LoginUserRow = RowDataPacket & {
   is_verified: number;
 };
 
+function maskEmail(email: string) {
+  const [local, domain] = email.split("@");
+  if (!local || !domain) return email;
+  const visibleLocal = local.length <= 2 ? `${local[0] ?? ""}*` : `${local.slice(0, 2)}***`;
+  return `${visibleLocal}@${domain}`;
+}
+
 export async function POST(req: Request) {
   const rawBody = (await req.json().catch(() => null)) as LoginRequestBody | null;
   const email =
@@ -30,7 +47,16 @@ export async function POST(req: Request) {
       : "";
   const password =
     typeof rawBody?.password === "string" ? rawBody.password.trim() : "";
-  if (!email || !password) return NextResponse.json({ error: "Faltan campos" }, { status: 400 });
+  const captchaToken = typeof rawBody?.captchaToken === "string" ? rawBody.captchaToken : "";
+  const captchaAnswer = typeof rawBody?.captchaAnswer === "string" ? rawBody.captchaAnswer : "";
+
+  if (!email || !password || !captchaToken || !captchaAnswer) {
+    return NextResponse.json({ error: "Faltan campos" }, { status: 400 });
+  }
+
+  if (!verifyCaptchaToken(captchaToken, captchaAnswer)) {
+    return NextResponse.json({ error: "Captcha inválido o vencido" }, { status: 400 });
+  }
 
   const [rows] = await db.execute<LoginUserRow[]>(
     "SELECT id, username, email, avatar_url, password, is_admin, is_verified FROM Users WHERE email=? AND visible=1",
@@ -41,6 +67,21 @@ export async function POST(req: Request) {
 
   const ok = await compare(password, user.password);
   if (!ok) return NextResponse.json({ error: "Credenciales inválidas" }, { status: 401 });
+
+  const twoFactorEnabled = await isTwoFactorEnabled(user.id);
+  if (twoFactorEnabled) {
+    const code = generateTwoFactorCode();
+    await invalidateTwoFactorCodes(user.id);
+    await storeTwoFactorCode(user.id, code);
+    await sendLoginTwoFactorEmail(user.email, code);
+    return NextResponse.json({
+      ok: true,
+      requiresTwoFactor: true,
+      email,
+      emailHint: maskEmail(user.email),
+      message: "Enviamos un código de verificación a tu correo.",
+    });
+  }
 
   const token = signSession({
     id: user.id,
