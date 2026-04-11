@@ -1,8 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { isStrongPassword, PASSWORD_POLICY_MESSAGE } from "@/lib/passwordPolicy";
+
+type CaptchaResponse = {
+  question: string;
+  token: string;
+};
 
 export default function RegisterPage() {
   const r = useRouter();
@@ -11,8 +16,23 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [captchaQuestion, setCaptchaQuestion] = useState("");
+  const [captchaToken, setCaptchaToken] = useState("");
+  const [captchaAnswer, setCaptchaAnswer] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  async function loadCaptcha() {
+    const res = await fetch("/api/auth/captcha", { cache: "no-store" });
+    const data = (await res.json()) as CaptchaResponse;
+    setCaptchaQuestion(data.question);
+    setCaptchaToken(data.token);
+    setCaptchaAnswer("");
+  }
+
+  useEffect(() => {
+    void loadCaptcha();
+  }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -26,7 +46,7 @@ export default function RegisterPage() {
     const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, nickname, email, password }),
+      body: JSON.stringify({ username, nickname, email, password, captchaToken, captchaAnswer }),
     });
     setLoading(false);
     if (res.ok) {
@@ -35,6 +55,7 @@ export default function RegisterPage() {
     } else {
       const j = await res.json().catch(() => ({}));
       setError(j?.error || "Error al registrar");
+      await loadCaptcha();
     }
   }
 
@@ -90,7 +111,27 @@ export default function RegisterPage() {
           </label>
           <p className="text-xs opacity-70">Mínimo 8 caracteres con mayúscula, minúscula, número y símbolo.</p>
 
-        {error && <p className="text-sm text-red-400">{error}</p>}
+          <label className="block">
+            <span className="text-sm">Captcha ({captchaQuestion || "cargando..."})</span>
+            <div className="mt-1 flex gap-2">
+              <input
+                type="text"
+                required
+                value={captchaAnswer}
+                onChange={e => setCaptchaAnswer(e.target.value)}
+                className="flex-1 h-10 px-3 rounded-md bg-input outline-none ring-1 ring-border focus:ring-2"
+              />
+              <button
+                type="button"
+                onClick={() => void loadCaptcha()}
+                className="h-10 px-3 rounded-md border border-border text-sm"
+              >
+                Cambiar
+              </button>
+            </div>
+          </label>
+
+          {error && <p className="text-sm text-red-400">{error}</p>}
 
           <button
             type="submit"
@@ -115,4 +156,3 @@ export default function RegisterPage() {
     </div>
   );
 }
-
