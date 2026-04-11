@@ -9,10 +9,16 @@ export const COMMUNITY_ICON_OPTIONS = [
 
 export type CommunityIconKey = (typeof COMMUNITY_ICON_OPTIONS)[number]["key"];
 
-const COMMUNITY_ICON_MAP = new Map(COMMUNITY_ICON_OPTIONS.map((entry) => [entry.key, entry]));
+const COMMUNITY_ICON_MAP = new Map<CommunityIconKey, (typeof COMMUNITY_ICON_OPTIONS)[number]>(
+  COMMUNITY_ICON_OPTIONS.map((entry) => [entry.key, entry]),
+);
+
+function isCommunityIconKey(iconKey: string): iconKey is CommunityIconKey {
+  return COMMUNITY_ICON_MAP.has(iconKey as CommunityIconKey);
+}
 
 export function getCommunityIconMeta(iconKey: string | null | undefined) {
-  if (!iconKey) return null;
+  if (!iconKey || !isCommunityIconKey(iconKey)) return null;
   return COMMUNITY_ICON_MAP.get(iconKey) ?? null;
 }
 
