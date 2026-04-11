@@ -25,6 +25,8 @@ type Community = {
   slug: string;
   name: string;
   description: string | null;
+  iconUrl: string | null;
+  bannerUrl: string | null;
   created_at: string;
   members: number;
   isMember: boolean;
@@ -58,6 +60,8 @@ type CommunityRow = RowDataPacket & {
   slug: string;
   name: string;
   description: string | null;
+  icon_url?: string | null;
+  banner_url?: string | null;
   created_at: Date | string;
   visible: number;
   is_verified?: number;
@@ -121,49 +125,78 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
   const isCommunityManager = Boolean(community.myRole) && community.myRole !== "member";
   const canEditCommunity = Boolean(me?.is_admin || community.accessControl?.canEditCommunity || isCommunityManager);
   const canWriteInChat = Boolean(me?.is_admin || (community.accessControl?.canChat && !community.accessControl?.isMuted));
+  const initials = community.name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((chunk) => chunk[0]?.toUpperCase() || "")
+    .join("");
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
       <Navbar />
-      <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-8">
-        <header className="overflow-hidden rounded-3xl border border-border bg-surface shadow-sm">
-          <div className="bg-gradient-to-r from-brand/20 via-sky-500/10 to-violet-500/15 px-6 py-7">
-            <p className="text-xs uppercase tracking-[0.15em] text-foreground/60">Comunidad</p>
-            <div className="mt-2 flex flex-wrap items-center gap-3">
-              <h1 className="text-3xl font-semibold tracking-tight">{community.name}</h1>
-              {community.isVerified && (
-                <span className="rounded-full border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-200">
-                  ✓ Comunidad verificada
-                </span>
-              )}
+      <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-3 py-5 sm:px-4 sm:py-8">
+        <header className="overflow-hidden rounded-[1.75rem] border border-border/70 bg-surface/70 shadow-xl shadow-black/10">
+          <div
+            className="relative min-h-[12rem] overflow-hidden sm:min-h-[16rem] lg:min-h-[18rem]"
+            style={community.bannerUrl ? { backgroundImage: `url(${community.bannerUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
+          >
+            <div className={`absolute inset-0 ${community.bannerUrl ? "bg-gradient-to-t from-black/75 via-black/35 to-black/20" : "bg-gradient-to-br from-brand/35 via-fuchsia-500/25 to-cyan-500/20"}`} />
+            <div className="relative flex h-full items-end px-4 pb-4 pt-8 sm:px-6 sm:pb-6 lg:px-8">
+              <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div className="flex items-end gap-3 sm:gap-4">
+                  <div
+                    className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-3xl border-2 border-white/70 bg-background/40 text-2xl font-bold text-white shadow-lg backdrop-blur sm:size-24"
+                    style={community.iconUrl ? { backgroundImage: `url(${community.iconUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
+                  >
+                    {!community.iconUrl && initials}
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.17em] text-white/70">Comunidad</p>
+                    <h1 className="mt-1 text-2xl font-semibold tracking-tight text-white sm:text-3xl lg:text-4xl">{community.name}</h1>
+                    <p className="mt-1 text-sm text-white/75">c/{community.slug}</p>
+                  </div>
+                </div>
+                {community.isVerified && (
+                  <span className="inline-flex w-fit items-center rounded-full border border-emerald-300/50 bg-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-100 backdrop-blur">
+                    ✓ Comunidad verificada
+                  </span>
+                )}
+              </div>
             </div>
-            <p className="mt-1 text-sm text-foreground/70">treddit.clawn.cat/c/{community.slug}</p>
           </div>
 
-          <div className="flex flex-col gap-4 p-6 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <div className="flex flex-wrap items-center gap-3 text-sm text-foreground/80">
-                <span className="rounded-full border border-border bg-muted/40 px-3 py-1">
+          <div className="grid gap-4 p-4 sm:p-6 xl:grid-cols-[minmax(0,1fr)_auto]">
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <span className="rounded-2xl border border-border/70 bg-background/70 px-3 py-2 text-xs text-foreground/75 sm:text-sm">
+                  <span className="mb-0.5 block text-[11px] uppercase tracking-wide text-foreground/55">Miembros</span>
                   {community.members.toLocaleString()} miembros
                 </span>
-                <span className="rounded-full border border-border bg-muted/40 px-3 py-1">
+                <span className="rounded-2xl border border-border/70 bg-background/70 px-3 py-2 text-xs text-foreground/75 sm:text-sm">
+                  <span className="mb-0.5 block text-[11px] uppercase tracking-wide text-foreground/55">Creación</span>
                   Creada el {new Date(community.created_at).toLocaleDateString()}
                 </span>
-                <span className={`rounded-full border px-3 py-1 ${community.visible ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" : "border-amber-500/30 bg-amber-500/10 text-amber-200"}`}>
+                <span className={`rounded-2xl border px-3 py-2 text-xs sm:text-sm ${community.visible ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" : "border-amber-500/30 bg-amber-500/10 text-amber-200"}`}>
+                  <span className="mb-0.5 block text-[11px] uppercase tracking-wide text-current/80">Visibilidad</span>
                   {community.visible ? "Pública" : "Privada"}
                 </span>
                 {community.myRole && (
-                  <span className="rounded-full border border-brand/30 bg-brand/10 px-3 py-1 text-brand">
+                  <span className="rounded-2xl border border-brand/30 bg-brand/10 px-3 py-2 text-xs text-brand sm:text-sm">
+                    <span className="mb-0.5 block text-[11px] uppercase tracking-wide text-brand/80">Tu rol</span>
                     {formatRole(community.myRole) || community.myRole}
                   </span>
                 )}
               </div>
               {community.description && (
-                <p className="mt-4 max-w-3xl whitespace-pre-wrap text-sm text-foreground/80">{community.description}</p>
+                <p className="max-w-4xl whitespace-pre-wrap rounded-2xl border border-border/70 bg-background/50 px-4 py-3 text-sm text-foreground/80">
+                  {community.description}
+                </p>
               )}
             </div>
+
             {isAuthorized ? (
-              <div className="grid gap-2 sm:grid-cols-2 lg:min-w-[20rem]">
+              <div className="grid gap-2 sm:grid-cols-2 xl:min-w-[22rem]">
                 <JoinCommunityButton
                   communityId={community.id}
                   initiallyMember={community.isMember}
@@ -199,23 +232,25 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
             Esta comunidad está actualmente oculta. Solo sus miembros pueden acceder a su contenido.
           </section>
         ) : (
-          <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
-            <div className="space-y-4 rounded-3xl border border-border bg-surface/40 p-3 sm:p-4">
-              <div className="rounded-2xl border border-border/70 bg-background/60 px-4 py-3">
-                <h2 className="text-base font-semibold">Publicaciones recientes</h2>
-                <p className="text-xs opacity-70">Novedades de la comunidad en tiempo real.</p>
-              </div>
-              {initialPosts.length > 0 ? (
-                <Feed
-                  canInteract={canInteract}
-                  communityId={community.id}
-                  initialItems={initialPosts}
-                />
-              ) : (
-                <div className="rounded-2xl border border-border bg-surface p-6 text-sm text-foreground/70">
-                  Aún no hay publicaciones en esta comunidad.
+          <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_23rem]">
+            <div className="space-y-4">
+              <div className="rounded-3xl border border-border/70 bg-surface/60 p-3 sm:p-4">
+                <div className="rounded-2xl border border-border/70 bg-background/60 px-4 py-3">
+                  <h2 className="text-base font-semibold">Publicaciones recientes</h2>
+                  <p className="text-xs opacity-70">Novedades de la comunidad en tiempo real.</p>
                 </div>
-              )}
+                {initialPosts.length > 0 ? (
+                  <Feed
+                    canInteract={canInteract}
+                    communityId={community.id}
+                    initialItems={initialPosts}
+                  />
+                ) : (
+                  <div className="mt-3 rounded-2xl border border-border bg-surface p-6 text-sm text-foreground/70">
+                    Aún no hay publicaciones en esta comunidad.
+                  </div>
+                )}
+              </div>
             </div>
 
             <aside className="space-y-4 xl:sticky xl:top-24 xl:self-start">
@@ -259,7 +294,11 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
 async function loadCommunity(slug: string, viewerId: number | null, baseUrl: string): Promise<CommunityViewModel | null> {
   const normalized = slug.toLowerCase();
   const [verifiedColumnRows] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM Communities LIKE 'is_verified'");
+  const [iconColumnRows] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM Communities LIKE 'icon_url'");
+  const [bannerColumnRows] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM Communities LIKE 'banner_url'");
   const hasVerifiedColumn = verifiedColumnRows.length > 0;
+  const hasIconColumn = iconColumnRows.length > 0;
+  const hasBannerColumn = bannerColumnRows.length > 0;
   const [rows] = await db.query<CommunityRow[]>(
     `
     SELECT
@@ -267,6 +306,8 @@ async function loadCommunity(slug: string, viewerId: number | null, baseUrl: str
       c.slug,
       c.name,
       c.description,
+      ${hasIconColumn ? "c.icon_url" : "NULL AS icon_url"},
+      ${hasBannerColumn ? "c.banner_url" : "NULL AS banner_url"},
       c.created_at,
       c.visible,
       ${hasVerifiedColumn ? "c.is_verified" : "0 AS is_verified"},
@@ -294,6 +335,8 @@ async function loadCommunity(slug: string, viewerId: number | null, baseUrl: str
     slug: String(row.slug),
     name: String(row.name),
     description: row.description ? String(row.description) : null,
+    iconUrl: row.icon_url ? String(row.icon_url) : null,
+    bannerUrl: row.banner_url ? String(row.banner_url) : null,
     created_at: new Date(row.created_at).toISOString(),
     members: Number(row.members) || 0,
     visible: Boolean(row.visible),
