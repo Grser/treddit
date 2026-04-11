@@ -26,6 +26,7 @@ export default function Composer({ enabled }: { enabled: boolean }) {
   const [text, setText] = useState("");
   const [mediaUrl, setMediaUrl] = useState("");
   const [isSensitive, setIsSensitive] = useState(false);
+  const [sensitivityLevel, setSensitivityLevel] = useState<"sensitive" | "adult">("sensitive");
   const [sensitiveSuggested, setSensitiveSuggested] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -223,6 +224,7 @@ export default function Composer({ enabled }: { enabled: boolean }) {
     poll: PollPayload;
     communityId: number | null;
     isSensitive: boolean;
+    sensitivityLevel: "sensitive" | "adult" | null;
   };
 
   async function submit() {
@@ -234,6 +236,7 @@ export default function Composer({ enabled }: { enabled: boolean }) {
       poll: null,
       communityId: communityId > 0 ? communityId : null,
       isSensitive: Boolean(mediaUrl && isImageMediaUrl(mediaUrl) && isSensitive),
+      sensitivityLevel: mediaUrl && isImageMediaUrl(mediaUrl) && isSensitive ? sensitivityLevel : null,
     };
 
     if (tab === "media") {
@@ -279,6 +282,7 @@ export default function Composer({ enabled }: { enabled: boolean }) {
         setDays(1);
         setTab("post");
         setIsSensitive(false);
+        setSensitivityLevel("sensitive");
         setSensitiveSuggested(false);
         clearError();
         router.refresh();
@@ -468,10 +472,36 @@ export default function Composer({ enabled }: { enabled: boolean }) {
             type="checkbox"
             checked={isSensitive}
             disabled={!canMarkSensitive}
-            onChange={(e) => setIsSensitive(e.target.checked)}
+            onChange={(e) => {
+              setIsSensitive(e.target.checked);
+              if (!e.target.checked) setSensitivityLevel("sensitive");
+            }}
           />
           Marcar imagen como sensible
         </label>
+        {canMarkSensitive && isSensitive && (
+          <div className="mt-2 space-y-1 rounded-lg border border-border bg-input/50 p-2 text-xs">
+            <p className="font-medium">Tipo de advertencia</p>
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="sensitivity-level"
+                checked={sensitivityLevel === "sensitive"}
+                onChange={() => setSensitivityLevel("sensitive")}
+              />
+              Solo contenido sensible
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="sensitivity-level"
+                checked={sensitivityLevel === "adult"}
+                onChange={() => setSensitivityLevel("adult")}
+              />
+              +18 (requiere verificación de edad)
+            </label>
+          </div>
+        )}
         {!canMarkSensitive && <p className="mt-1 text-xs opacity-60">Disponible solo cuando adjuntas una imagen.</p>}
         {sensitiveSuggested && canMarkSensitive && (
           <p className="mt-1 text-xs text-amber-400">Detección automática: se sugirió marcar esta imagen como sensible.</p>
