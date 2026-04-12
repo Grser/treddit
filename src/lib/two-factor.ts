@@ -5,12 +5,26 @@ import { db } from "@/lib/db";
 
 let ensured = false;
 
+type UserIdColumnRow = RowDataPacket & {
+  column_type: string;
+};
+
 export async function ensureTwoFactorTables() {
   if (ensured) return;
 
+  const [userIdRows] = await db.query<UserIdColumnRow[]>(
+    `SELECT COLUMN_TYPE AS column_type
+     FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Users' AND COLUMN_NAME = 'id'
+     LIMIT 1`,
+  );
+  if (!userIdRows.length) return;
+
+  const userIdColumnType = userIdRows[0].column_type.toUpperCase();
+
   await db.execute(`
     CREATE TABLE IF NOT EXISTS UserAuthSettings (
-      user_id INT PRIMARY KEY,
+      user_id ${userIdColumnType} NOT NULL PRIMARY KEY,
       two_factor_enabled TINYINT(1) NOT NULL DEFAULT 1,
       updated_at DATETIME NOT NULL,
       CONSTRAINT fk_user_auth_settings_user FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
@@ -20,7 +34,7 @@ export async function ensureTwoFactorTables() {
   await db.execute(`
     CREATE TABLE IF NOT EXISTS LoginTwoFactorCodes (
       id INT AUTO_INCREMENT PRIMARY KEY,
-      user_id INT NOT NULL,
+      user_id ${userIdColumnType} NOT NULL,
       code_hash VARCHAR(128) NOT NULL,
       created_at DATETIME NOT NULL,
       expires_at DATETIME NOT NULL,
