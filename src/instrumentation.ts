@@ -70,6 +70,10 @@ function isIgnoredEnvironmentError(error: unknown): boolean {
   return isMissingShellError(error) || isWindowsPathPermissionError(error) || isWindowsTempPathNotFoundError(error);
 }
 
+function isUnauthorizedResponse(error: unknown): boolean {
+  return error instanceof Response && error.status === 401;
+}
+
 const globalForShellGuard = globalThis as typeof globalThis & {
   __tredditShellErrorGuardsRegistered?: boolean;
 };
@@ -105,6 +109,9 @@ export async function register() {
   process.on("unhandledRejection", (reason) => {
     if (isIgnoredEnvironmentError(reason)) {
       console.warn("Se ignoró una promesa rechazada por un error de entorno no crítico.", reason);
+      return;
+    }
+    if (isUnauthorizedResponse(reason)) {
       return;
     }
 
