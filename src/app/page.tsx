@@ -172,10 +172,10 @@ export default async function Page() {
   return (
     <div className="min-h-dvh">
       <Navbar session={session} />
-      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-4 px-3 py-4 sm:px-4 lg:grid-cols-[14rem_1fr] xl:grid-cols-[14rem_1fr_20rem]">
+      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-4 px-3 py-4 sm:px-4 lg:grid-cols-[13.5rem_minmax(0,1fr)] xl:grid-cols-[13.5rem_minmax(0,1fr)_19rem]">
         <SidebarLeft communities={communities.items} popularCommunities={popularCommunities.items} />
 
-        <main className="space-y-4">
+        <main className="min-w-0 space-y-4">
           {!canInteract && <AuthBanner />}
           <StoriesNotesBar
             canInteract={canInteract}
