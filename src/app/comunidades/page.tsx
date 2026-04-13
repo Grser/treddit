@@ -53,10 +53,10 @@ export default async function CommunitiesPage() {
   return (
     <div className="min-h-dvh bg-background text-foreground">
       <Navbar session={session} />
-      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-4 px-3 py-4 sm:px-4 lg:grid-cols-[14rem_1fr] xl:grid-cols-[14rem_1fr_20rem]">
+      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-4 px-3 py-4 sm:px-4 lg:grid-cols-[13.5rem_minmax(0,1fr)] xl:grid-cols-[13.5rem_minmax(0,1fr)_19rem]">
         <SidebarLeft communities={sidebarCommunities} popularCommunities={popularCommunities.items} />
 
-        <main className="space-y-6">
+        <main className="min-w-0 space-y-6">
           <section className="rounded-3xl border border-border bg-surface p-5 sm:p-6">
             <h1 className="text-3xl font-semibold tracking-tight">Comunidades</h1>
             <p className="mt-2 text-sm opacity-75">

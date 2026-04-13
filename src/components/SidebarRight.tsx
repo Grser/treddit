@@ -51,7 +51,7 @@ export default function SidebarRight({
   }
 
   return (
-    <aside className="w-80 hidden lg:flex flex-col gap-4 p-4 border-l border-border">
+    <aside className="sticky top-[4.25rem] hidden max-h-[calc(100dvh-4.75rem)] w-80 flex-col gap-4 overflow-y-auto border-l border-border p-4 lg:flex">
       <div className="bg-surface rounded-lg p-4 border border-border">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold">{t.happening}</h2>

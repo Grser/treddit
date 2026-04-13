@@ -22,7 +22,7 @@ export default function SidebarLeft({
   const t = strings.sidebarLeft;
 
   return (
-    <aside className="hidden w-56 flex-col gap-2 border-r border-border p-4 lg:flex">
+    <aside className="sticky top-[4.25rem] hidden max-h-[calc(100dvh-4.75rem)] w-56 flex-col gap-2 overflow-y-auto border-r border-border p-4 lg:flex">
       <nav className="flex flex-col gap-2">
         <Link href="/" className="hover:bg-muted/60 rounded-lg px-3 py-2">
           {t.home}

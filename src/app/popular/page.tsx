@@ -37,10 +37,10 @@ export default async function PopularPage() {
   return (
     <div className="min-h-dvh bg-background text-foreground">
       <Navbar session={me} />
-      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-4 px-3 py-4 sm:px-4 lg:grid-cols-[14rem_1fr] xl:grid-cols-[14rem_1fr_20rem]">
+      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-4 px-3 py-4 sm:px-4 lg:grid-cols-[13.5rem_minmax(0,1fr)] xl:grid-cols-[13.5rem_minmax(0,1fr)_19rem]">
         <SidebarLeft communities={popularCommunities.items} popularCommunities={popularCommunities.items} />
 
-        <main className="space-y-4">
+        <main className="min-w-0 space-y-4">
           <section className="rounded-2xl border border-border bg-surface p-5">
             <h1 className="text-3xl font-semibold tracking-tight">Popular</h1>
             <p className="mt-2 text-sm opacity-75">Se muestran los posts con más likes. El ranking considera hasta 1000 publicaciones.</p>

@@ -346,7 +346,7 @@ export default function NavbarClient({ session }: { session?: SessionUser | null
     <>
       <header className="sticky top-0 z-50 bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80 border-b border-border">
         <div className="mx-auto max-w-7xl px-3 sm:px-4">
-        <div className="flex items-center gap-3 h-14">
+        <div className="flex h-14 items-center gap-2 sm:gap-3">
           <Link href="/" className="flex items-center gap-2 shrink-0">
             <Image
               src="/icon.svg"
@@ -435,7 +435,7 @@ export default function NavbarClient({ session }: { session?: SessionUser | null
                     void markNotificationsAsRead();
                   }
                 }}
-                className="relative inline-grid place-items-center size-9 rounded-full hover:bg-muted/60 ring-1 ring-transparent hover:ring-border transition"
+                className="relative inline-grid size-9 place-items-center rounded-full ring-1 ring-transparent transition hover:bg-muted/60 hover:ring-border"
               >
                 {notificationUnreadCount > 0 && (
                   <span className="absolute -top-1 -right-1 inline-flex min-h-[1.25rem] min-w-[1.25rem] items-center justify-center rounded-full bg-brand px-1 text-xs font-semibold text-white">
@@ -445,7 +445,7 @@ export default function NavbarClient({ session }: { session?: SessionUser | null
                 <BellIcon />
               </button>
               {notificationsOpen && (
-                <div className="absolute right-0 z-[70] mt-2 w-[22rem] max-w-[calc(100vw-1rem)] rounded-2xl border border-border bg-surface p-3 shadow-xl max-sm:fixed max-sm:left-2 max-sm:right-2 max-sm:top-14 max-sm:mt-0 max-sm:w-auto">
+                <div className="absolute right-0 z-[70] mt-2 w-[22rem] max-w-[calc(100vw-1rem)] rounded-2xl border border-border bg-surface p-3 shadow-xl max-sm:fixed max-sm:inset-x-2 max-sm:top-14 max-sm:mt-0 max-sm:w-auto">
                   <div className="mb-2 flex items-center justify-between">
                     <p className="text-sm font-semibold">Notificaciones</p>
                     <Link href="/notificaciones" className="text-xs text-blue-400 hover:underline">Ver todo</Link>
@@ -542,6 +542,27 @@ export default function NavbarClient({ session }: { session?: SessionUser | null
             )}
           </nav>
         </div>
+        <form action="/buscar" className="pb-2 md:hidden">
+          <label className="relative block w-full">
+            <svg
+              aria-hidden
+              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 opacity-60"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <circle cx="11" cy="11" r="7" />
+              <path d="m21 21-4.3-4.3" />
+            </svg>
+            <input
+              name="q"
+              type="search"
+              placeholder={strings.navbar.searchPlaceholder}
+              className="h-10 w-full rounded-full border border-border bg-input pl-10 pr-4 text-sm placeholder:text-foreground/60 outline-none ring-1 ring-transparent transition focus:border-brand/50 focus:ring-brand/40"
+            />
+          </label>
+        </form>
         </div>
       </header>
       <MobileBottomNav pathname={pathname} />
