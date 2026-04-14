@@ -302,16 +302,16 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
   }
 
   return (
-    <section className="rounded-2xl border border-border bg-surface p-3 sm:p-4">
-      <div className="flex gap-3 overflow-x-auto pb-1">
+    <section className="rounded-3xl border border-border/80 bg-surface/90 p-2.5 shadow-sm sm:p-3">
+      <div className="flex gap-3 overflow-x-auto px-1 pb-1 pt-0.5">
         {canInteract && myStoriesCount > 0 && (
           <button
             type="button"
             onClick={openPublishModal}
-            className="group min-w-16 max-w-16 shrink-0 text-center"
+            className="group min-w-[78px] max-w-[84px] shrink-0 text-center"
             title="Subir más historias"
           >
-            <div className="mx-auto mb-1.5 grid size-[64px] place-items-center rounded-full border border-dashed border-border bg-input text-2xl text-foreground transition group-hover:scale-[1.03]">
+            <div className="mx-auto mb-1.5 grid size-[68px] place-items-center rounded-full border border-dashed border-border bg-input text-2xl text-foreground transition group-hover:scale-[1.03]">
               +
             </div>
             <p className="truncate text-[11px] text-foreground/90">Agregar</p>
@@ -333,11 +333,11 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
             }
             openPublishModal();
           }}
-          className="group min-w-18 max-w-20 shrink-0 text-center"
+          className="group min-w-[78px] max-w-[84px] shrink-0 text-center"
           title={canInteract ? (myStoriesCount > 0 ? "Ver tu historia" : "Publicar historia") : "Inicia sesión para publicar historias"}
         >
           <div
-            className="relative mx-auto mb-1.5 grid size-[64px] place-items-center rounded-full p-[2px] transition group-hover:scale-[1.03]"
+            className="relative mx-auto mb-1.5 grid size-[68px] place-items-center rounded-full p-[2px] transition group-hover:scale-[1.03]"
             style={myStoriesCount > 0 ? buildStoryRing(myStoriesCount, myStoriesCount) : undefined}
           >
             <div className="relative grid size-full place-items-center overflow-hidden rounded-full bg-surface ring-[3px] ring-border">
@@ -345,7 +345,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
                 src={me?.avatar_url || "/demo-reddit.png"}
                 alt={me?.username || "Tu historia"}
                 fill
-                sizes="64px"
+                sizes="68px"
                 className="rounded-full object-cover"
               />
             </div>
@@ -361,11 +361,11 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
               key={user.id}
               type="button"
               onClick={() => openStoryViewerForUser(user.id)}
-              className="group min-w-18 max-w-20 shrink-0 text-center"
+              className="group min-w-[78px] max-w-[84px] shrink-0 text-center"
               title={`Ver historia de ${user.username}`}
             >
               <div
-                className="relative mx-auto mb-1.5 size-[64px] rounded-full p-[2px] transition group-hover:scale-[1.03]"
+                className="relative mx-auto mb-1.5 size-[68px] rounded-full p-[2px] transition group-hover:scale-[1.03]"
                 style={hasStory ? buildStoryRing(user.storyCount, user.seenCount) : undefined}
               >
                 <div className="relative size-full overflow-hidden rounded-full bg-surface ring-[3px] ring-border">
@@ -373,7 +373,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
                     src={user.avatar_url || "/demo-reddit.png"}
                     alt={user.nickname || user.username}
                     fill
-                    sizes="64px"
+                    sizes="68px"
                     className="object-cover"
                   />
                 </div>
@@ -467,8 +467,8 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
       )}
 
       {activeStory && (
-        <div className="fixed inset-0 z-[80] bg-black/95 px-3 py-4 sm:p-6">
-          <div className="mx-auto flex h-full max-w-5xl items-center justify-center gap-3">
+        <div className="fixed inset-0 z-[80] bg-black px-0 py-0 sm:bg-black/95 sm:px-3 sm:py-4 sm:p-6">
+          <div className="mx-auto flex h-full max-w-5xl items-center justify-center gap-0 sm:gap-3">
             <button
               type="button"
               onClick={() => {
@@ -481,7 +481,7 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
               ‹
             </button>
 
-            <article className="relative w-full max-w-sm overflow-hidden rounded-2xl border border-white/20 bg-zinc-900">
+            <article className="relative h-full w-full max-w-sm overflow-hidden border border-white/10 bg-zinc-900 sm:h-auto sm:rounded-2xl sm:border-white/20">
               <div className="absolute inset-x-0 top-0 z-20 flex gap-1 px-3 pt-2">
                 {activeUserStories.map((story, index) => {
                   const isPast = index < viewerIndex;
@@ -556,7 +556,25 @@ export default function StoriesNotesBar({ canInteract, users, me }: Props) {
                 </button>
               </div>
 
-              <div className="relative h-[70vh] min-h-[360px] w-full bg-black sm:min-h-[420px]">
+              <div className="relative h-full min-h-[460px] w-full bg-black sm:h-[70vh] sm:min-h-[420px]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsStoryMenuOpen(false);
+                    setViewerIndex((prev) => Math.max(0, prev - 1));
+                  }}
+                  className="absolute inset-y-0 left-0 z-10 w-1/3"
+                  aria-label="Historia anterior"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsStoryMenuOpen(false);
+                    moveToNextStoryOrUser(viewerIndex);
+                  }}
+                  className="absolute inset-y-0 right-0 z-10 w-1/3"
+                  aria-label="Siguiente historia"
+                />
                 {isVideoUrl(activeStory.media_url) ? (
                   <video
                     src={activeStory.media_url || ""}

@@ -93,7 +93,7 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
     () => sortedNotes
       .filter((entry) => entry.userId !== me?.id)
       .filter((entry, index, arr) => arr.findIndex((item) => item.userId === entry.userId) === index)
-      .slice(0, 12),
+      .slice(0, 14),
     [me?.id, sortedNotes],
   );
   const selectedNoteYoutubeUrl = getYoutubeEmbedUrl(selectedNote?.song_url);
@@ -155,8 +155,8 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
   }
 
   return (
-    <section className={`rounded-2xl border border-border bg-surface p-3 sm:p-4 ${className ?? ""}`.trim()}>
-      <div className="flex items-start gap-3 overflow-x-auto pb-1">
+    <section className={`rounded-3xl border border-border/80 bg-surface/90 p-2.5 shadow-sm sm:p-3 ${className ?? ""}`.trim()}>
+      <div className="flex items-start gap-3 overflow-x-auto px-1 pb-1 pt-0.5">
         <button
           type="button"
           onClick={() => {
@@ -174,18 +174,18 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
             setPublishError(null);
             setIsPublishing(true);
           }}
-          className="group min-w-20 max-w-24 shrink-0 text-center"
+          className="group min-w-[78px] max-w-[86px] shrink-0"
           title={canInteract ? (myNote ? "Ver tu nota" : "Publicar nota") : "Inicia sesión para publicar notas"}
         >
-          <p className="mx-auto mb-2 inline-flex h-10 w-full items-center justify-center overflow-hidden rounded-2xl bg-white/14 px-2 py-2 text-center text-[10px] leading-tight text-white/90 line-clamp-2">
-            {myNote?.content || "Publica una nota rápida"}
-          </p>
-          <div className="relative mx-auto mb-1 size-[58px] rounded-full bg-gradient-to-tr from-amber-400 via-fuchsia-500 to-violet-500 p-[2px] transition group-hover:scale-[1.03]">
-            <div className="relative size-full overflow-hidden rounded-full bg-surface ring-[3px] ring-[var(--color-surface)]">
-              <Image src={myNote?.avatar_url || me?.avatar_url || "/demo-reddit.png"} alt={me?.username || "Tu nota"} fill sizes="56px" className="object-cover" />
+          <div className="relative mx-auto flex h-[68px] w-[68px] items-center justify-center rounded-full bg-gradient-to-tr from-yellow-400 via-fuchsia-500 to-violet-600 p-[2px] transition group-hover:scale-[1.03]">
+            <div className="relative size-full overflow-hidden rounded-full bg-surface ring-[2.5px] ring-[var(--color-surface)]">
+              <Image src={myNote?.avatar_url || me?.avatar_url || "/demo-reddit.png"} alt={me?.username || "Tu nota"} fill sizes="64px" className="object-cover" />
+            </div>
+            <div className="absolute -top-4 left-1/2 w-[92px] -translate-x-1/2 rounded-2xl bg-[#101828] px-2 py-1 text-center text-[10px] font-medium leading-tight text-white shadow-lg line-clamp-2">
+              {myNote?.content || "Comparte una nota"}
             </div>
           </div>
-          <p className="truncate text-[12px] font-medium text-white">Tu nota</p>
+          <p className="mt-2 truncate text-center text-[12px] font-medium text-foreground">Tu nota</p>
         </button>
 
         {uniqueEntries.map((entry) => {
@@ -198,51 +198,45 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
                 setSelectedNote(entry);
                 setIsActionsOpen(false);
               }}
-              className="group min-w-20 max-w-24 shrink-0 text-center"
+              className="group min-w-[78px] max-w-[86px] shrink-0"
               title={isSelf ? "Ver tu nota" : `Ver nota de ${entry.username}`}
             >
-              <p className="mx-auto mb-2 inline-flex h-10 w-full items-center justify-center overflow-hidden rounded-2xl bg-white/14 px-2 py-2 text-center text-[10px] leading-tight text-white/90 line-clamp-2">
-                {entry.content}
-              </p>
-              {(entry.song_title || entry.song_artist) && (
-                <p className="mx-auto mb-1.5 line-clamp-1 min-h-5 rounded-xl bg-[#1b1233] px-2 py-1 text-[9px] leading-tight text-fuchsia-200">
-                  ♪ {entry.song_title || "Canción"}{entry.song_artist ? ` · ${entry.song_artist}` : ""}
-                </p>
-              )}
-              <div className="relative mx-auto mb-1 size-[58px] rounded-full bg-gradient-to-tr from-amber-400 via-fuchsia-500 to-violet-500 p-[2px] transition group-hover:scale-[1.03]">
-                <div className="relative size-full overflow-hidden rounded-full bg-surface ring-[3px] ring-[var(--color-surface)]">
-                  <Image src={entry.avatar_url || "/demo-reddit.png"} alt={entry.nickname || entry.username} fill sizes="56px" className="object-cover" />
+              <div className="relative mx-auto flex h-[68px] w-[68px] items-center justify-center rounded-full bg-gradient-to-tr from-yellow-400 via-fuchsia-500 to-violet-600 p-[2px] transition group-hover:scale-[1.03]">
+                <div className="relative size-full overflow-hidden rounded-full bg-surface ring-[2.5px] ring-[var(--color-surface)]">
+                  <Image src={entry.avatar_url || "/demo-reddit.png"} alt={entry.nickname || entry.username} fill sizes="64px" className="object-cover" />
+                </div>
+                <div className="absolute -top-4 left-1/2 w-[92px] -translate-x-1/2 rounded-2xl bg-[#101828] px-2 py-1 text-center text-[10px] font-medium leading-tight text-white shadow-lg line-clamp-2">
+                  {entry.content}
                 </div>
               </div>
-              <p className="truncate text-[12px] font-medium text-white">{isSelf ? "Tú" : entry.nickname || entry.username}</p>
+              <p className="mt-2 truncate text-center text-[12px] font-medium text-foreground">{isSelf ? "Tú" : entry.nickname || entry.username}</p>
             </button>
           );
         })}
 
-        {sortedNotes.length === 0 && <p className="px-2 py-5 text-sm text-white/70">Aún no tienes notas porque no hay chats activos.</p>}
+        {sortedNotes.length === 0 && <p className="px-2 py-6 text-sm text-foreground/70">Aún no tienes notas porque no hay chats activos.</p>}
       </div>
 
       {!canInteract && <p className="mt-2 text-xs text-brand">Inicia sesión para publicar notas.</p>}
 
       {isPublishing && (
-        <div className="fixed inset-0 z-[70] grid place-items-center bg-black/60 px-4">
-          <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-4 sm:p-5">
+        <div className="fixed inset-0 z-[70] grid place-items-end bg-black/70 p-0 sm:place-items-center sm:p-4">
+          <div className="w-full rounded-t-3xl border border-border bg-surface p-4 pb-6 sm:max-w-md sm:rounded-3xl sm:p-5">
             <h3 className="text-base font-semibold">Publicar nota</h3>
-            <p className="mt-1 text-xs opacity-70">Tu nota aparecerá aquí durante 24 horas.</p>
-            <textarea value={noteText} onChange={(event) => setNoteText(event.target.value)} maxLength={180} rows={3} className="mt-3 w-full rounded-xl border border-border bg-input p-3 text-sm outline-none ring-1 ring-transparent focus:border-brand/50 focus:ring-brand/40" placeholder="Escribe tu nota..." />
+            <p className="mt-1 text-xs opacity-70">Tu nota aparecerá durante 24 horas.</p>
+            <textarea value={noteText} onChange={(event) => setNoteText(event.target.value)} maxLength={180} rows={3} className="mt-3 w-full rounded-xl border border-border bg-input p-3 text-sm outline-none ring-1 ring-transparent focus:border-brand/50 focus:ring-brand/40" placeholder="Comparte algo breve..." />
             <div className="mt-1 text-right text-[11px] opacity-70">{noteText.length}/180</div>
 
             <div className="mt-3 grid gap-2">
-              <input type="url" value={songUrl} onChange={(event) => setSongUrl(event.target.value)} maxLength={500} className="h-10 w-full rounded-xl border border-border bg-input px-3 text-sm outline-none ring-1 ring-transparent focus:border-brand/50 focus:ring-brand/40" placeholder="Enlace de la canción (Spotify, YouTube, etc.)" />
-              <p className="text-[11px] text-white/70">Al publicar, detectamos automáticamente artista/título y letra cuando está disponible.</p>
+              <input type="url" value={songUrl} onChange={(event) => setSongUrl(event.target.value)} maxLength={500} className="h-10 w-full rounded-xl border border-border bg-input px-3 text-sm outline-none ring-1 ring-transparent focus:border-brand/50 focus:ring-brand/40" placeholder="Enlace de canción (opcional)" />
             </div>
 
             {publishError && <p className="mt-2 text-xs text-red-400">{publishError}</p>}
             <div className="mt-4 flex justify-between gap-2">
-              <button type="button" onClick={deleteNote} disabled={isSaving || !myNote} className="inline-flex h-9 items-center justify-center rounded-full border border-red-400/70 px-4 text-sm text-red-300 disabled:cursor-not-allowed disabled:opacity-50">Borrar nota</button>
+              <button type="button" onClick={deleteNote} disabled={isSaving || !myNote} className="inline-flex h-10 items-center justify-center rounded-full border border-red-400/70 px-4 text-sm text-red-300 disabled:cursor-not-allowed disabled:opacity-50">Borrar nota</button>
               <div className="flex justify-end gap-2">
-                <button type="button" onClick={() => { setIsPublishing(false); setPublishError(null); }} className="inline-flex h-9 items-center justify-center rounded-full border border-border px-4 text-sm">Cancelar</button>
-                <button type="button" onClick={publishNote} disabled={isSaving} className="inline-flex h-9 items-center justify-center rounded-full bg-brand px-4 text-sm text-white disabled:cursor-not-allowed disabled:opacity-60">{isSaving ? "Publicando..." : "Publicar"}</button>
+                <button type="button" onClick={() => { setIsPublishing(false); setPublishError(null); }} className="inline-flex h-10 items-center justify-center rounded-full border border-border px-4 text-sm">Cancelar</button>
+                <button type="button" onClick={publishNote} disabled={isSaving} className="inline-flex h-10 items-center justify-center rounded-full bg-brand px-4 text-sm text-white disabled:cursor-not-allowed disabled:opacity-60">{isSaving ? "Publicando..." : "Publicar"}</button>
               </div>
             </div>
           </div>
@@ -250,25 +244,25 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
       )}
 
       {selectedNote && (
-        <div className="fixed inset-0 z-[80] grid place-items-center bg-black/65 px-4">
-          <div className="w-full max-w-2xl rounded-3xl border border-fuchsia-400/20 bg-gradient-to-br from-[#0f172b] via-[#12142f] to-[#1a1040] p-5 text-white shadow-2xl">
+        <div className="fixed inset-0 z-[80] grid place-items-end bg-black/70 p-0 sm:place-items-center sm:p-4">
+          <div className="h-[88vh] w-full overflow-y-auto rounded-t-3xl border border-white/10 bg-[#0f1117] p-5 text-white sm:h-auto sm:max-h-[90vh] sm:max-w-2xl sm:rounded-3xl">
             <div className="flex items-start gap-2">
-              <div>
-                <p className="text-[30px] font-semibold leading-none">{selectedNote.content}</p>
+              <div className="max-w-[85%]">
+                <p className="text-[32px] font-semibold leading-none">{selectedNote.content}</p>
                 {(selectedNote.song_title || selectedNote.song_artist) && (
-                  <p className="mt-1 text-lg font-medium text-fuchsia-200">♪ {selectedNote.song_title || "Canción"}{selectedNote.song_artist ? ` · ${selectedNote.song_artist}` : ""}</p>
+                  <p className="mt-1 text-base font-medium text-fuchsia-200">♪ {selectedNote.song_title || "Canción"}{selectedNote.song_artist ? ` · ${selectedNote.song_artist}` : ""}</p>
                 )}
               </div>
               <button type="button" onClick={() => setIsActionsOpen(true)} className="ml-auto rounded-full px-2 py-1 text-2xl leading-none text-white/90 hover:bg-white/10" aria-label="Opciones de la nota">⋯</button>
             </div>
 
             <div className="mt-4 flex items-center gap-3">
-              <div className="relative size-20 overflow-hidden rounded-full border border-white/20">
-                <Image src={selectedNote.avatar_url || "/demo-reddit.png"} alt={selectedNote.nickname || selectedNote.username} fill sizes="80px" className="object-cover" />
+              <div className="relative size-16 overflow-hidden rounded-full border border-white/20">
+                <Image src={selectedNote.avatar_url || "/demo-reddit.png"} alt={selectedNote.nickname || selectedNote.username} fill sizes="64px" className="object-cover" />
               </div>
               <div>
                 <p className="text-base font-semibold">{selectedNote.nickname || selectedNote.username}</p>
-                <p className="text-sm text-white/65">Se ha compartido con seguidores a los que sigues</p>
+                <p className="text-xs text-white/65">Visible para seguidores en común.</p>
               </div>
             </div>
 
@@ -288,11 +282,6 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
                       allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
                       loading="lazy"
                     />
-                    <div className="mt-2 flex justify-end">
-                      <a href={selectedNote.song_url} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center justify-center rounded-lg bg-white/90 px-3 text-xs font-semibold text-black transition hover:bg-white">
-                        Escuchar en Spotify
-                      </a>
-                    </div>
                   </div>
                 ) : (
                   <audio key={`audio-${selectedNote.id}`} src={selectedNote.song_url} controls autoPlay className="mt-4 w-full" />
@@ -300,7 +289,7 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
               </div>
             )}
 
-            <div className="mt-4 space-y-2">
+            <div className="mt-5 space-y-2">
               {me?.id === selectedNote.userId && (
                 <button type="button" onClick={() => {
                   if (!canInteract) {
@@ -312,12 +301,12 @@ export default function NotesBar({ notes, canInteract = true, className, me = nu
                   setSongUrl(noteToEdit.song_url || "");
                   setSelectedNote(null);
                   setIsPublishing(true);
-                }} className="inline-flex h-10 w-full items-center justify-center rounded-xl bg-brand px-4 text-sm font-semibold text-white">Editar mi nota</button>
+                }} className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-brand px-4 text-sm font-semibold text-white">Editar mi nota</button>
               )}
               {me?.id === selectedNote.userId && (
-                <button type="button" onClick={async () => { await deleteNote(); setSelectedNote(null); }} className="inline-flex h-10 w-full items-center justify-center rounded-xl text-sm font-medium text-red-300">Eliminar nota</button>
+                <button type="button" onClick={async () => { await deleteNote(); setSelectedNote(null); }} className="inline-flex h-11 w-full items-center justify-center rounded-xl text-sm font-medium text-red-300">Eliminar nota</button>
               )}
-              <button type="button" onClick={() => setSelectedNote(null)} className="inline-flex h-10 w-full items-center justify-center rounded-xl text-sm font-medium text-white/80">Cancelar</button>
+              <button type="button" onClick={() => setSelectedNote(null)} className="inline-flex h-11 w-full items-center justify-center rounded-xl text-sm font-medium text-white/80">Cerrar</button>
             </div>
           </div>
 
