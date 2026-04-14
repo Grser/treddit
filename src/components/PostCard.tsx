@@ -49,6 +49,7 @@ export type Post = {
   is_sensitive?: boolean;
   is_adult?: boolean;
   can_view_sensitive?: boolean;
+  allow_media_download?: boolean;
   isFollowedAuthor?: boolean;
   isCloseFriendAuthor?: boolean;
 };
@@ -77,7 +78,9 @@ export default function PostCard({
   const hasSensitiveImage = Boolean(post.is_sensitive && mediaUrl && !isVideoUrl(mediaUrl));
   const requiresAgeVerification = Boolean(hasSensitiveImage && post.is_adult);
   const [showSensitive, setShowSensitive] = useState(!hasSensitiveImage);
+  const [zoomedMediaUrl, setZoomedMediaUrl] = useState<string | null>(null);
   const shouldBlurSensitiveImage = hasSensitiveImage && !showSensitive;
+  const allowMediaDownload = post.allow_media_download !== false;
   const [linkPreview, setLinkPreview] = useState<LinkPreview | null>(null);
   const [isLoadingLinkPreview, setIsLoadingLinkPreview] = useState(false);
   const previewUrl = post.description ? extractFirstUrl(post.description) : null;
@@ -298,15 +301,24 @@ export default function PostCard({
               <div key={url} className="overflow-hidden rounded-md bg-black/30">
                 {isVideoUrl(url) ? (
                   <div className="space-y-2 p-2">
-                    <video src={url} controls className="h-auto max-h-[70vh] w-full" preload="metadata" />
-                    <a
-                      href={url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-block text-xs text-sky-400 hover:underline"
-                    >
-                      Ver archivo original
-                    </a>
+                    <video
+                      src={url}
+                      controls
+                      controlsList={allowMediaDownload ? undefined : "nodownload"}
+                      className="h-auto max-h-[70vh] w-full"
+                      preload="metadata"
+                      onContextMenu={allowMediaDownload ? undefined : preventNativeDownload}
+                    />
+                    {allowMediaDownload && (
+                      <a
+                        href={url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-block text-xs text-sky-400 hover:underline"
+                      >
+                        Ver archivo original
+                      </a>
+                    )}
                   </div>
                 ) : isAnimatedImage(url) || isLocalUploadedMedia(url) ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -315,6 +327,9 @@ export default function PostCard({
                     alt=""
                     className={`mx-auto block max-h-[70vh] h-auto w-full object-cover ${shouldBlurSensitiveImage ? "blur-2xl" : ""}`}
                     loading="lazy"
+                    onClick={() => setZoomedMediaUrl(url)}
+                    onContextMenu={allowMediaDownload ? undefined : preventNativeDownload}
+                    draggable={allowMediaDownload}
                   />
                 ) : (
                   <Image
@@ -323,7 +338,10 @@ export default function PostCard({
                     width={1200}
                     height={675}
                     sizes="(min-width: 768px) 600px, 100vw"
-                    className={`mx-auto block max-h-[70vh] h-auto w-full object-cover ${shouldBlurSensitiveImage ? "blur-2xl" : ""}`}
+                    className={`mx-auto block max-h-[70vh] h-auto w-full cursor-zoom-in object-cover ${shouldBlurSensitiveImage ? "blur-2xl" : ""}`}
+                    onClick={() => setZoomedMediaUrl(url)}
+                    onContextMenu={allowMediaDownload ? undefined : preventNativeDownload}
+                    draggable={allowMediaDownload}
                   />
                 )}
               </div>
@@ -394,6 +412,23 @@ export default function PostCard({
       <div id={`comments-${post.id}`} className="mt-2">
         <CommentsThread postId={post.id} canInteract={canInteract} canReply={canReplyToPost} />
       </div>
+
+      {zoomedMediaUrl && (
+        <button
+          type="button"
+          className="fixed inset-0 z-50 flex cursor-zoom-out items-center justify-center bg-black/85 p-3"
+          onClick={() => setZoomedMediaUrl(null)}
+          onContextMenu={allowMediaDownload ? undefined : preventNativeDownload}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={zoomedMediaUrl}
+            alt="Vista ampliada"
+            className="max-h-[92vh] max-w-[96vw] rounded-lg object-contain"
+            draggable={allowMediaDownload}
+          />
+        </button>
+      )}
     </article>
   );
 }
@@ -425,6 +460,10 @@ function isVideoUrl(url: string) {
 
 function isLocalUploadedMedia(url: string) {
   return url.startsWith("/uploads/") || url.startsWith("/api/upload/");
+}
+
+function preventNativeDownload(event: React.MouseEvent<HTMLElement>) {
+  event.preventDefault();
 }
 
 function extractFirstUrl(text: string) {

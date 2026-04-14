@@ -231,6 +231,7 @@ export function createDemoPost(user: SessionUser, payload: {
   communityId: number | null;
   isSensitive?: boolean;
   isAdult?: boolean;
+  allowMediaDownload?: boolean;
 }): { id: number } {
   const store = ensureStore();
   const author = normalizeSessionUser(user);
@@ -259,6 +260,7 @@ export function createDemoPost(user: SessionUser, payload: {
     community: null,
     is_sensitive: Boolean(payload.isSensitive),
     is_adult: Boolean(payload.isAdult),
+    allow_media_download: payload.allowMediaDownload !== false,
   };
 
   if (tags.length) {

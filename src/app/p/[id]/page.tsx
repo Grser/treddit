@@ -9,6 +9,7 @@ import { db, isDatabaseConfigured } from "@/lib/db";
 import { getDemoFeed } from "@/lib/demoStore";
 import { getPostsAdultColumn } from "@/lib/postAdultContent";
 import { estimatePostViews } from "@/lib/postStats";
+import { getPostsMediaDownloadColumn } from "@/lib/postMediaDownload";
 import { getPostsSensitiveColumn } from "@/lib/postSensitivity";
 import { ensureProfilePrivacySchema } from "@/lib/profilePrivacy";
 
@@ -31,6 +32,7 @@ type PostDetailsRow = RowDataPacket & {
   repostedByMe: number;
   is_sensitive: number | boolean | null;
   is_adult: number | boolean | null;
+  allow_media_download: number | boolean | null;
   reply_scope: number | null;
   isFollowedAuthor: number;
   isCloseFriendAuthor: number;
@@ -54,9 +56,14 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
     post = items.find((item) => Number(item.id) === postId) ?? null;
   } else {
     await ensureProfilePrivacySchema();
-    const [sensitiveColumn, adultColumn] = await Promise.all([getPostsSensitiveColumn(), getPostsAdultColumn()]);
+    const [sensitiveColumn, adultColumn, mediaDownloadColumn] = await Promise.all([
+      getPostsSensitiveColumn(),
+      getPostsAdultColumn(),
+      getPostsMediaDownloadColumn(),
+    ]);
     const sensitiveSelect = sensitiveColumn ? `p.${sensitiveColumn}` : "0";
     const adultSelect = adultColumn ? `p.${adultColumn}` : "0";
+    const mediaDownloadSelect = mediaDownloadColumn ? `p.${mediaDownloadColumn}` : "1";
     const [rows] = await db.query<PostDetailsRow[]>(
       `
       SELECT
@@ -79,6 +86,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
         (SELECT COUNT(*) FROM Reposts rp2 WHERE rp2.post_id = p.id AND rp2.user_id = ?) AS repostedByMe,
         ${sensitiveSelect} AS is_sensitive,
         ${adultSelect} AS is_adult,
+        ${mediaDownloadSelect} AS allow_media_download,
         COALESCE(u.is_private, 0) AS is_private,
         CASE WHEN ? IS NULL THEN 0 ELSE EXISTS(SELECT 1 FROM Follows f WHERE f.follower = ? AND f.followed = p.user) END AS isFollowedAuthor,
         CASE WHEN ? IS NULL THEN 0 ELSE EXISTS(SELECT 1 FROM CloseFriends cf WHERE cf.user_id = p.user AND cf.friend_user_id = ?) END AS isCloseFriendAuthor
@@ -121,6 +129,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
         reply_scope: ([0, 1, 2].includes(Number(row.reply_scope ?? 0)) ? Number(row.reply_scope ?? 0) : 0) as 0 | 1 | 2,
         is_sensitive: isSensitive,
         is_adult: isAdult,
+        allow_media_download: row.allow_media_download === null ? true : Boolean(row.allow_media_download),
         can_view_sensitive: canViewSensitive,
         isFollowedAuthor: Boolean(row.isFollowedAuthor),
         isCloseFriendAuthor: Boolean(row.isCloseFriendAuthor),

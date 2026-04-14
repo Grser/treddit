@@ -30,6 +30,7 @@ export default function Composer({ enabled }: { enabled: boolean }) {
   const [sensitiveSuggested, setSensitiveSuggested] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [allowMediaDownload, setAllowMediaDownload] = useState(true);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [errorKey, setErrorKey] = useState<ComposerErrorKey>(null);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -238,6 +239,7 @@ export default function Composer({ enabled }: { enabled: boolean }) {
     communityId: number | null;
     isSensitive: boolean;
     sensitivityLevel: "sensitive" | "adult" | null;
+    allowMediaDownload: boolean;
   };
 
   async function submit() {
@@ -251,6 +253,7 @@ export default function Composer({ enabled }: { enabled: boolean }) {
       communityId: communityId > 0 ? communityId : null,
       isSensitive: Boolean(mediaUrls.length > 0 && mediaUrls.every((url) => isImageMediaUrl(url)) && isSensitive),
       sensitivityLevel: mediaUrls.length > 0 && mediaUrls.every((url) => isImageMediaUrl(url)) && isSensitive ? sensitivityLevel : null,
+      allowMediaDownload: allowMediaDownload || mediaUrls.length === 0,
     };
 
     if (tab === "media") {
@@ -299,6 +302,7 @@ export default function Composer({ enabled }: { enabled: boolean }) {
         setIsSensitive(false);
         setSensitivityLevel("sensitive");
         setSensitiveSuggested(false);
+        setAllowMediaDownload(true);
         clearError();
         router.refresh();
       } else {
@@ -401,7 +405,7 @@ export default function Composer({ enabled }: { enabled: boolean }) {
                 <p className="text-sm font-semibold">Subir fotos o videos</p>
                 <p className="text-xs opacity-70">Puedes seleccionar hasta 4 archivos a la vez.</p>
               </div>
-              <span className="rounded-full bg-brand px-3 py-1 text-xs font-semibold text-white">Elegir archivos</span>
+              <span className="rounded-full border border-brand/50 bg-brand/15 px-3 py-1 text-xs font-semibold text-brand">Elegir archivos</span>
             </div>
             <input
               ref={fileRef}
@@ -442,6 +446,23 @@ export default function Composer({ enabled }: { enabled: boolean }) {
                   </button>
                 </div>
               ))}
+            </div>
+          )}
+          {mediaUrls.length > 0 && (
+            <div className="rounded-lg border border-border bg-input/40 p-3">
+              <p className="text-xs font-semibold">Permisos de descarga</p>
+              <label className="mt-2 inline-flex items-center gap-2 text-xs opacity-85">
+                <input
+                  type="checkbox"
+                  checked={allowMediaDownload}
+                  onChange={(event) => setAllowMediaDownload(event.target.checked)}
+                  disabled={!enabled || uploading}
+                />
+                Permitir descargar archivo original
+              </label>
+              <p className="mt-1 text-xs opacity-65">
+                Si lo desactivas, ocultamos enlaces de descarga y aplicamos protección básica de visualización.
+              </p>
             </div>
           )}
         </div>
