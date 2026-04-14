@@ -28,6 +28,7 @@ export type Post = {
   avatar_url?: string | null;
   description?: string | null;
   mediaUrl?: string | null;
+  mediaUrls?: string[];
   created_at: string;
   likes: number;
   comments: number;
@@ -68,7 +69,11 @@ export default function PostCard({
   const pinnedLabel = strings.profilePage?.pinnedBadge || strings.postCard.pinned;
   const community = post.community;
   const [canViewSensitive, setCanViewSensitive] = useState(Boolean(post.can_view_sensitive));
-  const mediaUrl = normalizeMediaUrl(post.mediaUrl || null);
+  const normalizedMediaUrls = (post.mediaUrls?.length ? post.mediaUrls : post.mediaUrl ? [post.mediaUrl] : [])
+    .map((url) => normalizeMediaUrl(url || null))
+    .filter((url): url is string => Boolean(url))
+    .slice(0, 4);
+  const mediaUrl = normalizedMediaUrls[0] || null;
   const hasSensitiveImage = Boolean(post.is_sensitive && mediaUrl && !isVideoUrl(mediaUrl));
   const requiresAgeVerification = Boolean(hasSensitiveImage && post.is_adult);
   const [showSensitive, setShowSensitive] = useState(!hasSensitiveImage);
@@ -286,39 +291,44 @@ export default function PostCard({
         </SafeExternalLink>
       )}
 
-      {mediaUrl && (
-
+      {normalizedMediaUrls.length > 0 && (
         <div className="relative mb-2 overflow-hidden rounded-lg bg-black/20 ring-1 ring-border">
-          {isVideoUrl(mediaUrl) ? (
-            <div className="space-y-2 bg-black/30 p-2">
-              <video src={mediaUrl} controls className="h-auto max-h-[70vh] w-full" preload="metadata" />
-              <a
-                href={mediaUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-block text-xs text-sky-400 hover:underline"
-              >
-                Ver archivo original
-              </a>
-            </div>
-          ) : isAnimatedImage(mediaUrl) || isLocalUploadedMedia(mediaUrl) ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={mediaUrl}
-              alt=""
-              className={`mx-auto block max-h-[70vh] h-auto w-auto max-w-full object-contain ${shouldBlurSensitiveImage ? "blur-2xl" : ""}`}
-              loading="lazy"
-            />
-          ) : (
-            <Image
-              src={mediaUrl}
-              alt=""
-              width={1200}
-              height={675}
-              sizes="(min-width: 768px) 600px, 100vw"
-              className={`mx-auto block max-h-[70vh] h-auto w-auto max-w-full object-contain ${shouldBlurSensitiveImage ? "blur-2xl" : ""}`}
-            />
-          )}
+          <div className={normalizedMediaUrls.length > 1 ? "grid grid-cols-2 gap-1 bg-black/30 p-1" : "space-y-2 bg-black/30 p-2"}>
+            {normalizedMediaUrls.map((url) => (
+              <div key={url} className="overflow-hidden rounded-md bg-black/30">
+                {isVideoUrl(url) ? (
+                  <div className="space-y-2 p-2">
+                    <video src={url} controls className="h-auto max-h-[70vh] w-full" preload="metadata" />
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-block text-xs text-sky-400 hover:underline"
+                    >
+                      Ver archivo original
+                    </a>
+                  </div>
+                ) : isAnimatedImage(url) || isLocalUploadedMedia(url) ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={url}
+                    alt=""
+                    className={`mx-auto block max-h-[70vh] h-auto w-full object-cover ${shouldBlurSensitiveImage ? "blur-2xl" : ""}`}
+                    loading="lazy"
+                  />
+                ) : (
+                  <Image
+                    src={url}
+                    alt=""
+                    width={1200}
+                    height={675}
+                    sizes="(min-width: 768px) 600px, 100vw"
+                    className={`mx-auto block max-h-[70vh] h-auto w-full object-cover ${shouldBlurSensitiveImage ? "blur-2xl" : ""}`}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
 
           {hasSensitiveImage && !showSensitive && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/45 p-4 text-center text-white">

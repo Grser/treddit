@@ -31,6 +31,7 @@ type PostRow = {
   created_at: string | Date;
   reply_scope: number | null;
   mediaUrl: string | null;
+  mediaUrlsCsv: string | null;
   likes: number;
   comments: number;
   reposts: number;
@@ -408,6 +409,7 @@ export async function GET(req: Request) {
         p.created_at,
         p.reply_scope,
         firstFile.route AS mediaUrl,
+        allFiles.media_urls AS mediaUrlsCsv,
         COALESCE(likeCount.likes, 0) AS likes,
         COALESCE(commentCount.comments, 0) AS comments,
         COALESCE(repostCount.reposts, 0) AS reposts,
@@ -452,6 +454,12 @@ export async function GET(req: Request) {
       ) fileRef ON fileRef.postid = p.id
       LEFT JOIN Files firstFile ON firstFile.id = fileRef.first_file_id
       LEFT JOIN (
+        SELECT f.postid, GROUP_CONCAT(f.route ORDER BY f.id ASC SEPARATOR '\n') AS media_urls
+        FROM Files f
+        WHERE f.postid IN (${placeholders})
+        GROUP BY f.postid
+      ) allFiles ON allFiles.postid = p.id
+      LEFT JOIN (
         SELECT lp.post, COUNT(*) AS likes
         FROM Like_Posts lp
         WHERE lp.post IN (${placeholders})
@@ -490,6 +498,7 @@ export async function GET(req: Request) {
         ...orderedIds,
         ...orderedIds,
         ...orderedIds,
+        ...orderedIds,
         meId,
         meId,
         ...orderedIds,
@@ -502,6 +511,15 @@ export async function GET(req: Request) {
     const viewerAgeVerified = meId && hasAdultItems ? await isUserAgeVerified(meId) : false;
     const items = list.slice(0, limit).map((row) => ({
       ...row,
+      mediaUrls: row.mediaUrlsCsv
+        ? String(row.mediaUrlsCsv)
+            .split("\n")
+            .map((item) => item.trim())
+            .filter(Boolean)
+            .slice(0, 4)
+        : row.mediaUrl
+          ? [String(row.mediaUrl)]
+          : [],
       likes: Number(row.likes) || 0,
       comments: Number(row.comments) || 0,
       reposts: Number(row.reposts) || 0,
@@ -641,6 +659,14 @@ export async function POST(req: Request) {
   let description = typeof descriptionValue === "string" ? descriptionValue.trim() : "";
   const mediaUrlValue = body["mediaUrl"];
   const mediaUrl = typeof mediaUrlValue === "string" ? mediaUrlValue.trim() : "";
+  const mediaUrlsValue = body["mediaUrls"];
+  const mediaUrls = Array.isArray(mediaUrlsValue)
+    ? mediaUrlsValue
+        .map((value) => (typeof value === "string" ? value.trim() : ""))
+        .filter(Boolean)
+        .slice(0, 4)
+    : [];
+  const normalizedMediaUrls = [...new Set(mediaUrls.length ? mediaUrls : mediaUrl ? [mediaUrl] : [])].slice(0, 4);
   const pollPayload = body["poll"];
   const communityValue = body["communityId"];
   const sensitiveValue = body["isSensitive"];
@@ -680,7 +706,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Encuesta inválida" }, { status: 400 });
   }
 
-  if (!description && !mediaUrl && !poll) {
+  if (!description && normalizedMediaUrls.length === 0 && !poll) {
     return NextResponse.json({ error: "Contenido vacío" }, { status: 400 });
   }
 
@@ -733,11 +759,11 @@ export async function POST(req: Request) {
   if (!databaseReady) {
     const { id } = createDemoPost(me, {
       description: description || null,
-      mediaUrl: mediaUrl || null,
+      mediaUrl: normalizedMediaUrls[0] || null,
       poll: null,
       communityId: normalizedCommunityId,
-      isSensitive: Boolean(mediaUrl && isImageMediaUrl(mediaUrl) && isSensitiveRequested),
-      isAdult: Boolean(mediaUrl && isImageMediaUrl(mediaUrl) && isAdultRequested),
+      isSensitive: Boolean(normalizedMediaUrls.length && normalizedMediaUrls.every((url) => isImageMediaUrl(url)) && isSensitiveRequested),
+      isAdult: Boolean(normalizedMediaUrls.length && normalizedMediaUrls.every((url) => isImageMediaUrl(url)) && isAdultRequested),
     });
     return NextResponse.json({ ok: true, id }, { status: 201 });
   }
@@ -759,7 +785,7 @@ export async function POST(req: Request) {
     if (sensitiveColumn) {
       columns.push(sensitiveColumn);
       placeholders.push("?");
-      params.push(mediaUrl && isImageMediaUrl(mediaUrl) && isSensitiveRequested ? 1 : 0);
+      params.push(normalizedMediaUrls.length && normalizedMediaUrls.every((url) => isImageMediaUrl(url)) && isSensitiveRequested ? 1 : 0);
     }
     if (!adultColumn) {
       adultColumn = await ensurePostsAdultColumn();
@@ -767,16 +793,18 @@ export async function POST(req: Request) {
     if (adultColumn) {
       columns.push(adultColumn);
       placeholders.push("?");
-      params.push(mediaUrl && isImageMediaUrl(mediaUrl) && isAdultRequested ? 1 : 0);
+      params.push(normalizedMediaUrls.length && normalizedMediaUrls.every((url) => isImageMediaUrl(url)) && isAdultRequested ? 1 : 0);
     }
 
     const insertSql = `INSERT INTO Posts (${columns.join(", ")}) VALUES (${placeholders.join(", ")})`;
     const [insertPost] = await db.execute<ResultSetHeader>(insertSql, params);
     postId = insertPost.insertId;
 
-    if (mediaUrl) {
+    if (normalizedMediaUrls.length) {
       try {
-        await db.execute("INSERT INTO Files (postid, route) VALUES (?, ?)", [postId, mediaUrl]);
+        await Promise.all(
+          normalizedMediaUrls.map((route) => db.execute("INSERT INTO Files (postid, route) VALUES (?, ?)", [postId, route])),
+        );
       } catch (error) {
         console.warn("No se pudo guardar archivo multimedia", error);
       }

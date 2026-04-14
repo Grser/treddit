@@ -24,7 +24,7 @@ export default function Composer({ enabled }: { enabled: boolean }) {
 
   const [tab, setTab] = useState<Tab>("post");
   const [text, setText] = useState("");
-  const [mediaUrl, setMediaUrl] = useState("");
+  const [mediaUrls, setMediaUrls] = useState<string[]>([]);
   const [isSensitive, setIsSensitive] = useState(false);
   const [sensitivityLevel, setSensitivityLevel] = useState<"sensitive" | "adult">("sensitive");
   const [sensitiveSuggested, setSensitiveSuggested] = useState(false);
@@ -41,7 +41,7 @@ export default function Composer({ enabled }: { enabled: boolean }) {
   const [mentionResults, setMentionResults] = useState<MentionUser[]>([]);
   const [mentionsLoading, setMentionsLoading] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const canMarkSensitive = Boolean(mediaUrl && isImageMediaUrl(mediaUrl));
+  const canMarkSensitive = mediaUrls.length > 0 && mediaUrls.every((url) => isImageMediaUrl(url));
 
   const [question, setQuestion] = useState("");
   const [options, setOptions] = useState<string[]>(["", ""]);
@@ -171,28 +171,40 @@ export default function Composer({ enabled }: { enabled: boolean }) {
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     if (!enabled) return;
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files ?? []).slice(0, 4);
+    if (!files.length) return;
     clearError();
     setUploading(true);
     try {
-      const payload = await uploadFile(file, { scope: "post", onProgress: (progress) => setUploadProgress(progress) });
-      if (payload.url) {
-        setMediaUrl(payload.url);
-        setTab("media");
-        const isImage = isImageMediaUrl(payload.url);
-        const suggested = Boolean(payload.sensitive?.suggestedSensitive);
-        if (isImage && suggested) {
-          setIsSensitive(true);
-          setSensitiveSuggested(true);
-        } else {
-          setSensitiveSuggested(false);
-          if (!isImage) setIsSensitive(false);
+      const uploaded: string[] = [];
+      let suggestedSensitive = false;
+
+      for (let index = 0; index < files.length; index += 1) {
+        const file = files[index];
+        const payload = await uploadFile(file, {
+          scope: "post",
+          onProgress: (progress) => {
+            const completedBase = (index / files.length) * 100;
+            setUploadProgress(Math.min(100, Math.round(completedBase + progress / files.length)));
+          },
+        });
+        if (!payload.url) {
+          throw new Error("UPLOAD_FAILED");
         }
-        clearError();
-      } else {
-        setErrorKey("uploadFailed");
+        uploaded.push(payload.url);
+        suggestedSensitive = suggestedSensitive || Boolean(payload.sensitive?.suggestedSensitive);
       }
+
+      setMediaUrls((prev) => [...prev, ...uploaded].slice(0, 4));
+      setTab("media");
+      if (suggestedSensitive && uploaded.every((url) => isImageMediaUrl(url))) {
+        setIsSensitive(true);
+        setSensitiveSuggested(true);
+      } else {
+        setSensitiveSuggested(false);
+        if (!uploaded.every((url) => isImageMediaUrl(url))) setIsSensitive(false);
+      }
+      clearError();
     } catch (err) {
       if (err instanceof Error && err.message && err.message !== "UPLOAD_FAILED") {
         setServerError(err.message);
@@ -221,6 +233,7 @@ export default function Composer({ enabled }: { enabled: boolean }) {
   type ComposerPayload = {
     description: string | null;
     mediaUrl: string | null;
+    mediaUrls: string[] | null;
     poll: PollPayload;
     communityId: number | null;
     isSensitive: boolean;
@@ -233,15 +246,17 @@ export default function Composer({ enabled }: { enabled: boolean }) {
     const payload: ComposerPayload = {
       description: text || null,
       mediaUrl: null,
+      mediaUrls: null,
       poll: null,
       communityId: communityId > 0 ? communityId : null,
-      isSensitive: Boolean(mediaUrl && isImageMediaUrl(mediaUrl) && isSensitive),
-      sensitivityLevel: mediaUrl && isImageMediaUrl(mediaUrl) && isSensitive ? sensitivityLevel : null,
+      isSensitive: Boolean(mediaUrls.length > 0 && mediaUrls.every((url) => isImageMediaUrl(url)) && isSensitive),
+      sensitivityLevel: mediaUrls.length > 0 && mediaUrls.every((url) => isImageMediaUrl(url)) && isSensitive ? sensitivityLevel : null,
     };
 
     if (tab === "media") {
-      payload.mediaUrl = mediaUrl || null;
-      if (!payload.mediaUrl && !payload.description) {
+      payload.mediaUrls = mediaUrls.length ? mediaUrls : null;
+      payload.mediaUrl = mediaUrls[0] || null;
+      if (!payload.mediaUrls?.length && !payload.description) {
         setErrorKey("mediaEmpty");
         return;
       }
@@ -276,7 +291,7 @@ export default function Composer({ enabled }: { enabled: boolean }) {
 
       if (res.ok) {
         setText("");
-        setMediaUrl("");
+        setMediaUrls([]);
         setQuestion("");
         setOptions(["", ""]);
         setDays(1);
@@ -380,16 +395,24 @@ export default function Composer({ enabled }: { enabled: boolean }) {
 
       {tab === "media" && (
         <div className="mt-3 space-y-2">
-          <div className="flex items-center gap-2">
+          <label className="group block cursor-pointer rounded-xl border-2 border-dashed border-brand/60 bg-brand/5 p-4 transition hover:bg-brand/10">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold">Subir fotos o videos</p>
+                <p className="text-xs opacity-70">Puedes seleccionar hasta 4 archivos a la vez.</p>
+              </div>
+              <span className="rounded-full bg-brand px-3 py-1 text-xs font-semibold text-white">Elegir archivos</span>
+            </div>
             <input
               ref={fileRef}
               type="file"
               accept="image/*,video/*"
+              multiple
               disabled={!enabled || uploading}
               onChange={handleFile}
-              className="block w-full text-sm"
+              className="sr-only"
             />
-          </div>
+          </label>
           <p className="text-xs opacity-70">Tamaño máximo para fotos y videos: {formatUploadLimit()}.</p>
           {uploading && (
             <div className="rounded-lg border border-border bg-input/60 p-2">
@@ -399,8 +422,27 @@ export default function Composer({ enabled }: { enabled: boolean }) {
               </div>
             </div>
           )}
-          {mediaUrl && (
-            <p className="text-xs opacity-70">{t.attachLabel}: {mediaUrl.split("/").pop() || "archivo"}</p>
+          {mediaUrls.length > 0 && (
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {mediaUrls.map((url) => (
+                <div key={url} className="relative overflow-hidden rounded-lg border border-border bg-black/20">
+                  {isImageMediaUrl(url) ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={url} alt="" className="h-28 w-full object-cover" />
+                  ) : (
+                    <video src={url} className="h-28 w-full object-cover" />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setMediaUrls((prev) => prev.filter((item) => item !== url))}
+                    className="absolute right-1 top-1 rounded-full bg-black/70 px-2 py-0.5 text-xs text-white"
+                    title="Quitar archivo"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       )}
