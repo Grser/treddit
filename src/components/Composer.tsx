@@ -399,13 +399,13 @@ export default function Composer({ enabled }: { enabled: boolean }) {
 
       {tab === "media" && (
         <div className="mt-3 space-y-2">
-          <label className="group block cursor-pointer rounded-xl border-2 border-dashed border-brand/60 bg-brand/5 p-4 transition hover:bg-brand/10">
+          <label className="group block cursor-pointer rounded-xl border-2 border-dashed border-border bg-input/40 p-4 transition hover:bg-muted/60">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold">Subir fotos o videos</p>
                 <p className="text-xs opacity-70">Puedes seleccionar hasta 4 archivos a la vez.</p>
               </div>
-              <span className="rounded-full border border-brand/50 bg-brand/15 px-3 py-1 text-xs font-semibold text-brand">Elegir archivos</span>
+              <span className="rounded-full border border-border bg-background px-3 py-1 text-xs font-semibold text-foreground/90">Elegir archivos</span>
             </div>
             <input
               ref={fileRef}
@@ -422,19 +422,19 @@ export default function Composer({ enabled }: { enabled: boolean }) {
             <div className="rounded-lg border border-border bg-input/60 p-2">
               <p className="text-xs opacity-80">Subiendo archivo: {uploadProgress}%</p>
               <div className="mt-1 h-2 overflow-hidden rounded bg-muted">
-                <div className="h-full bg-brand transition-all" style={{ width: `${uploadProgress}%` }} />
+                <div className="h-full bg-foreground/80 transition-all" style={{ width: `${uploadProgress}%` }} />
               </div>
             </div>
           )}
           {mediaUrls.length > 0 && (
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {mediaUrls.map((url) => (
-                <div key={url} className="relative overflow-hidden rounded-lg border border-border bg-black/20">
+                <div key={url} className="relative overflow-hidden rounded-lg border border-border bg-black/30">
                   {isImageMediaUrl(url) ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={url} alt="" className="h-28 w-full object-cover" />
+                    <img src={url} alt="" className="h-56 w-full object-contain bg-black/40" />
                   ) : (
-                    <video src={url} className="h-28 w-full object-cover" />
+                    <video src={url} className="h-56 w-full object-contain bg-black/40" />
                   )}
                   <button
                     type="button"
