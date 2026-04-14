@@ -9,6 +9,7 @@ import { createDemoPost, getDemoFeed } from "@/lib/demoStore";
 import { ensurePostsCommunityColumn, getPostsCommunityColumn } from "@/lib/communityColumns";
 import { ensurePostsAdultColumn, getPostsAdultColumn } from "@/lib/postAdultContent";
 import { ensurePostsSensitiveColumn, getPostsSensitiveColumn } from "@/lib/postSensitivity";
+import { ensurePostsMediaDownloadColumn, getPostsMediaDownloadColumn } from "@/lib/postMediaDownload";
 import { isUserAgeVerified } from "@/lib/ageVerification";
 import { estimatePostViews } from "@/lib/postStats";
 import { isImageMediaUrl } from "@/lib/sensitiveMedia";
@@ -43,6 +44,7 @@ type PostRow = {
   community_name: string | null;
   is_sensitive: number | boolean | null;
   is_adult: number | boolean | null;
+  allow_media_download: number | boolean | null;
   isFollowedAuthor: number;
   isCloseFriendAuthor: number;
 };
@@ -251,10 +253,11 @@ export async function GET(req: Request) {
   }
 
   let blockFilterEnabled = false;
-  const [communityColumn, sensitiveColumn, adultColumn] = await Promise.all([
+  const [communityColumn, sensitiveColumn, adultColumn, mediaDownloadColumn] = await Promise.all([
     getPostsCommunityColumn(),
     getPostsSensitiveColumn(),
     getPostsAdultColumn(),
+    getPostsMediaDownloadColumn(),
     ensureBlockTables().then(() => {
       blockFilterEnabled = true;
     }).catch((error) => {
@@ -264,6 +267,7 @@ export async function GET(req: Request) {
   const hasCommunityColumn = Boolean(communityColumn);
   const hasSensitiveColumn = Boolean(sensitiveColumn);
   const hasAdultColumn = Boolean(adultColumn);
+  const hasMediaDownloadColumn = Boolean(mediaDownloadColumn);
 
   if (feedPriorityMode === "followed-communities") {
     if (hasCommunityColumn && communityColumn) {
@@ -349,6 +353,7 @@ export async function GET(req: Request) {
   const communityNameSelect = hasCommunityColumn ? "c.name" : "NULL";
   const sensitiveSelect = hasSensitiveColumn ? "p.is_sensitive" : "0";
   const adultSelect = hasAdultColumn ? "p.is_adult" : "0";
+  const mediaDownloadSelect = hasMediaDownloadColumn ? "p.allow_media_download" : "1";
   const closeFriendAuthorSelect = closeFriendsReady
     ? `
         CASE
@@ -420,7 +425,8 @@ export async function GET(req: Request) {
         ${communitySlugSelect} AS community_slug,
         ${communityNameSelect} AS community_name,
         ${sensitiveSelect} AS is_sensitive,
-        ${adultSelect} AS is_adult
+        ${adultSelect} AS is_adult,
+        ${mediaDownloadSelect} AS allow_media_download
         ,
         CASE
           WHEN ? IS NULL THEN 0
@@ -530,6 +536,7 @@ export async function GET(req: Request) {
       reply_scope: Number(row.reply_scope ?? 0),
       is_sensitive: Boolean(row.is_sensitive),
       is_adult: Boolean(row.is_adult),
+      allow_media_download: row.allow_media_download === null ? true : Boolean(row.allow_media_download),
       admin_role_name: row.admin_role_name ? String(row.admin_role_name) : null,
       admin_role_emoji: row.admin_role_icon_key ? iconKeyToEmoji(String(row.admin_role_icon_key)) : null,
       isFollowedAuthor: Boolean(row.isFollowedAuthor),
@@ -674,12 +681,18 @@ export async function POST(req: Request) {
   const sensitivityLevelValue = body["sensitivityLevel"];
   const sensitivityLevel = sensitivityLevelValue === "adult" ? "adult" : "sensitive";
   const isAdultRequested = isSensitiveRequested && sensitivityLevel === "adult";
+  const allowMediaDownloadValue = body["allowMediaDownload"];
+  const allowMediaDownloadRequested =
+    allowMediaDownloadValue === undefined
+      ? true
+      : allowMediaDownloadValue === true || allowMediaDownloadValue === 1 || allowMediaDownloadValue === "1";
   const communityIdRaw = typeof communityValue === "number" ? communityValue : Number(communityValue);
   const normalizedCommunityId = Number.isFinite(communityIdRaw) && communityIdRaw > 0 ? communityIdRaw : null;
 
   let communityColumn = databaseReady ? await getPostsCommunityColumn() : "community_id";
   let sensitiveColumn = databaseReady ? await getPostsSensitiveColumn() : "is_sensitive";
   let adultColumn = databaseReady ? await getPostsAdultColumn() : "is_adult";
+  let mediaDownloadColumn = databaseReady ? await getPostsMediaDownloadColumn() : "allow_media_download";
 
   description = description.slice(0, 2000);
 
@@ -764,6 +777,7 @@ export async function POST(req: Request) {
       communityId: normalizedCommunityId,
       isSensitive: Boolean(normalizedMediaUrls.length && normalizedMediaUrls.every((url) => isImageMediaUrl(url)) && isSensitiveRequested),
       isAdult: Boolean(normalizedMediaUrls.length && normalizedMediaUrls.every((url) => isImageMediaUrl(url)) && isAdultRequested),
+      allowMediaDownload: Boolean(normalizedMediaUrls.length === 0 || allowMediaDownloadRequested),
     });
     return NextResponse.json({ ok: true, id }, { status: 201 });
   }
@@ -794,6 +808,14 @@ export async function POST(req: Request) {
       columns.push(adultColumn);
       placeholders.push("?");
       params.push(normalizedMediaUrls.length && normalizedMediaUrls.every((url) => isImageMediaUrl(url)) && isAdultRequested ? 1 : 0);
+    }
+    if (!mediaDownloadColumn) {
+      mediaDownloadColumn = await ensurePostsMediaDownloadColumn();
+    }
+    if (mediaDownloadColumn) {
+      columns.push(mediaDownloadColumn);
+      placeholders.push("?");
+      params.push(normalizedMediaUrls.length === 0 || allowMediaDownloadRequested ? 1 : 0);
     }
 
     const insertSql = `INSERT INTO Posts (${columns.join(", ")}) VALUES (${placeholders.join(", ")})`;
