@@ -1,19 +1,8 @@
 import type { NextConfig } from "next";
 
-type NextConfigWithProxyBodySize = NextConfig & {
-  experimental?: NextConfig["experimental"] & {
-    proxyClientMaxBodySize?: number;
-  };
-};
-
-const nextConfig: NextConfigWithProxyBodySize = {
+const nextConfig: NextConfig = {
   poweredByHeader: false,
   experimental: {
-    /**
-     * Keep request size limits aligned with `/api/upload` validations so
-     * oversized payloads fail early with predictable 413 responses.
-     */
-    proxyClientMaxBodySize: 1024 * 1024 * 1024,
     serverActions: {
       bodySizeLimit: "1024mb",
     },
